@@ -47,7 +47,7 @@ You should add the following to your `.vscode/mcp.json` file in your project dir
 			"type": "stdio",
 			"command": "uvx",
       		"args": [
-				"--from", "git+https://github.com/ansys/pymechanical-mcp", "ansys-mechanical-mcp"
+				"--from", "git+https://github.com/ansys-internal/pymechanical-mcp", "ansys-mechanical-mcp"
 			]
 		}
 	}
@@ -68,7 +68,7 @@ Edit the file `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "pymechanical": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ansys/pymechanical-mcp", "ansys-mechanical-mcp"],
+      "args": ["--from", "git+https://github.com/ansys-internal/pymechanical-mcp", "ansys-mechanical-mcp"],
       "description": "A simple MCP server to talk to Ansys Mechanical",
       "version": "0.1.0",
       "language": "python"
@@ -85,13 +85,13 @@ You can add PyMechanical-MCP server to the project in a specific directory with 
 
 ```bash
 cd my-project
-claude mcp add --transport stdio pymechanical -- uvx --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
+claude mcp add --transport stdio pymechanical -- uvx --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 If you want to add the MCP-server globally on your user, use the following command:
 
 ```bash
-claude mcp add --transport stdio --scope user pymechanical -- uvx --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
+claude mcp add --transport stdio --scope user pymechanical -- uvx --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 For more information, visit [Claude Code Docs-Installing MCP servers](https://code.claude.com/docs/en/mcp#installing-mcp-servers)
@@ -101,7 +101,7 @@ For more information, visit [Claude Code Docs-Installing MCP servers](https://co
 You can start the PyMechanical MCP server as a standalone Python application using `uvx`:
 
 ```console
-uvx --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
+uvx --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 You can also use your python virtual environment if you have pip installed PyMechanical MCP server:
@@ -459,7 +459,7 @@ Get general rules and best practices for Mechanical simulations including accura
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/ansys/pymechanical-mcp.git
+git clone https://github.com/ansys-internal/pymechanical-mcp.git
 cd pymechanical-mcp
 ```
 
