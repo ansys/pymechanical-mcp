@@ -134,3 +134,8 @@ exclude = [
     "build",
     "dist",
 ]
+
+[tool.uv]
+# Ensure dependencies are resolved from PyPI first, not internal indexes
+# This prevents version conflicts when users have internal PyPI indexes configured
+index-strategy = "unsafe-best-match"
