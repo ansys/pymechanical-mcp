@@ -1,0 +1,136 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "ansys-mechanical-mcp"
+version = "0.0.1"
+description = "Model Context Protocol (MCP) server for Ansys Mechanical through PyMechanical"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { file = "LICENSE" }
+authors = [
+    { name = "ANSYS, Inc.", email = "pyansys.core@ansys.com" }
+]
+maintainers = [
+    { name = "ANSYS, Inc.", email = "pyansys.core@ansys.com" }
+]
+keywords = [
+    "ansys",
+    "mechanical",
+    "pymechanical",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "assistant",
+    "finite-element-analysis",
+    "structural-analysis",
+    "simulation"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "ansys-mechanical-core>=0.11.0",
+    "fastmcp>=0.1.0,<3",
+    "ansys-common-mcp>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10",
+    "black>=23.0",
+    "isort>=5.12",
+    "mypy>=1.0",
+    "flake8>=7.0",
+    "pre-commit>=3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ansys/pymechanical-mcp"
+Documentation = "https://github.com/ansys/pymechanical-mcp#readme"
+Repository = "https://github.com/ansys/pymechanical-mcp"
+Issues = "https://github.com/ansys/pymechanical-mcp/issues"
+
+[project.scripts]
+ansys-mechanical-mcp = "ansys.mechanical.mcp.__main__:launcher"
+
+[tool.flit.module]
+name = "ansys.mechanical.mcp"
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+src_paths = ["src", "tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+exclude = [
+    "^\\.venv/",
+    "^venv/",
+    "^build/",
+    "^dist/",
+]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+addopts = [
+    "--verbose",
+    "--cov=ansys.mechanical.mcp",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+markers = [
+    "unit: Unit tests that don't require Mechanical",
+    "integration: Integration tests that require Mechanical connection",
+    "slow: Tests that take a long time to run",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = ["B101"]  # Skip assert_used in tests
+
+[tool.pydocstyle]
+convention = "numpy"
+add_ignore = ["D100", "D104"]  # Missing docstring in public module/package
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]

@@ -1,0 +1,101 @@
+"""Pytest configuration and fixtures for PyMechanical MCP Server tests."""
+
+import sys
+from unittest.mock import MagicMock
+
+import pytest
+from mcp.server.session import ServerSession
+
+from ansys.mechanical.mcp.server import PyMechanicalAppContext
+
+
+@pytest.fixture
+def mock_mechanical():
+    """Create a mock Mechanical instance for testing."""
+    mechanical = MagicMock()
+    mechanical.name = "Mechanical"
+    mechanical.version = "2024 R2"
+    mechanical._ip = "127.0.0.1"
+    mechanical._port = 10000
+    mechanical.ip = "127.0.0.1"
+    mechanical.port = 10000
+    mechanical.run_python_script = MagicMock(return_value="Script executed")
+    mechanical.run_python_script_from_file = MagicMock(return_value="Script executed")
+    mechanical.run_python_script_batch = MagicMock(return_value="Scripts executed")
+    mechanical.exit = MagicMock()
+
+    # Mock common Mechanical attributes
+    mechanical.project_directory = "/tmp/mechanical_project"
+    mechanical.directory = "/tmp/mechanical_project"
+    mechanical.is_alive = True
+    mechanical.is_local = True
+    mechanical._exited = False
+    mechanical._exiting = False
+    mechanical.status = "Running"
+    mechanical.platform = "linux"
+    mechanical.jobname = "file"
+    mechanical.check_status = "running"
+
+    # Mock information class
+    mechanical.information = MagicMock()
+    mechanical.information.title = "Test Project"
+    mechanical.information.jobname = "file"
+    mechanical.information.routine = ""
+    mechanical.information.units = "SI"
+    mechanical.information.revision = "2024 R2"
+    mechanical.information.product = "Mechanical"
+
+    return mechanical
+
+
+@pytest.fixture
+def app_context(mock_mechanical):
+    """Create a PyMechanicalAppContext with a mock Mechanical instance."""
+    return PyMechanicalAppContext(mechanical=mock_mechanical)
+
+
+@pytest.fixture
+def app_context_no_mechanical():
+    """Create a PyMechanicalAppContext without Mechanical (simulating connection failure)."""
+    return PyMechanicalAppContext(mechanical=None)
+
+
+@pytest.fixture
+def mock_server_session():
+    """Create a mock ServerSession for testing."""
+    session = MagicMock(spec=ServerSession)
+    return session
+
+
+@pytest.fixture
+def mock_context(mock_server_session, app_context):
+    """Create a mock Context with PyMechanicalAppContext for testing tools."""
+    context = MagicMock()
+    context.request_context = MagicMock()
+    context.request_context.lifespan_context = app_context
+    return context
+
+
+@pytest.fixture
+def mock_context_no_mechanical(mock_server_session, app_context_no_mechanical):
+    """Create a mock Context without Mechanical for testing error handling."""
+    context = MagicMock()
+    context.request_context = MagicMock()
+    context.request_context.lifespan_context = app_context_no_mechanical
+    return context
+
+
+@pytest.fixture
+def app_server():
+    """Create a FastMCP server instance for testing."""
+    from ansys.mechanical.mcp.server import app
+
+    return app
+
+
+@pytest.fixture(autouse=True)
+def reset_stderr():
+    """Ensure stderr is reset between tests."""
+    original_stderr = sys.stderr
+    yield
+    sys.stderr = original_stderr
