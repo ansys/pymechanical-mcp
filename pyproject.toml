@@ -42,7 +42,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "ansys-mechanical-core>=0.11.0",
+    "ansys-mechanical-core>=0.12.0",
     "fastmcp>=0.1.0,<3",
     "ansys-common-mcp>=0.1.0",
 ]
@@ -139,3 +139,8 @@ exclude = [
 # Ensure dependencies are resolved from PyPI first, not internal indexes
 # This prevents version conflicts when users have internal PyPI indexes configured
 index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
