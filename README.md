@@ -28,8 +28,8 @@ This MCP server bridges the gap between AI assistants and Ansys Mechanical, allo
 
 - Python 3.10 or higher (up to 3.13)
 - Ansys Mechanical installation (optional - can connect to remote instances)
-- PyMechanical library (ansys-mechanical-core >= 0.68.0)
-- FastMCP library (fastmcp >= 0.1.0)
+- PyMechanical library (ansys-mechanical-core >= 0.12.0)
+- FastMCP library (fastmcp >= 0.1.0, < 3)
 - Ansys Common MCP library (ansys-common-mcp >= 0.1.0)
 
 ## Quick Start
@@ -274,7 +274,7 @@ By default, the server connects to Mechanical on `localhost:10000` when using Op
 
 ### Run Mechanical Scripts
 
-Use `run_mechanical_script` tool to run Mechanical Python scripts. For instance:
+Use `run_python_script` tool to run Mechanical Python scripts. For instance:
 
 > Run a script to get the current model's geometry information.
 
@@ -314,8 +314,10 @@ This tool is specifically for custom plots using Python visualization libraries.
 Launch a new Mechanical instance and automatically connect to it.
 
 **Parameters**:
+- `exec_file` (string, optional): Path to the Mechanical executable. If None, PyMechanical will find it automatically
+- `port` (int, optional): gRPC port for Mechanical to listen on. If None, defaults to 10000
 - `batch` (bool, optional): Whether to launch in batch mode. Default: True
-- `port` (int, optional): gRPC port for Mechanical to listen on. If None, a default port will be used
+- `version` (string, optional): Mechanical version to run (e.g., "252" for 2025 R2). If None, uses latest installed
 
 **Returns**: Launch status message with Mechanical version and connection information
 
@@ -327,7 +329,7 @@ Launch a new Mechanical instance and automatically connect to it.
 Connect to an existing Mechanical instance.
 
 **Parameters**:
-- `ip` (string, optional): IP address where Mechanical is running. Default: "localhost"
+- `ip` (string, optional): IP address where Mechanical is running. Default: "127.0.0.1"
 - `port` (int, optional): gRPC port where Mechanical is listening. Default: 10000
 
 **Returns**: Connection status with Mechanical version information
@@ -352,17 +354,85 @@ Check the status and comprehensive information of the connected Mechanical insta
 
 **Returns**: JSON string containing comprehensive Mechanical status information including:
 - Connection details (version, IP, port, project directory)
-- Model information (geometry, materials, mesh, boundary conditions)
-- Analysis settings and results availability
+- Product information (version, build date)
+- Model information (name, product version)
+
+#### `check_mechanical_installed`
+
+Check if Mechanical is installed on the system.
+
+**Returns**: Status message indicating whether Mechanical is installed
+
+> [!NOTE]
+> This tool is disabled when running on AALI environments.
+
+#### `get_model_info`
+
+Get detailed information about the current model in Mechanical.
+
+**Returns**: JSON string containing model information including:
+- Project info (name, product version)
+- Model info (name)
+- Geometry info (body count)
+- Mesh info (node count, element count)
+- Analysis count
+
+#### `get_project_directory`
+
+Get the project directory of the Mechanical instance.
+
+**Returns**: The project directory path
+
+### File Operations
+
+#### `list_files`
+
+List files in the Mechanical working directory.
+
+**Returns**: List of files in the working directory
+
+#### `upload_file`
+
+Upload a file to the Mechanical instance's working directory.
+
+**Parameters**:
+- `file_path` (string): Path to the local file to upload
+
+**Returns**: Upload status message
+
+#### `download_file`
+
+Download a file from the Mechanical instance's working directory.
+
+**Parameters**:
+- `file_name` (string): Name of the file to download
+- `target_dir` (string, optional): Local directory to save the file. If None, uses current directory
+
+**Returns**: Download status message with local file path
+
+#### `clear_mechanical`
+
+Clear the Mechanical database, providing a fresh start for a new analysis.
+
+**Returns**: Clear status message
 
 ### Mechanical Script Execution
 
-#### `run_mechanical_script`
+#### `run_python_script`
 
-Execute a Mechanical Python script.
+Execute a Python script inside Mechanical using the Mechanical scripting API (IronPython). The script has access to Mechanical's ExtAPI, DataModel, Model, Tree, and Graphics entry points.
 
 **Parameters**:
-- `script` (string): The Mechanical Python script to execute
+- `script` (string): The Python script to execute inside Mechanical
+
+**Returns**: Script execution result with the string value of the last executed statement
+
+#### `run_python_script_from_file`
+
+Execute a Python script file inside Mechanical.
+
+**Parameters**:
+- `file_path` (string): Path to the Python script file to execute
 
 **Returns**: Script execution result
 
@@ -421,35 +491,43 @@ Create custom plots using matplotlib in the persistent Python session.
 
 ### Workflow Context and Guidance
 
-The following context tools provide comprehensive guidelines and best practices for Mechanical workflows:
+The following context tools provide comprehensive guidelines and best practices for Mechanical workflows. These tools are disabled when running on AALI environments.
 
 #### `get_guidelines_for_workflow_overview`
 
-Get general Mechanical simulation workflow overview context covering the complete simulation process independent of analysis type.
+Get general Mechanical simulation workflow overview context covering the complete simulation process, PyMechanical architecture, API entry points, and code execution patterns.
 
-#### `get_guidelines_for_preprocessing_geometry`
+#### `get_guidelines_for_geometry_import`
 
 Get geometry import and preparation guidelines for Mechanical preprocessing.
 
-#### `get_guidelines_for_preprocessing_mesh`
-
-Get mesh generation guidelines including quality considerations and best practices for Mechanical.
-
-#### `get_guidelines_for_preprocessing_materials`
+#### `get_guidelines_for_materials`
 
 Get material model definition guidelines with default assumptions for structural and thermal analyses.
 
-#### `get_guidelines_for_preprocessing_boundary_conditions`
+#### `get_guidelines_for_meshing`
+
+Get mesh generation guidelines including quality considerations and best practices for Mechanical.
+
+#### `get_guidelines_for_analysis_setup`
+
+Get analysis setup guidelines including analysis type selection and configuration.
+
+#### `get_guidelines_for_boundary_conditions`
 
 Get boundary conditions and loads application guidelines for different analysis types in Mechanical.
 
-#### `get_guidelines_for_solution_phase`
+#### `get_guidelines_for_solution`
 
-Get solution phase guidelines including analysis type selection, solver configuration, and convergence monitoring.
+Get solution phase guidelines including solver configuration and convergence monitoring.
 
-#### `get_guidelines_for_postprocessing_phase`
+#### `get_guidelines_for_postprocessing`
 
 Get postprocessing phase guidelines for extracting and visualizing results in Mechanical.
+
+#### `get_guidelines_for_named_selections`
+
+Get guidelines for creating and using named selections in Mechanical.
 
 #### `get_guidelines_for_general_rules`
 
@@ -770,10 +848,10 @@ def your_new_tool(ctx: Context, param: str) -> str:
 
 ### Adding Context Tools
 
-To add workflow guidance tools, edit `src/ansys/mechanical/mcp/contexts.py` and use the `@add_tool` decorator:
+To add workflow guidance tools, edit `src/ansys/mechanical/mcp/contexts.py` and use the `@app.tool()` decorator:
 
 ```python
-@add_tool
+@app.tool()
 def get_guidelines_for_your_topic() -> str:
     """Get guidance for your specific topic.
 
@@ -795,7 +873,7 @@ Tools can be conditionally enabled or disabled based on server configuration:
 ```python
 # Disable tool when connection is locked or on AALI
 @app.tool(enabled=not (session.locked_connection or session.on_aali))
-def connect_to_mechanical(ctx: Context, port: int = 10000, ip: str = "localhost") -> str:
+def connect_to_mechanical(ctx: Context, port: int = 10000, ip: str = "127.0.0.1") -> str:
     # Tool implementation
     pass
 ```
