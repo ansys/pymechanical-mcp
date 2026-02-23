@@ -23,7 +23,7 @@ class TestRunPythonCode:
         # Ensure no python_session attribute or explicit None
         setattr(mock_context_no_mechanical.request_context.lifespan_context, "python_session", None)
 
-        result = run_python_code.fn(mock_context_no_mechanical, code="print('hi')")
+        result = run_python_code(mock_context_no_mechanical, code="print('hi')")
 
         data = json.loads(result)
         assert data["success"] is False
@@ -37,7 +37,7 @@ class TestRunPythonCode:
             "stderr": "",
         }
 
-        result = run_python_code.fn(mock_context, code="print('ok')")
+        result = run_python_code(mock_context, code="print('ok')")
         data = json.loads(result)
         assert data["success"] is True
         assert data["stdout"].strip() == "ok"
@@ -52,7 +52,7 @@ class TestRunPythonCode:
             "error": "Boom!",
         }
 
-        result = run_python_code.fn(mock_context, code="raise SystemExit")
+        result = run_python_code(mock_context, code="raise SystemExit")
         data = json.loads(result)
         assert data["success"] is False
         assert data["error"].startswith("Boom!")
@@ -61,7 +61,7 @@ class TestRunPythonCode:
         mock_context.request_context.lifespan_context.python_session = mock_python_session
         mock_python_session.execute.return_value = "SOME OUTPUT"
 
-        result = run_python_code.fn(mock_context, code="'SOME OUTPUT'")
+        result = run_python_code(mock_context, code="'SOME OUTPUT'")
         data = json.loads(result)
         assert data["success"] is True
         assert data["stdout"] == "SOME OUTPUT"
@@ -72,7 +72,7 @@ class TestRunPythonCode:
         mock_python_session.metadata["mechanical"] = MagicMock()
         mock_python_session.execute.side_effect = TimeoutError("too slow")
 
-        result = run_python_code.fn(mock_context, code="while True: pass", timeout=1)
+        result = run_python_code(mock_context, code="while True: pass", timeout=1)
         data = json.loads(result)
         assert data["success"] is False
         assert "timed out" in data["error"].lower()
@@ -82,7 +82,7 @@ class TestRunPythonCode:
         mock_python_session.execute.return_value = {"success": True, "stdout": "", "stderr": ""}
 
         dirty = "print('bullet:\u2022 and check:\u2713 and nbsp:\u00a0')"
-        run_python_code.fn(mock_context, code=dirty)
+        run_python_code(mock_context, code=dirty)
 
         passed_code = mock_python_session.execute.call_args[0][0]
         assert "\u2022" not in passed_code
@@ -100,7 +100,7 @@ class TestRunPythonCode:
             "stderr": "",
         }
 
-        result = run_python_code.fn(mock_context, code="print('irrelevant')")
+        result = run_python_code(mock_context, code="print('irrelevant')")
         data = json.loads(result)
         assert data["success"] is True
         # Confirm mapped replacements are present and problematic chars gone
@@ -120,7 +120,7 @@ class TestRunPythonCode:
             "error": "boom",
         }
 
-        result = run_python_code.fn(mock_context, code="raise SystemExit")
+        result = run_python_code(mock_context, code="raise SystemExit")
         data = json.loads(result)
         assert data["success"] is False
         assert "[X]" in data["stderr"]
@@ -134,7 +134,7 @@ class TestCreateCustomPlot:
         # Explicitly remove python_session
         setattr(mock_context.request_context.lifespan_context, "python_session", None)
 
-        result = create_custom_plot.fn(mock_context, plot_code="import matplotlib.pyplot as plt")
+        result = create_custom_plot(mock_context, plot_code="import matplotlib.pyplot as plt")
 
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
@@ -150,7 +150,7 @@ class TestCreateCustomPlot:
             "stderr": "",
         }
 
-        result = create_custom_plot.fn(
+        result = create_custom_plot(
             mock_context,
             plot_code="print(save_matplotlib_plot())",
             plot_type="matplotlib",
@@ -170,7 +170,7 @@ class TestCreateCustomPlot:
             "stderr": "",
         }
 
-        result = create_custom_plot.fn(mock_context, plot_code="print('Plot saved to x')")
+        result = create_custom_plot(mock_context, plot_code="print('Plot saved to x')")
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "Plot saved to" in result[0].text
@@ -183,7 +183,7 @@ class TestCreateCustomPlot:
             "stderr": "",
         }
 
-        result = create_custom_plot.fn(mock_context, plot_code="print('weird')")
+        result = create_custom_plot(mock_context, plot_code="print('weird')")
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "unexpected output format" in result[0].text
@@ -199,7 +199,7 @@ class TestCreateCustomPlot:
             "stderr": "",
         }
 
-        result = create_custom_plot.fn(
+        result = create_custom_plot(
             mock_context,
             plot_code="print('data:image/png;base64,'+ '" + payload + "')",
             plot_type="pyvista",
@@ -220,7 +220,7 @@ class TestCreateCustomPlot:
             "error": "Something bad",
         }
 
-        result = create_custom_plot.fn(mock_context, plot_code="raise SystemExit")
+        result = create_custom_plot(mock_context, plot_code="raise SystemExit")
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "Error creating custom" in result[0].text
@@ -230,7 +230,8 @@ class TestCreateCustomPlot:
         mock_context.request_context.lifespan_context.python_session = mock_python_session
         mock_python_session.execute.side_effect = TimeoutError("too slow")
 
-        result = create_custom_plot.fn(mock_context, plot_code="while True: pass", timeout=1)
+        result = create_custom_plot(mock_context, plot_code="while True: pass", timeout=1)
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "Plot creation timed out after" in result[0].text
+

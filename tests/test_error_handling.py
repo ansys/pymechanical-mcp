@@ -19,14 +19,14 @@ class TestErrorHandling:
         )
 
         # The function catches exceptions and returns error messages
-        result = run_python_script.fn(mock_context, "INVALID_SCRIPT")
+        result = run_python_script(mock_context, "INVALID_SCRIPT")
         assert "Error executing script" in result
         assert "Mechanical script failed" in result
 
     def test_none_mechanical_instance(self, mock_context_no_mechanical):
         """Test handling when Mechanical instance is None."""
         # Should return helpful error message instead of raising exception
-        result = check_mechanical_status.fn(mock_context_no_mechanical)
+        result = check_mechanical_status(mock_context_no_mechanical)
         assert isinstance(result, str)
         assert "No Mechanical connection available" in result
 
@@ -38,7 +38,7 @@ class TestErrorHandling:
         invalid_context.request_context.lifespan_context = MagicMock()
         invalid_context.request_context.lifespan_context.mechanical = None
 
-        result = check_mechanical_status.fn(invalid_context)
+        result = check_mechanical_status(invalid_context)
         assert "No Mechanical connection available" in result
 
     def test_mechanical_timeout(self, mock_context):
@@ -49,14 +49,14 @@ class TestErrorHandling:
         )
 
         # The function catches exceptions and returns error messages
-        result = run_python_script.fn(mock_context, "long_running_script()")
+        result = run_python_script(mock_context, "long_running_script()")
         assert "Error executing script" in result
         assert "timed out" in result
 
     def test_empty_script_string(self, mock_context):
         """Test handling of empty script string."""
         # This should not raise an error, but pass empty string to Mechanical
-        result = run_python_script.fn(mock_context, "")
+        result = run_python_script(mock_context, "")
 
         assert "Script executed successfully" in result
         mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with("")
@@ -65,6 +65,7 @@ class TestErrorHandling:
         """Test handling of very long scripts."""
         # Mechanical should handle long scripts, our code should pass it through
         long_script = "print('X" + "X" * 1000 + "')"
-        result = run_python_script.fn(mock_context, long_script)
+        result = run_python_script(mock_context, long_script)
 
         assert "Script executed successfully" in result
+

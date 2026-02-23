@@ -68,7 +68,49 @@ def check_mechanical_status(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool(enabled=not session.on_aali)
+@app.tool()
+def validate_mechanical_connection(ctx: Context) -> str:
+    """Validate that the Mechanical connection is active and healthy.
+
+    This tool performs a quick health check on the Mechanical connection,
+    returning a simple pass/fail status with diagnostic information.
+    Use this for automated checks before running operations.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+
+    Returns
+    -------
+    str
+        JSON string with validation result:
+        - is_valid: boolean indicating if connection is healthy
+        - message: description of connection state
+        - diagnostics: additional diagnostic information if available
+    """
+    from ansys.mechanical.mcp.helpers import validate_connection
+
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    is_valid, message = validate_connection(mechanical)
+
+    result = {
+        "is_valid": is_valid,
+        "message": message,
+    }
+
+    if is_valid and mechanical is not None:
+        result["diagnostics"] = {
+            "version": str(mechanical.version),
+            "project_directory": str(mechanical.project_directory),
+            "is_alive": mechanical.is_alive,
+        }
+
+    return json.dumps(result, indent=2)
+
+
+@app.tool(tags={"no_aali"})
 def check_mechanical_installed(ctx: Context) -> str:
     """Check if Mechanical is installed on the system.
 
@@ -181,7 +223,7 @@ def run_python_script_from_file(ctx: Context, file_path: str) -> str:
         return error_msg
 
 
-@app.tool(enabled=not session.on_aali)
+@app.tool(tags={"no_aali"})
 def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     """Execute multiple Python scripts inside Mechanical in sequence.
 
@@ -224,7 +266,7 @@ def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     return f"Executed {len(scripts)} scripts:\n" + "\n".join(results)
 
 
-@app.tool(enabled=not (session.locked_connection or session.on_aali))
+@app.tool(tags={"no_aali", "no_locked_connection"})
 def launch_mechanical(
     ctx: Context,
     exec_file: str | None = None,
@@ -303,7 +345,7 @@ def launch_mechanical(
         return error_msg
 
 
-@app.tool(enabled=not (session.locked_connection or session.on_aali))
+@app.tool(tags={"no_aali", "no_locked_connection"})
 def connect_to_mechanical(
     ctx: Context, port: int = 10000, ip: str = "127.0.0.1"
 ) -> str:
@@ -359,7 +401,7 @@ def connect_to_mechanical(
         return error_msg
 
 
-@app.tool(enabled=not (session.locked_connection or session.on_aali))
+@app.tool(tags={"no_aali", "no_locked_connection"})
 def disconnect_from_mechanical(ctx: Context) -> str:
     """Disconnect from the connected Mechanical instance.
 
@@ -399,6 +441,27 @@ def disconnect_from_mechanical(ctx: Context) -> str:
         # Still clear the reference even if disconnect failed
         ctx.request_context.lifespan_context.mechanical = None
         return error_msg
+
+
+@app.tool()
+def list_mechanical_instances() -> str:
+    """List all Mechanical instances running on the local machine.
+
+    This tool discovers Mechanical instances running on the machine by scanning
+    for active gRPC servers and their associated metadata.
+
+    Returns
+    -------
+    str
+        Formatted table containing information about all running Mechanical instances
+        including their names, status, gRPC ports, PIDs, and working directories.
+    """
+    logger.info("Searching for Mechanical instances...")
+
+    from ansys.mechanical.mcp.helpers import list_instances
+
+    # Use list_instances function with long=True for detailed output
+    return list_instances(long=True, instances=True)
 
 
 @app.tool()
@@ -667,6 +730,108 @@ json.dumps(model_info)
         return error_msg
 
 
+@app.tool()
+def screenshot(
+    ctx: Context,
+    view_type: str = "model",
+) -> list[TextContent | ImageContent]:
+    """Capture a screenshot of the current Mechanical view.
+
+    This tool captures the current graphics view from Mechanical as an image.
+    It can capture model views, mesh views, or result contour plots.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    view_type : str, optional
+        Type of view to capture: "model", "mesh", or "result". Default is "model".
+
+    Returns
+    -------
+    list[TextContent | ImageContent]
+        A list containing:
+        - TextContent with the screenshot file path
+        - ImageContent with the base64-encoded image data
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return [
+            TextContent(
+                type="text",
+                text=(
+                    "No Mechanical connection available. "
+                    "Use connect_to_mechanical tool to establish a connection."
+                ),
+            )
+        ]
+
+    try:
+        logger.info(f"Capturing Mechanical screenshot (type: {view_type})...")
+
+        # Create a temporary file with .png extension
+        temp_fd, temp_path = tempfile.mkstemp(suffix=".png", prefix="mechanical_screenshot_")
+        os.close(temp_fd)
+
+        # Script to capture screenshot using Mechanical's Graphics API
+        script = f"""
+import os
+
+# Get the Graphics object
+graphics = ExtAPI.Graphics
+
+# Export the current view to image
+graphics.ExportImage(r"{temp_path}", ImageExportFormat.PNG, GraphicsImageExportSettings())
+
+r"{temp_path}"
+"""
+        try:
+            result = mechanical.run_python_script(script)
+            logger.info(f"Screenshot script result: {result}")
+        except Exception as e:
+            logger.warning(f"Graphics export failed: {e}")
+            # Try alternative method
+            alt_script = f"""
+# Alternative: Use viewport capture
+from System.Drawing import Bitmap
+from System.Drawing.Imaging import ImageFormat
+
+# Get active window and capture
+# This is a fallback method
+r"Screenshot capture requires active graphics window"
+"""
+            return [TextContent(type="text", text=f"Screenshot capture failed: {str(e)}")]
+
+        # Verify file was created
+        image_path = Path(temp_path)
+        if not image_path.exists():
+            return [TextContent(type="text", text=f"Screenshot file not created: {temp_path}")]
+
+        # Read image data
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+
+        # Encode to base64
+        base64_data = base64.b64encode(image_data).decode("utf-8")
+
+        # Determine mime type
+        mime_type = "image/png"
+
+        logger.info(f"Screenshot captured successfully: {temp_path}")
+
+        # Return both text (file path) and image content
+        return [
+            TextContent(type="text", text=f"Screenshot saved to: {temp_path}"),
+            ImageContent(type="image", data=base64_data, mimeType=mime_type),
+        ]
+
+    except Exception as e:
+        error_msg = f"Failed to capture screenshot: {str(e)}"
+        logger.error(error_msg)
+        return [TextContent(type="text", text=error_msg)]
+
+
 ####################################################################################################
 # Tools that use the PersistentPythonSession
 
@@ -774,7 +939,7 @@ def run_python_code(
         return json.dumps(error_dict, ensure_ascii=False)
 
 
-@app.tool(enabled=not session.on_aali)
+@app.tool(tags={"no_aali"})
 def create_custom_plot(
     ctx: Context,
     plot_code: str,
@@ -964,3 +1129,13 @@ def _sanitize_output(text: str) -> str:
         text = text.encode("ascii", errors="replace").decode("ascii")
 
     return text
+
+
+# FastMCP 3.x: Conditionally disable tools based on session configuration
+# Tools tagged with "no_aali" should be disabled when running on AALI platform
+if session.on_aali:
+    app.disable(tags={"no_aali"})
+
+# Tools tagged with "no_locked_connection" should be disabled when connection is locked
+if session.locked_connection:
+    app.disable(tags={"no_locked_connection"})

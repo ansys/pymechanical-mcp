@@ -93,7 +93,7 @@ class TestMechanicalIntegration:
         """Test checking Mechanical status with a real connection."""
         import json
 
-        result = check_mechanical_status.fn(real_context)
+        result = check_mechanical_status(real_context)
 
         assert isinstance(result, str)
         # Check for JSON structure
@@ -105,7 +105,7 @@ class TestMechanicalIntegration:
         """Test running a Mechanical script with a real connection."""
         # Use a safe script that doesn't affect the model
         script = "print('Hello from Mechanical')"
-        result = run_python_script.fn(real_context, script)
+        result = run_python_script(real_context, script)
 
         assert isinstance(result, str)
         assert "Script executed successfully" in result
@@ -120,14 +120,14 @@ class TestMechanicalIntegration:
             "print(f'Result: {result}')",
         ]
 
-        result = run_multiple_scripts.fn(real_context, scripts)
+        result = run_multiple_scripts(real_context, scripts)
 
         assert isinstance(result, str)
         assert "Executed 4 scripts" in result
 
     def test_real_run_multiple_scripts_empty_list(self, real_context):
         """Test error handling with empty script list."""
-        result = run_multiple_scripts.fn(real_context, [])
+        result = run_multiple_scripts(real_context, [])
 
         assert "No scripts provided" in result
 
@@ -136,7 +136,7 @@ class TestMechanicalIntegration:
         # Create many scripts
         scripts = [f"x_{i} = {i}" for i in range(1, 51)]
 
-        result = run_multiple_scripts.fn(real_context, scripts)
+        result = run_multiple_scripts(real_context, scripts)
 
         assert "Executed 50 scripts" in result
 
@@ -148,7 +148,7 @@ class TestMechanicalIntegration:
             "INVALID_PYTHON_SYNTAX_XYZ((",  # This should cause an error
         ]
 
-        result = run_multiple_scripts.fn(real_context, scripts)
+        result = run_multiple_scripts(real_context, scripts)
 
         # Should get error message
         assert isinstance(result, str)
@@ -201,7 +201,7 @@ class TestLaunchMechanicalIntegration:
 
         try:
             # Launch Mechanical
-            result = launch_mechanical.fn(clean_context)
+            result = launch_mechanical(clean_context)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -216,11 +216,11 @@ class TestLaunchMechanicalIntegration:
             assert mechanical.version is not None
 
             # Execute a simple script
-            script_result = run_python_script.fn(clean_context, "print('test')")
+            script_result = run_python_script(clean_context, "print('test')")
             assert "Script executed successfully" in script_result
 
             # Check status
-            status_result = check_mechanical_status.fn(clean_context)
+            status_result = check_mechanical_status(clean_context)
             import json
 
             status_data = json.loads(status_result)
@@ -228,13 +228,13 @@ class TestLaunchMechanicalIntegration:
             assert "version" in status_data["connection"]
 
             # Test launching when already connected
-            result2 = launch_mechanical.fn(clean_context)
+            result2 = launch_mechanical(clean_context)
             assert "Already connected to a Mechanical instance" in result2
             assert "disconnect first" in result2
 
         finally:
             # Clean up
-            disconnect_from_mechanical.fn(clean_context)
+            disconnect_from_mechanical(clean_context)
 
     def test_launch_mechanical_custom_parameters(self, clean_context):
         """Test launching Mechanical with custom parameters.
@@ -248,7 +248,7 @@ class TestLaunchMechanicalIntegration:
         from ansys.mechanical.mcp.tools import disconnect_from_mechanical, launch_mechanical
 
         try:
-            result = launch_mechanical.fn(clean_context, port=10050)
+            result = launch_mechanical(clean_context, port=10050)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -261,7 +261,7 @@ class TestLaunchMechanicalIntegration:
 
         finally:
             # Disconnect Mechanical
-            disconnect_from_mechanical.fn(clean_context)
+            disconnect_from_mechanical(clean_context)
 
 
 @pytest.mark.integration
@@ -322,7 +322,8 @@ class TestPythonPersistentSessionIntegration:
         persistent_real_context.request_context.lifespan_context.python_session = session
 
         with capsys.disabled():
-            result = run_python_code.fn(persistent_real_context, code="print('hello')")
+            result = run_python_code(persistent_real_context, code="print('hello')")
         data = json.loads(result)
         assert data["success"] is True
         assert data["stdout"].strip() == "hello"
+

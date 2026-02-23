@@ -9,6 +9,221 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def list_instances(
+    instances: bool = False, long: bool = False, cmd: bool = False, location: bool = False
+) -> str:
+    """
+    List running Mechanical instances on the system.
+
+    This function scans all running processes to identify Ansys Mechanical instances
+    that are using gRPC communication. It returns a formatted table with information
+    about each discovered instance.
+
+    Parameters
+    ----------
+    instances : bool, optional
+        If True, only show main Mechanical instances (exclude child processes).
+        If False, show all Mechanical-related processes. Default is False.
+    long : bool, optional
+        If True, enable verbose output including command line and working directory.
+        This automatically sets both `cmd` and `location` to True. Default is False.
+    cmd : bool, optional
+        If True, include the command line arguments in the output table.
+        Default is False.
+    location : bool, optional
+        If True, include the working directory path in the output table.
+        Default is False.
+
+    Returns
+    -------
+    str
+        A formatted table string containing information about Mechanical instances.
+        The table includes columns for process name, status, gRPC port, PID,
+        and optionally command line and working directory based on the parameters.
+
+    Notes
+    -----
+    - This function identifies Mechanical processes by looking for "AnsysWBU" or
+      "mechanical" in the process name or command line.
+    - Only processes with status RUNNING, IDLE, or SLEEPING are considered valid.
+    """
+    import psutil
+    from tabulate import tabulate
+
+    mechanical_instances = []
+
+    def is_grpc_based(proc):
+        """Check if process uses gRPC."""
+        cmdline = proc.cmdline()
+        # Check for --port flag or grpc indicators
+        return "--port" in cmdline or "-grpc" in cmdline or any("grpc" in arg.lower() for arg in cmdline)
+
+    def get_port(proc):
+        """Extract port from command line."""
+        cmdline = proc.cmdline()
+        if "--port" in cmdline:
+            try:
+                ind_port = cmdline.index("--port")
+                return cmdline[ind_port + 1]
+            except (IndexError, ValueError):
+                pass
+        return "N/A"
+
+    def is_valid_process(proc):
+        """Check if process is a valid Mechanical instance."""
+        valid_status = proc.status() in [
+            psutil.STATUS_RUNNING,
+            psutil.STATUS_IDLE,
+            psutil.STATUS_SLEEPING,
+        ]
+        name_lower = proc.name().lower()
+        cmdline_str = " ".join(proc.cmdline()).lower()
+        
+        # Check for Mechanical process indicators
+        is_mechanical = (
+            "ansyswbu" in name_lower or
+            "mechanical" in name_lower or
+            "ansys mechanical" in cmdline_str or
+            "ansys-mechanical" in cmdline_str
+        )
+        
+        return valid_status and is_mechanical
+
+    for proc in psutil.process_iter():
+        try:
+            if is_valid_process(proc):
+                # Check if it's a main process or child
+                if len(proc.children(recursive=True)) < 2:
+                    proc.ansys_instance = False
+                else:
+                    proc.ansys_instance = True
+                mechanical_instances.append(proc)
+
+        except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
+            continue
+
+    # Configure output columns
+    if long:
+        cmd = True
+        location = True
+
+    if instances:
+        headers = ["Name", "Status", "gRPC port", "PID"]
+    else:
+        headers = ["Name", "Is Instance", "Status", "gRPC port", "PID"]
+
+    if cmd:
+        headers.append("Command line")
+    if location:
+        headers.append("Working directory")
+
+    table = []
+    for each_p in mechanical_instances:
+        if instances and not each_p.ansys_instance:
+            continue
+
+        proc_line = []
+        proc_line.append(each_p.name())
+
+        if not instances:
+            proc_line.append(each_p.ansys_instance)
+
+        proc_line.extend([each_p.status(), get_port(each_p), each_p.pid])
+
+        if cmd:
+            proc_line.append(" ".join(each_p.cmdline()))
+
+        if location:
+            try:
+                proc_line.append(each_p.cwd())
+            except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
+                proc_line.append("N/A")
+
+        table.append(proc_line)
+
+    return str(tabulate(table, headers))
+
+
+def validate_connection(mechanical: "Mechanical") -> tuple[bool, str]:
+    """Validate that a Mechanical connection is active and responsive.
+
+    Parameters
+    ----------
+    mechanical : Mechanical
+        The Mechanical instance to validate.
+
+    Returns
+    -------
+    tuple[bool, str]
+        A tuple of (is_valid, message) where is_valid indicates if the
+        connection is working and message provides details.
+    """
+    if mechanical is None:
+        return False, "No Mechanical connection available"
+
+    try:
+        # Check if alive
+        if hasattr(mechanical, "is_alive") and not mechanical.is_alive:
+            return False, "Mechanical connection is not alive"
+        
+        # Check if exited
+        if hasattr(mechanical, "exited") and mechanical.exited:
+            return False, "Mechanical instance has exited"
+        
+        # Try to access a basic property
+        _ = mechanical.version
+        return True, "Mechanical connection is active"
+    except Exception as e:
+        return False, f"Mechanical connection appears broken: {str(e)}"
+
+
+def format_mechanical_error(error: Exception, operation: str) -> str:
+    """Format a Mechanical error message for user display.
+
+    Parameters
+    ----------
+    error : Exception
+        The exception that occurred.
+    operation : str
+        Description of the operation that failed.
+
+    Returns
+    -------
+    str
+        Formatted error message with possible solutions.
+    """
+    error_type = type(error).__name__
+    error_msg = str(error)
+
+    # Common error patterns and user-friendly messages
+    if "grpc" in error_msg.lower() or "connection" in error_msg.lower():
+        return (
+            f"Connection error during {operation}: {error_msg}\n"
+            "Possible solutions:\n"
+            "1. Ensure Mechanical is running with gRPC server enabled: ansys-mechanical --port <port>\n"
+            "2. Check that the IP address and port are correct\n"
+            "3. Verify firewall settings allow the connection"
+        )
+    elif "license" in error_msg.lower():
+        return (
+            f"License error during {operation}: {error_msg}\n"
+            "Possible solutions:\n"
+            "1. Check license server connectivity\n"
+            "2. Verify license availability\n"
+            "3. Contact your license administrator"
+        )
+    elif "script" in error_msg.lower() or "python" in error_msg.lower():
+        return (
+            f"Script execution error during {operation}: {error_msg}\n"
+            "Possible solutions:\n"
+            "1. Check Python script syntax\n"
+            "2. Verify all required objects exist in Mechanical\n"
+            "3. Check for IronPython compatibility issues"
+        )
+    else:
+        return f"Error during {operation}: [{error_type}] {error_msg}"
+
+
 def get_info(mechanical: "Mechanical") -> dict[str, str | dict[str, Any]]:
     """
     Get information from the Mechanical instance.

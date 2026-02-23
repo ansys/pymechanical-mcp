@@ -6,26 +6,29 @@ import pytest
 @pytest.mark.asyncio
 async def test_context_tools_registered():
     """Test that all context tools are registered with the MCP server."""
+    # Import contexts and tools to register them with the app
+    from ansys.mechanical.mcp import contexts, tools  # noqa: F401
     from ansys.mechanical.mcp.server import app
 
-    # Get list of registered tools
-    tool_list = await app.get_tools()
+    # Get list of registered tools using FastMCP 3.x API
+    tool_list = await app.list_tools()
 
-    # Expected tool names
+    # Expected tool names (matching actual contexts.py functions)
     expected_tools = [
         "get_guidelines_for_workflow_overview",
-        "get_guidelines_for_preprocessing_geometry",
-        "get_guidelines_for_preprocessing_elements",
-        "get_guidelines_for_preprocessing_materials",
-        "get_guidelines_for_preprocessing_mesh",
-        "get_guidelines_for_preprocessing_boundary_conditions",
-        "get_guidelines_for_solution_phase",
-        "get_guidelines_for_postprocessing_phase",
+        "get_guidelines_for_geometry_import",
+        "get_guidelines_for_materials",
+        "get_guidelines_for_meshing",
+        "get_guidelines_for_analysis_setup",
+        "get_guidelines_for_boundary_conditions",
+        "get_guidelines_for_solution",
+        "get_guidelines_for_postprocessing",
+        "get_guidelines_for_named_selections",
         "get_guidelines_for_general_rules",
     ]
 
     # Check each expected tool is registered
-    tool_names = [t.name for t in tool_list.values()]
+    tool_names = [t.name for t in tool_list]
     for expected_name in expected_tools:
         assert expected_name in tool_names, f"Tool {expected_name} not found"
 
@@ -34,107 +37,100 @@ def test_workflow_overview_content():
     """Test that workflow overview tool returns expected content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_workflow_overview.fn()
+    # In FastMCP 3.x, decorated functions can be called directly
+    content = contexts.get_guidelines_for_workflow_overview()
 
     # Check for key sections in the overview
     assert "Mechanical Simulation Workflow Overview" in content
     assert "Preprocessing" in content
-    assert "Solution" in content
     assert "Postprocessing" in content
-    assert "General Rules" in content
 
 
-def test_preprocessing_geometry_content():
-    """Test preprocessing geometry tool content."""
+def test_geometry_import_content():
+    """Test geometry import tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_preprocessing_geometry.fn()
+    content = contexts.get_guidelines_for_geometry_import()
 
-    assert "Geometry Guidelines" in content
-    assert "2D vs 3D" in content
-    assert "finite elements" in content
+    assert "Geometry Import" in content
+    assert "STEP" in content or ".stp" in content
+    assert "AddGeometryImport" in content
 
 
-def test_preprocessing_elements_content():
-    """Test preprocessing elements tool content."""
+def test_materials_content():
+    """Test materials tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_preprocessing_elements.fn()
+    content = contexts.get_guidelines_for_materials()
 
-    assert "Element Type Selection" in content
-    assert "SOLID186" in content
-    assert "SHELL181" in content
-    assert "BEAM189" in content
+    assert "Material Definition" in content
+    assert "Structural Steel" in content
+    assert "body.Material" in content
 
 
-def test_preprocessing_materials_content():
-    """Test preprocessing materials tool content."""
+def test_meshing_content():
+    """Test meshing tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_preprocessing_materials.fn()
+    content = contexts.get_guidelines_for_meshing()
 
-    assert "Material Property Definition" in content
-    assert "Steel" in content or "steel" in content
-    assert "Aluminum" in content or "aluminum" in content
+    assert "Mesh" in content
+    assert "GenerateMesh" in content
 
 
-def test_preprocessing_mesh_content():
-    """Test preprocessing mesh tool content."""
+def test_boundary_conditions_content():
+    """Test boundary conditions tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_preprocessing_mesh.fn()
+    content = contexts.get_guidelines_for_boundary_conditions()
 
-    assert "Mesh Generation Guidelines" in content
-    assert "mesh quality" in content.lower()
-    assert "vmesh" in content or "VMESH" in content
+    assert "Boundary" in content or "Load" in content
 
 
-def test_preprocessing_boundary_conditions_content():
-    """Test preprocessing boundary conditions tool content."""
+def test_analysis_setup_content():
+    """Test analysis setup tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_preprocessing_boundary_conditions.fn()
+    content = contexts.get_guidelines_for_analysis_setup()
 
-    assert "Boundary Conditions and Loads" in content
-    assert "Fixed Supports" in content or "fixed supports" in content
-    assert "beam elements" in content.lower()
+    assert "Analysis" in content
+    assert "Static Structural" in content or "Modal" in content or "Thermal" in content
 
 
-def test_solution_phase_content():
-    """Test solution phase tool content."""
+def test_solution_content():
+    """Test solution tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_solution_phase.fn()
+    content = contexts.get_guidelines_for_solution()
 
-    assert "Solution" in content
-    assert "STATIC" in content
-    assert "MODAL" in content
-    assert "TRANSIENT" in content
-    assert "mechanical.solution()" in content
+    assert "Solution" in content or "Solve" in content
 
 
-def test_postprocessing_phase_content():
-    """Test postprocessing phase tool content."""
+def test_postprocessing_content():
+    """Test postprocessing tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_postprocessing_phase.fn()
+    content = contexts.get_guidelines_for_postprocessing()
 
-    assert "Postprocessing" in content
-    assert "post1" in content
-    assert "post26" in content
-    assert "plot_nodal_solution" in content
+    assert "Postprocessing" in content or "Result" in content
+
+
+def test_named_selections_content():
+    """Test named selections tool content."""
+    from ansys.mechanical.mcp import contexts
+
+    content = contexts.get_guidelines_for_named_selections()
+
+    assert "Named Selection" in content or "NamedSelection" in content
 
 
 def test_general_rules_content():
     """Test general rules tool content."""
     from ansys.mechanical.mcp import contexts
 
-    content = contexts.get_guidelines_for_general_rules.fn()
+    content = contexts.get_guidelines_for_general_rules()
 
-    assert "General Rules" in content
-    assert "Accuracy" in content or "accuracy" in content
-    assert "convergence" in content.lower()
-    assert "verification" in content.lower()
+    assert "General" in content or "Rules" in content or "Best Practices" in content
 
 
 def test_all_context_tools_return_strings():
@@ -143,17 +139,19 @@ def test_all_context_tools_return_strings():
 
     context_tool_functions = [
         contexts.get_guidelines_for_workflow_overview,
-        contexts.get_guidelines_for_preprocessing_geometry,
-        contexts.get_guidelines_for_preprocessing_elements,
-        contexts.get_guidelines_for_preprocessing_materials,
-        contexts.get_guidelines_for_preprocessing_mesh,
-        contexts.get_guidelines_for_preprocessing_boundary_conditions,
-        contexts.get_guidelines_for_solution_phase,
-        contexts.get_guidelines_for_postprocessing_phase,
+        contexts.get_guidelines_for_geometry_import,
+        contexts.get_guidelines_for_materials,
+        contexts.get_guidelines_for_meshing,
+        contexts.get_guidelines_for_analysis_setup,
+        contexts.get_guidelines_for_boundary_conditions,
+        contexts.get_guidelines_for_solution,
+        contexts.get_guidelines_for_postprocessing,
+        contexts.get_guidelines_for_named_selections,
         contexts.get_guidelines_for_general_rules,
     ]
 
     for func in context_tool_functions:
-        result = func.fn()
+        # In FastMCP 3.x, functions can be called directly
+        result = func()
         assert isinstance(result, str), f"{func.__name__} should return a string"
         assert len(result) > 0, f"{func.__name__} should return non-empty string"

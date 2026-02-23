@@ -38,6 +38,6 @@ def test_mcp_server_has_tools():
     # This is a basic check to ensure tools are defined
     from ansys.mechanical.mcp.tools import check_mechanical_status, run_python_script
 
-    # Verify tools are FunctionTool objects with callable .fn attribute
-    assert hasattr(check_mechanical_status, "fn") and callable(check_mechanical_status.fn)
-    assert hasattr(run_python_script, "fn") and callable(run_python_script.fn)
+    # In FastMCP 3.x, tools are callable functions directly
+    assert callable(check_mechanical_status)
+    assert callable(run_python_script)

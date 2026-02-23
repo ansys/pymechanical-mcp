@@ -59,7 +59,7 @@ def test_product_startup_attempts_connect_on_startup():
     """When connect_on_startup is True, MCP should attempt to connect to Mechanical."""
     from ansys.mechanical.mcp.server import PyMechanicalMCP, app
 
-    # Prepare a fake Mechanical instance to be returned by launch_mechanical
+    # Prepare a fake Mechanical instance to be returned by connect_to_mechanical
     fake_mechanical = MagicMock()
     fake_mechanical.exit = MagicMock()
 
@@ -78,19 +78,19 @@ def test_product_startup_attempts_connect_on_startup():
         },
     )
 
-    # Mock launch_mechanical to return our fake instance
-    with patch("ansys.mechanical.core.launch_mechanical", return_value=fake_mechanical) as mock_launch:
+    # Mock connect_to_mechanical to return our fake instance
+    with patch("ansys.mechanical.core.connect_to_mechanical", return_value=fake_mechanical) as mock_connect:
         # Create MCP instance
         mcp = PyMechanicalMCP()
         mcp.server = app  # Manually attach server
         mcp.create_context()
         mcp.product_startup()
 
-        # Verify launch_mechanical was called with correct parameters
-        mock_launch.assert_called_once_with(
-            start_instance=False,
+        # Verify connect_to_mechanical was called with correct parameters
+        mock_connect.assert_called_once_with(
             ip="127.0.0.1",
             port=10000,
+            cleanup_on_exit=False,
         )
 
         # Verify Mechanical instance was stored in context
