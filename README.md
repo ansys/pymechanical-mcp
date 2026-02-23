@@ -26,10 +26,10 @@ This MCP server bridges the gap between AI assistants and Ansys Mechanical, allo
 
 ## Prerequisites
 
-- Python 3.10 or higher (up to 3.13)
+- Python 3.11 or higher (up to 3.13)
 - Ansys Mechanical installation (optional - can connect to remote instances)
 - PyMechanical library (ansys-mechanical-core >= 0.12.0)
-- FastMCP library (fastmcp >= 0.1.0, < 3)
+- FastMCP library (fastmcp >= 0.1.0)
 - Ansys Common MCP library (ansys-common-mcp >= 0.1.0)
 
 ## Quick Start
@@ -48,7 +48,7 @@ You should add the following to your `.vscode/mcp.json` file in your project dir
 			"command": "uvx",
       		"args": [
 				"--index-strategy", "unsafe-best-match",
-				"--from", "git+https://github.com/ansys-internal/pymechanical-mcp", "ansys-mechanical-mcp"
+				"--from", "git+https://github.com/ansys/pymechanical-mcp", "ansys-mechanical-mcp"
 			]
 		}
 	}
@@ -71,7 +71,7 @@ Edit the file `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "pymechanical": {
       "command": "uvx",
-      "args": ["--index-strategy", "unsafe-best-match", "--from", "git+https://github.com/ansys-internal/pymechanical-mcp", "ansys-mechanical-mcp"],
+      "args": ["--index-strategy", "unsafe-best-match", "--from", "git+https://github.com/ansys/pymechanical-mcp", "ansys-mechanical-mcp"],
       "description": "A simple MCP server to talk to Ansys Mechanical",
       "version": "0.1.0",
       "language": "python"
@@ -88,13 +88,13 @@ You can add PyMechanical-MCP server to the project in a specific directory with 
 
 ```bash
 cd my-project
-claude mcp add --transport stdio pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
+claude mcp add --transport stdio pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 If you want to add the MCP-server globally on your user, use the following command:
 
 ```bash
-claude mcp add --transport stdio --scope user pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
+claude mcp add --transport stdio --scope user pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 For more information, visit [Claude Code Docs-Installing MCP servers](https://code.claude.com/docs/en/mcp#installing-mcp-servers)
@@ -104,7 +104,7 @@ For more information, visit [Claude Code Docs-Installing MCP servers](https://co
 You can start the PyMechanical MCP server as a standalone Python application using `uvx`:
 
 ```console
-uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys-internal/pymechanical-mcp ansys-mechanical-mcp
+uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
 You can also use your python virtual environment if you have pip installed PyMechanical MCP server:
@@ -346,6 +346,12 @@ Disconnect from the currently connected Mechanical instance.
 > [!NOTE]
 > This tool is disabled when `--connect-on-startup` is used or when running on AALI environments.
 
+#### `list_mechanical_instances`
+
+List all Mechanical instances running on the local machine by scanning for active gRPC servers.
+
+**Returns**: Formatted table containing information about all running Mechanical instances including names, status, gRPC ports, PIDs, and working directories.
+
 ### Mechanical Status and Information
 
 #### `check_mechanical_status`
@@ -356,6 +362,15 @@ Check the status and comprehensive information of the connected Mechanical insta
 - Connection details (version, IP, port, project directory)
 - Product information (version, build date)
 - Model information (name, product version)
+
+#### `validate_mechanical_connection`
+
+Validate that the Mechanical connection is active and healthy. Performs a quick health check returning pass/fail status with diagnostic information.
+
+**Returns**: JSON string with validation result:
+- `is_valid` (boolean): Whether connection is healthy
+- `message` (string): Description of connection state
+- `diagnostics` (object): Additional diagnostic info if available
 
 #### `check_mechanical_installed`
 
@@ -382,6 +397,17 @@ Get detailed information about the current model in Mechanical.
 Get the project directory of the Mechanical instance.
 
 **Returns**: The project directory path
+
+#### `screenshot`
+
+Capture a screenshot of the current Mechanical view.
+
+**Parameters**:
+- `view_type` (string, optional): Type of view to capture: "model", "mesh", or "result". Default: "model"
+
+**Returns**: List containing:
+- TextContent with the screenshot file path
+- ImageContent with the base64-encoded image data (if successful)
 
 ### File Operations
 
@@ -540,7 +566,7 @@ Get general rules and best practices for Mechanical simulations including accura
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/ansys-internal/pymechanical-mcp.git
+git clone https://github.com/ansys/pymechanical-mcp.git
 cd pymechanical-mcp
 ```
 

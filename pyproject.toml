@@ -60,10 +60,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ansys-internal/pymechanical-mcp"
-Documentation = "https://github.com/ansys-internal/pymechanical-mcp#readme"
-Repository = "https://github.com/ansys-internal/pymechanical-mcp"
-Issues = "https://github.com/ansys-internal/pymechanical-mcp/issues"
+Homepage = "https://github.com/ansys/pymechanical-mcp"
+Documentation = "https://github.com/ansys/pymechanical-mcp#readme"
+Repository = "https://github.com/ansys/pymechanical-mcp"
+Issues = "https://github.com/ansys/pymechanical-mcp/issues"
 
 [project.scripts]
 ansys-mechanical-mcp = "ansys.mechanical.mcp.__main__:launcher"
