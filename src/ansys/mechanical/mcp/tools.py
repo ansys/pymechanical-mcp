@@ -68,7 +68,7 @@ def check_mechanical_status(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool(tags={"no_aali"})
+@app.tool(tags={"aali"})
 def check_mechanical_installed(ctx: Context) -> str:
     """Check if Mechanical is installed on the system.
 
@@ -181,7 +181,7 @@ def run_python_script_from_file(ctx: Context, file_path: str) -> str:
         return error_msg
 
 
-@app.tool(tags={"no_aali"})
+@app.tool(tags={"aali"})
 def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     """Execute multiple Python scripts inside Mechanical in sequence.
 
@@ -224,7 +224,7 @@ def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     return f"Executed {len(scripts)} scripts:\n" + "\n".join(results)
 
 
-@app.tool(tags={"no_aali", "no_locked_connection"})
+@app.tool(tags={"aali", "locked_connection"})
 def launch_mechanical(
     ctx: Context,
     exec_file: str | None = None,
@@ -303,7 +303,7 @@ def launch_mechanical(
         return error_msg
 
 
-@app.tool(tags={"no_aali", "no_locked_connection"})
+@app.tool(tags={"aali", "locked_connection"})
 def connect_to_mechanical(
     ctx: Context, port: int = 10000, ip: str = "127.0.0.1"
 ) -> str:
@@ -359,7 +359,7 @@ def connect_to_mechanical(
         return error_msg
 
 
-@app.tool(tags={"no_aali", "no_locked_connection"})
+@app.tool(tags={"aali", "locked_connection"})
 def disconnect_from_mechanical(ctx: Context) -> str:
     """Disconnect from the connected Mechanical instance.
 
@@ -887,7 +887,7 @@ def run_python_code(
         return json.dumps(error_dict, ensure_ascii=False)
 
 
-@app.tool(tags={"no_aali"})
+@app.tool(tags={"aali"})
 def create_custom_plot(
     ctx: Context,
     plot_code: str,
@@ -1079,11 +1079,9 @@ def _sanitize_output(text: str) -> str:
     return text
 
 
-# FastMCP 3.x: Conditionally disable tools based on session configuration
-# Tools tagged with "no_aali" should be disabled when running on AALI platform
+# Conditionally disable tools based on session configuration
 if session.on_aali:
-    app.disable(tags={"no_aali"})
+    app.disable(tags={"aali"})
 
-# Tools tagged with "no_locked_connection" should be disabled when connection is locked
 if session.locked_connection:
-    app.disable(tags={"no_locked_connection"})
+    app.disable(tags={"locked_connection"})

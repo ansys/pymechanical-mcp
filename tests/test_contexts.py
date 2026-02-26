@@ -10,7 +10,6 @@ async def test_context_tools_registered():
     from ansys.mechanical.mcp import contexts, tools  # noqa: F401
     from ansys.mechanical.mcp.server import app
 
-    # Get list of registered tools using FastMCP 3.x API
     tool_list = await app.list_tools()
 
     # Expected tool names (matching actual contexts.py functions)
@@ -37,7 +36,6 @@ def test_workflow_overview_content():
     """Test that workflow overview tool returns expected content."""
     from ansys.mechanical.mcp import contexts
 
-    # In FastMCP 3.x, decorated functions can be called directly
     content = contexts.get_guidelines_for_workflow_overview()
 
     # Check for key sections in the overview
@@ -151,7 +149,6 @@ def test_all_context_tools_return_strings():
     ]
 
     for func in context_tool_functions:
-        # In FastMCP 3.x, functions can be called directly
         result = func()
         assert isinstance(result, str), f"{func.__name__} should return a string"
         assert len(result) > 0, f"{func.__name__} should return non-empty string"
