@@ -68,48 +68,6 @@ def check_mechanical_status(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool()
-def validate_mechanical_connection(ctx: Context) -> str:
-    """Validate that the Mechanical connection is active and healthy.
-
-    This tool performs a quick health check on the Mechanical connection,
-    returning a simple pass/fail status with diagnostic information.
-    Use this for automated checks before running operations.
-
-    Parameters
-    ----------
-    ctx : Context
-        The MCP context containing server session and application context.
-
-    Returns
-    -------
-    str
-        JSON string with validation result:
-        - is_valid: boolean indicating if connection is healthy
-        - message: description of connection state
-        - diagnostics: additional diagnostic information if available
-    """
-    from ansys.mechanical.mcp.helpers import validate_connection
-
-    mechanical = ctx.request_context.lifespan_context.mechanical
-
-    is_valid, message = validate_connection(mechanical)
-
-    result = {
-        "is_valid": is_valid,
-        "message": message,
-    }
-
-    if is_valid and mechanical is not None:
-        result["diagnostics"] = {
-            "version": str(mechanical.version),
-            "project_directory": str(mechanical.project_directory),
-            "is_alive": mechanical.is_alive,
-        }
-
-    return json.dumps(result, indent=2)
-
-
 @app.tool(tags={"no_aali"})
 def check_mechanical_installed(ctx: Context) -> str:
     """Check if Mechanical is installed on the system.
@@ -791,16 +749,6 @@ r"{temp_path}"
             logger.info(f"Screenshot script result: {result}")
         except Exception as e:
             logger.warning(f"Graphics export failed: {e}")
-            # Try alternative method
-            alt_script = f"""
-# Alternative: Use viewport capture
-from System.Drawing import Bitmap
-from System.Drawing.Imaging import ImageFormat
-
-# Get active window and capture
-# This is a fallback method
-r"Screenshot capture requires active graphics window"
-"""
             return [TextContent(type="text", text=f"Screenshot capture failed: {str(e)}")]
 
         # Verify file was created

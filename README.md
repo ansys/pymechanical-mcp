@@ -26,7 +26,7 @@ This MCP server bridges the gap between AI assistants and Ansys Mechanical, allo
 
 ## Prerequisites
 
-- Python 3.11 or higher (up to 3.13)
+- Python 3.10 or higher (up to 3.13)
 - Ansys Mechanical installation (optional - can connect to remote instances)
 - PyMechanical library (ansys-mechanical-core >= 0.12.0)
 - FastMCP library (fastmcp >= 0.1.0)
@@ -362,15 +362,6 @@ Check the status and comprehensive information of the connected Mechanical insta
 - Connection details (version, IP, port, project directory)
 - Product information (version, build date)
 - Model information (name, product version)
-
-#### `validate_mechanical_connection`
-
-Validate that the Mechanical connection is active and healthy. Performs a quick health check returning pass/fail status with diagnostic information.
-
-**Returns**: JSON string with validation result:
-- `is_valid` (boolean): Whether connection is healthy
-- `message` (string): Description of connection state
-- `diagnostics` (object): Additional diagnostic info if available
 
 #### `check_mechanical_installed`
 

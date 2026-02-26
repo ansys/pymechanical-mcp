@@ -24,7 +24,6 @@ from ansys.mechanical.mcp.tools import (
     run_multiple_scripts,
     screenshot,
     upload_file,
-    validate_mechanical_connection,
 )
 
 
@@ -861,43 +860,6 @@ class TestLaunchWorkflow:
         launch_result = launch_mechanical(mock_context_no_mechanical)
         assert "Already connected to a Mechanical instance" in launch_result
         assert "disconnect first" in launch_result
-
-
-@pytest.mark.unit
-class TestValidateMechanicalConnection:
-    """Tests for validate_mechanical_connection tool."""
-
-    def test_validate_connection_success(self, mock_context):
-        """Test validating a healthy Mechanical connection."""
-        mock_context.request_context.lifespan_context.mechanical.is_alive = True
-        mock_context.request_context.lifespan_context.mechanical.exited = False
-        
-        result = validate_mechanical_connection(mock_context)
-
-        assert isinstance(result, str)
-        data = json.loads(result)
-        assert data["is_valid"] is True
-        assert "message" in data
-        assert "diagnostics" in data
-
-    def test_validate_connection_no_mechanical(self, mock_context_no_mechanical):
-        """Test validating when no Mechanical connection exists."""
-        result = validate_mechanical_connection(mock_context_no_mechanical)
-
-        assert isinstance(result, str)
-        data = json.loads(result)
-        assert data["is_valid"] is False
-        assert "diagnostics" not in data
-
-    def test_validate_connection_exited(self, mock_context):
-        """Test validating when Mechanical has exited."""
-        mock_context.request_context.lifespan_context.mechanical.exited = True
-
-        result = validate_mechanical_connection(mock_context)
-
-        assert isinstance(result, str)
-        data = json.loads(result)
-        assert data["is_valid"] is False
 
 
 @pytest.mark.unit

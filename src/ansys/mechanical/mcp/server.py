@@ -92,8 +92,8 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
             command_history=[],
         )
 
-        # Populate context from CLI config on server if available
-        cli_cfg = getattr(self.server, "_cli_config", None)
+        # Populate context from CLI config if available
+        cli_cfg = getattr(self, "_cli_config", None)
 
         if cli_cfg is not None:
             context.transport_type = cli_cfg.get("transport_type", context.transport_type)
@@ -277,10 +277,14 @@ def launcher(argv: list[str] | None = None) -> None:
     # Run server using selected transport
     import asyncio
 
-    # import tools, context and resources to register them
+    # import tools, contexts, and prompts to register them
     if not session.on_aali:
         from ansys.mechanical.mcp import contexts  # noqa: F401
+    from ansys.mechanical.mcp import prompts  # noqa: F401
     from ansys.mechanical.mcp import tools  # noqa: F401
+
+    # Guarantee the system prompt is delivered during the MCP initialize handshake
+    app.instructions = prompts.SYSTEM_PROMPT
 
     if args.transport_type == "stdio":
         asyncio.run(app.run_stdio_async())

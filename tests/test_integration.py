@@ -9,7 +9,6 @@ To skip integration tests, run: pytest -m "not integration"
 import os
 from unittest.mock import MagicMock
 
-import numpy as np
 import pytest
 
 from ansys.mechanical.mcp.server import PyMechanicalAppContext
