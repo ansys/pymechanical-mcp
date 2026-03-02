@@ -1,6 +1,7 @@
 """Lifespan and CLI entry for the MCP server with startup options."""
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -37,6 +38,14 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         Port number for HTTP transport.
     cors_origins : Optional[list[str]]
         List of allowed CORS origins for HTTP transport.
+    grpc_transport_mode : Optional[str]
+        gRPC transport mode for Mechanical connections ('auto', 'insecure',
+        'mtls', or 'wnua'). When set to 'auto' (default), the mode is
+        determined automatically based on the platform and certificate
+        availability.
+    certs_dir : Optional[str]
+        Path to directory containing mTLS certificate files (ca.crt,
+        client.crt, client.key). Used when grpc_transport_mode is 'mtls'.
     """
 
     mechanical: Any | None = None
@@ -47,6 +56,8 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     http_host: str = "127.0.0.1"
     http_port: int = 8080
     cors_origins: list[str] | None = None
+    grpc_transport_mode: str | None = None
+    certs_dir: str | None = None
 
     @property
     def product_instance(self) -> Optional[Any]:
@@ -105,6 +116,10 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
             context.http_host = cli_cfg.get("http_host", context.http_host)
             context.http_port = cli_cfg.get("http_port", context.http_port)
             context.cors_origins = cli_cfg.get("cors_origins", context.cors_origins)
+            context.grpc_transport_mode = cli_cfg.get(
+                "grpc_transport_mode", context.grpc_transport_mode
+            )
+            context.certs_dir = cli_cfg.get("certs_dir", context.certs_dir)
 
         self.context = context
         return context
@@ -118,16 +133,32 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
         if context.connect_on_startup:
             from ansys.mechanical.core import connect_to_mechanical
 
+            from ansys.mechanical.mcp.helpers import resolve_transport_mode
+
             try:
+                # Resolve transport mode (auto-detect if not explicitly set)
+                resolved_mode, resolved_certs = resolve_transport_mode(
+                    transport_mode=context.grpc_transport_mode,
+                    certs_dir=context.certs_dir,
+                )
+
                 logger.info(
                     f"Attempting to connect to Mechanical at "
-                    f"{context.mechanical_ip}:{context.mechanical_port}..."
+                    f"{context.mechanical_ip}:{context.mechanical_port} "
+                    f"(transport_mode={resolved_mode!r})..."
                 )
-                context.mechanical = connect_to_mechanical(
-                    ip=context.mechanical_ip,
-                    port=context.mechanical_port,
-                    cleanup_on_exit=False,
-                )
+
+                connect_kwargs: dict[str, Any] = {
+                    "ip": context.mechanical_ip,
+                    "port": context.mechanical_port,
+                    "cleanup_on_exit": False,
+                }
+                if resolved_mode is not None:
+                    connect_kwargs["transport_mode"] = resolved_mode
+                if resolved_certs is not None:
+                    connect_kwargs["certs_dir"] = resolved_certs
+
+                context.mechanical = connect_to_mechanical(**connect_kwargs)
                 logger.info("Successfully connected to Mechanical on startup.")
 
             except Exception as e:
@@ -239,8 +270,44 @@ def launcher(argv: list[str] | None = None) -> None:
         action="store_true",
         help="To specify whether the MCP server is running on an AALI environment.",
     )
+    parser.add_argument(
+        "--transport-mode",
+        dest="grpc_transport_mode",
+        choices=["auto", "insecure", "mtls", "wnua"],
+        default=None,
+        help=(
+            "gRPC transport mode for Mechanical connections. "
+            "'auto' (default) detects the best mode based on platform and "
+            "certificate availability. 'insecure' uses plaintext gRPC. "
+            "'mtls' uses mutual TLS (requires certificates). "
+            "'wnua' uses Windows Named User Authentication (Windows only). "
+            "Can also be set via the PYMECHANICAL_TRANSPORT_MODE env var."
+        ),
+    )
+    parser.add_argument(
+        "--certs-dir",
+        dest="certs_dir",
+        default=None,
+        help=(
+            "Path to directory containing mTLS certificate files "
+            "(ca.crt, client.crt, client.key). "
+            "Can also be set via the ANSYS_GRPC_CERTIFICATES env var."
+        ),
+    )
 
     args = parser.parse_args(argv)
+
+    # Resolve gRPC transport mode: CLI flag > env var > auto
+    grpc_transport_mode = args.grpc_transport_mode
+    if grpc_transport_mode is None:
+        grpc_transport_mode = os.environ.get("PYMECHANICAL_TRANSPORT_MODE", None)
+
+    # Resolve certs dir: CLI flag > env var (ANSYS_GRPC_CERTIFICATES handled
+    # inside resolve_transport_mode, but we also accept it here for
+    # explicit pass-through)
+    certs_dir = args.certs_dir
+    if certs_dir is None:
+        certs_dir = os.environ.get("ANSYS_GRPC_CERTIFICATES", None)
 
     # Parse CORS origins if provided
     cors_origins = None
@@ -271,6 +338,8 @@ def launcher(argv: list[str] | None = None) -> None:
             "http_port": args.http_port,
             "cors_origins": cors_origins,
             "on_aali": session.on_aali,
+            "grpc_transport_mode": grpc_transport_mode,
+            "certs_dir": certs_dir,
         },
     )
 

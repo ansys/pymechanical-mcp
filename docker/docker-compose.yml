@@ -16,6 +16,17 @@ services:
       # HTTP server settings
       - HTTP_HOST=${HTTP_HOST:-0.0.0.0}
       - HTTP_PORT=${HTTP_PORT:-8080}
+      # gRPC transport mode: auto (default), insecure, mtls, wnua
+      # When auto: uses mtls if certs are mounted, otherwise insecure.
+      - PYMECHANICAL_TRANSPORT_MODE=${PYMECHANICAL_TRANSPORT_MODE:-}
+      # Certificate directory for mTLS (only needed if using mtls)
+      - ANSYS_GRPC_CERTIFICATES=${ANSYS_GRPC_CERTIFICATES:-}
+      # Whether to connect to Mechanical on startup (true/false)
+      - CONNECT_ON_STARTUP=${CONNECT_ON_STARTUP:-false}
+    # Uncomment the volume below to mount mTLS certificates for secure
+    # gRPC connections. The directory must contain: ca.crt, client.crt, client.key
+    # volumes:
+    #   - ./certs:/app/certs:ro
     restart: unless-stopped
     networks:
       - mcp

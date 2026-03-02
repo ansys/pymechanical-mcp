@@ -35,18 +35,21 @@ WORKDIR /app
 # Copy project files
 COPY . .
 
-# Install the package with git credentials
-# Use BuildKit secrets to securely pass GitHub token
+# Install package. ansys-common-mcp requires a private PyPI index.
+# Pass PYANSYS_PYPI_INDEX_URL build-arg, or a BuildKit secret 'github_token'.
+ARG PYANSYS_PYPI_INDEX_URL=""
 RUN --mount=type=secret,id=github_token \
-    if [ -f /run/secrets/github_token ]; then \
+    pip install --no-cache-dir --upgrade pip && \
+    if [ -n "${PYANSYS_PYPI_INDEX_URL}" ]; then \
+        echo "Installing with private PyPI index..." && \
+        pip install --no-cache-dir --extra-index-url "${PYANSYS_PYPI_INDEX_URL}" -e .; \
+    elif [ -f /run/secrets/github_token ]; then \
         export GH_TOKEN=$(cat /run/secrets/github_token) && \
         git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/" && \
-        pip install --no-cache-dir --upgrade pip && \
         pip install --no-cache-dir -e . && \
         git config --global --unset url."https://${GH_TOKEN}@github.com/".insteadOf; \
     else \
-        echo "Warning: No GitHub token provided, attempting installation anyway..." && \
-        pip install --no-cache-dir --upgrade pip && \
+        echo "Warning: No private index or GitHub token provided, attempting public install..." && \
         pip install --no-cache-dir -e .; \
     fi
 
@@ -55,6 +58,15 @@ ENV PYMECHANICAL_START_INSTANCE=false
 ENV PYMECHANICAL_IP=host.docker.internal
 ENV PYMECHANICAL_PORT=10000
 
+# gRPC transport: auto-detects insecure/mtls based on cert availability.
+# Override: PYMECHANICAL_TRANSPORT_MODE=insecure|mtls|wnua
+# For mTLS: mount certs via -v /path/to/certs:/app/certs
+# ENV PYMECHANICAL_TRANSPORT_MODE=auto
+# ENV ANSYS_GRPC_CERTIFICATES=/app/certs
+
+# Set to "true" to connect on startup (locks connection tools).
+ENV CONNECT_ON_STARTUP=false
+
 ENV HTTP_HOST=0.0.0.0
 ENV HTTP_PORT=8080
 
@@ -62,22 +74,17 @@ ENV HTTP_PORT=8080
 EXPOSE ${HTTP_PORT}
 EXPOSE ${PYMECHANICAL_PORT}
 
-# Create entrypoint
+# Create entrypoint that honours CONNECT_ON_STARTUP and PYMECHANICAL_TRANSPORT_MODE
 RUN echo '#!/bin/bash\n\
 set -e\n\
-\n\
-echo "Starting PyMechanical MCP Server with HTTP transport..."\n\
-echo "Mechanical connection: $PYMECHANICAL_IP:$PYMECHANICAL_PORT"\n\
-echo "HTTP server: $HTTP_HOST:$HTTP_PORT"\n\
-\n\
-# Start the MCP server with HTTP transport\n\
-exec ansys-mechanical-mcp \\\n\
-    --connect-on-startup \\\n\
-    --transport http \\\n\
-    --ip "$PYMECHANICAL_IP" \\\n\
-    --port "$PYMECHANICAL_PORT" \\\n\
-    --http-host "$HTTP_HOST" \\\n\
-    --http-port "$HTTP_PORT"\n\
+echo "PyMechanical MCP | target=$PYMECHANICAL_IP:$PYMECHANICAL_PORT | http=$HTTP_HOST:$HTTP_PORT"\n\
+CMD_ARGS="--transport http --http-host $HTTP_HOST --http-port $HTTP_PORT"\n\
+if [ "${CONNECT_ON_STARTUP}" = "true" ]; then\n\
+    CMD_ARGS="$CMD_ARGS --connect-on-startup --ip $PYMECHANICAL_IP --port $PYMECHANICAL_PORT"\n\
+fi\n\
+[ -n "${PYMECHANICAL_TRANSPORT_MODE}" ] && CMD_ARGS="$CMD_ARGS --transport-mode $PYMECHANICAL_TRANSPORT_MODE"\n\
+[ -n "${ANSYS_GRPC_CERTIFICATES}" ] && CMD_ARGS="$CMD_ARGS --certs-dir $ANSYS_GRPC_CERTIFICATES"\n\
+exec ansys-mechanical-mcp $CMD_ARGS\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

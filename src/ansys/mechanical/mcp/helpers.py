@@ -1,12 +1,201 @@
 """Helper functions for PyMechanical-MCP."""
 
 import logging
+import os
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ansys.mechanical.core import Mechanical
 
 logger = logging.getLogger(__name__)
+
+# Valid transport modes supported by PyMechanical's gRPC layer.
+VALID_TRANSPORT_MODES = {"auto", "insecure", "mtls", "wnua"}
+
+
+def _is_linux() -> bool:
+    """Return True when running on a Linux / POSIX platform (incl. Docker)."""
+    return sys.platform.startswith("linux") or sys.platform == "darwin"
+
+
+def _is_docker() -> bool:
+    """Return True when running inside a Docker container."""
+    return os.path.exists("/.dockerenv") or os.path.isfile("/run/.containerenv")
+
+
+def _probe_grpc_endpoint(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
+    """Probe a gRPC endpoint to check if a Mechanical server is reachable.
+
+    Parameters
+    ----------
+    host : str
+        Hostname or IP address.
+    port : int
+        gRPC port number.
+    timeout : float
+        Seconds to wait before giving up.
+
+    Returns
+    -------
+    dict
+        ``{"reachable": bool, "host": str, "port": int, "error": str | None}``
+    """
+    import grpc
+
+    target = f"{host}:{port}"
+    try:
+        channel = grpc.insecure_channel(target)
+        try:
+            grpc.channel_ready_future(channel).result(timeout=timeout)
+            return {"reachable": True, "host": host, "port": port, "error": None}
+        except grpc.FutureTimeoutError:
+            return {"reachable": False, "host": host, "port": port, "error": "timeout"}
+        finally:
+            channel.close()
+    except Exception as e:
+        return {"reachable": False, "host": host, "port": port, "error": str(e)}
+
+
+def _find_certs_dir(certs_dir: str | None = None) -> Path | None:
+    """Locate a certificate directory that contains the required mTLS files.
+
+    Checks, in order:
+    1. An explicit *certs_dir* argument.
+    2. The ``ANSYS_GRPC_CERTIFICATES`` environment variable.
+    3. A ``certs/`` directory relative to the current working directory.
+
+    Parameters
+    ----------
+    certs_dir : str | None
+        Explicit path supplied by the user/CLI.
+
+    Returns
+    -------
+    Path | None
+        The resolved directory if it contains ``ca.crt``, ``client.crt``,
+        and ``client.key``; otherwise ``None``.
+    """
+    candidates: list[Path] = []
+
+    if certs_dir is not None:
+        candidates.append(Path(certs_dir))
+
+    env_val = os.environ.get("ANSYS_GRPC_CERTIFICATES")
+    if env_val:
+        candidates.append(Path(env_val))
+
+    # Fallback: conventional relative directory
+    candidates.append(Path("certs"))
+
+    required_files = ("ca.crt", "client.crt", "client.key")
+
+    for candidate in candidates:
+        if candidate.is_dir() and all((candidate / f).is_file() for f in required_files):
+            logger.info("mTLS certificates found in: %s", candidate)
+            return candidate
+
+    return None
+
+
+def resolve_transport_mode(
+    transport_mode: str | None = None,
+    certs_dir: str | None = None,
+) -> tuple[str, str | None]:
+    """Determine the gRPC transport mode and certificate directory to use.
+
+    The resolution strategy is:
+
+    1. **Explicit override** — if the caller (CLI flag, env-var, or tool
+       parameter) supplies a concrete mode (``insecure``, ``mtls``, or
+       ``wnua``), honour it unconditionally.
+    2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):
+       - On **Windows** → return ``None`` so that PyMechanical applies its
+         own platform default (``wnua``).
+       - On **Linux / Docker** →
+         - If mTLS certificate files are found → ``"mtls"`` + the
+           resolved certificate directory.
+         - Otherwise → ``"insecure"`` (the only mode that can succeed
+           without certs; WNUA is Windows-only).
+
+    Parameters
+    ----------
+    transport_mode : str | None
+        Transport mode requested by the user.  Accepted values:
+        ``"auto"`` (default), ``"insecure"``, ``"mtls"``, ``"wnua"``.
+        ``None`` is treated identically to ``"auto"``.
+    certs_dir : str | None
+        Explicit path to a directory containing ``ca.crt``,
+        ``client.crt``, and ``client.key`` for mTLS.
+
+    Returns
+    -------
+    tuple[str | None, str | None]
+        ``(resolved_transport_mode, resolved_certs_dir)``
+
+        *resolved_transport_mode* is ``None`` when the caller should let
+        PyMechanical choose (i.e. Windows auto-detect).
+        *resolved_certs_dir* is ``None`` unless mTLS is selected and
+        certificates were located.
+
+    Raises
+    ------
+    ValueError
+        If *transport_mode* is not one of the accepted values.
+    """
+    # Normalise
+    mode = (transport_mode or "auto").strip().lower()
+
+    if mode not in VALID_TRANSPORT_MODES:
+        raise ValueError(
+            f"Invalid transport_mode {transport_mode!r}.  "
+            f"Accepted values: {', '.join(sorted(VALID_TRANSPORT_MODES))}"
+        )
+
+    # --- Explicit mode (not auto) -------------------------------------------
+    if mode != "auto":
+        resolved_certs = None
+        if mode == "mtls":
+            cert_path = _find_certs_dir(certs_dir)
+            if cert_path is not None:
+                resolved_certs = str(cert_path)
+            else:
+                # User explicitly asked for mTLS but certs are missing.
+                # Let PyMechanical raise its own descriptive FileNotFoundError
+                # rather than silently falling back.
+                resolved_certs = certs_dir  # may still be None
+                logger.warning(
+                    "transport_mode='mtls' requested but certificate files "
+                    "were not found. PyMechanical will raise an error at "
+                    "connection time."
+                )
+        return mode, resolved_certs
+
+    # --- Auto-detect ---------------------------------------------------------
+    if not _is_linux():
+        # Windows: let PyMechanical apply its default (wnua).
+        logger.info(
+            "Auto-detect: Windows platform detected; deferring "
+            "transport_mode to PyMechanical default (wnua)."
+        )
+        return None, None
+
+    # Linux / macOS / Docker
+    cert_path = _find_certs_dir(certs_dir)
+    if cert_path is not None:
+        logger.info(
+            "Auto-detect: Linux platform with mTLS certificates found at "
+            "%s; using transport_mode='mtls'.",
+            cert_path,
+        )
+        return "mtls", str(cert_path)
+
+    logger.info(
+        "Auto-detect: Linux platform without mTLS certificates; "
+        "using transport_mode='insecure'."
+    )
+    return "insecure", None
 
 
 def list_instances(

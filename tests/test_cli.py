@@ -78,17 +78,21 @@ def test_product_startup_attempts_connect_on_startup():
                 "http_host": "127.0.0.1",
                 "http_port": 8080,
                 "cors_origins": None,
+                "grpc_transport_mode": None,
+                "certs_dir": None,
             },
         )
         mcp.create_context()
         mcp.product_startup()
 
-        # Verify connect_to_mechanical was called with correct parameters
-        mock_connect.assert_called_once_with(
-            ip="127.0.0.1",
-            port=10000,
-            cleanup_on_exit=False,
-        )
+        # Verify connect_to_mechanical was called with correct parameters.
+        # resolve_transport_mode may add transport_mode depending on platform,
+        # so we check the essential kwargs rather than an exact match.
+        mock_connect.assert_called_once()
+        call_kwargs = mock_connect.call_args[1]
+        assert call_kwargs["ip"] == "127.0.0.1"
+        assert call_kwargs["port"] == 10000
+        assert call_kwargs["cleanup_on_exit"] is False
 
         # Verify Mechanical instance was stored in context
         assert mcp.context.mechanical == fake_mechanical

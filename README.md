@@ -215,6 +215,30 @@ python -m ansys.mechanical.mcp --transport http --connect-on-startup --ip 192.16
 - `--http-port`: HTTP server port (default: `8080`, range: 1-65535)
 - `--cors-origins`: Comma-separated list of allowed CORS origins (optional)
 
+#### gRPC Transport Mode Options
+
+- `--transport-mode {auto,insecure,mtls,wnua}`: gRPC transport mode for Mechanical connections. Default: auto-detect.
+- `--certs-dir`: Path to directory containing mTLS certificate files (`ca.crt`, `client.crt`, `client.key`)
+
+The gRPC transport mode determines how the MCP server authenticates with the Mechanical gRPC server:
+
+| Mode | Description | Platform | Requires Certs? |
+|------|-------------|----------|----------------|
+| `auto` | Auto-detect based on platform and certificate availability (default) | All | No |
+| `insecure` | Plaintext gRPC without encryption | All | No |
+| `mtls` | Mutual TLS with certificate-based authentication | All | Yes |
+| `wnua` | Windows Named User Authentication | Windows only | No |
+
+**Auto-detection behavior** (when `--transport-mode` is not specified):
+- **Windows**: Defers to PyMechanical's default (`wnua`)
+- **Linux/Docker**: Uses `mtls` if certificate files are found; otherwise uses `insecure`
+
+The transport mode can also be set via the `PYMECHANICAL_TRANSPORT_MODE` environment variable.
+The certificate directory can also be set via the `ANSYS_GRPC_CERTIFICATES` environment variable.
+
+> [!IMPORTANT]
+> The client transport mode **must match** the mode the Mechanical server was started with. There is no auto-negotiation.
+
 #### Special Environment Options
 
 - `--on-aali`: Specify that the MCP server is running on an AALI environment. This disables certain tools that are not compatible with AALI
@@ -349,8 +373,10 @@ Disconnect from the currently connected Mechanical instance.
 #### `list_mechanical_instances`
 
 List all Mechanical instances running on the local machine by scanning for active gRPC servers.
+Inside a Docker container, process scanning is limited to the container, so the tool returns
+a message directing users to `connect_to_mechanical` instead.
 
-**Returns**: Formatted table containing information about all running Mechanical instances including names, status, gRPC ports, PIDs, and working directories.
+**Returns**: Formatted table of instances, or a Docker-aware message.
 
 ### Mechanical Status and Information
 
@@ -366,8 +392,10 @@ Check the status and comprehensive information of the connected Mechanical insta
 #### `check_mechanical_installed`
 
 Check if Mechanical is installed on the system.
+Inside a Docker container, reports the configured connection target instead
+(Mechanical is expected on the host, not in the container).
 
-**Returns**: Status message indicating whether Mechanical is installed
+**Returns**: Installation status, or configured host target when in Docker.
 
 > [!NOTE]
 > This tool is disabled when running on AALI environments.
@@ -928,6 +956,7 @@ cp env.example .env
 Edit `.env` with your settings:
 - `PYMECHANICAL_IP`: Set to `mechanical` (container), `host.docker.internal` (local Windows/Mac), or IP address (remote)
 - `ANSYSLMD_LICENSE_FILE`: Your ANSYS license server
+- `CONNECT_ON_STARTUP`: Set to `true` to auto-connect, `false` (default) for dynamic connection
 
 **2. Start services:**
 
@@ -955,34 +984,66 @@ To connect to a local Mechanical instance instead of the container:
 
 ### Building Standalone Image
 
-To build the MCP server image without Docker Compose:
+The MCP server depends on `ansys-common-mcp`, which is hosted on a **private PyPI feed**.
+You must set the `PYANSYS_PYPI_PRIVATE_PAT` environment variable to a Personal Access Token
+(PAT) with read access to the [PyAnsys Azure DevOps feed](https://dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/)
+before building the image.
 
-#### On Linux
+> [!NOTE]
+> `PYANSYS_PYPI_PRIVATE_PAT` must be set on the machine that runs `docker build`.
+> The token is only used at build time and is **not** baked into the final image.
+
+#### On Linux / macOS
+
 From the repository root:
 
 ```bash
-export GITHUB_TOKEN="your_token_here"
-DOCKER_BUILDKIT=1 docker build --secret id=github_token,env=GITHUB_TOKEN -f docker/Dockerfile -t pymechanical-mcp .
+export PYANSYS_PYPI_PRIVATE_PAT="your_pat_here"
+
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg PYANSYS_PYPI_INDEX_URL="https://${PYANSYS_PYPI_PRIVATE_PAT}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/" \
+  -f docker/Dockerfile -t pymechanical-mcp .
 ```
 
-#### On Windows
+#### On Windows (PowerShell)
+
 From the repository root:
 
 ```pwsh
-$env:GITHUB_TOKEN = "your_token_here"
-$env:DOCKER_BUILDKIT=1
-docker build --secret id=github_token,env=GITHUB_TOKEN -f docker\Dockerfile -t pymechanical-mcp .
+$env:PYANSYS_PYPI_PRIVATE_PAT = "your_pat_here"
+
+docker build `
+  --build-arg PYANSYS_PYPI_INDEX_URL="https://$($env:PYANSYS_PYPI_PRIVATE_PAT)@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/" `
+  -f docker\Dockerfile -t pymechanical-mcp .
 ```
 
 ### Running Standalone Container
 
-**Connect to local Mechanical:**
-```bash
-# Windows/Mac
-docker run -p 8080:8080 -e PYMECHANICAL_IP=host.docker.internal pymechanical-mcp
+By default, the container starts **without** an active Mechanical connection. Use the `connect_to_mechanical` tool from your MCP client to connect dynamically.
 
-# Linux
-docker run --network host -e PYMECHANICAL_IP=localhost pymechanical-mcp
+**Basic (auto-detect transport mode — recommended):**
+```bash
+# The server auto-detects: no certs mounted → insecure gRPC
+docker run -p 8080:8080 -e PYMECHANICAL_IP=host.docker.internal pymechanical-mcp
+```
+
+**With mTLS certificates (secure connection):**
+```bash
+# Mount your certificate directory → auto-detects mtls
+docker run -p 8080:8080 \
+  -e PYMECHANICAL_IP=host.docker.internal \
+  -v /path/to/certs:/app/certs:ro \
+  pymechanical-mcp
+```
+
+The certificate directory must contain `ca.crt`, `client.crt`, and `client.key`.
+
+**With auto-connect on startup (locked connection):**
+```bash
+docker run -p 8080:8080 \
+  -e PYMECHANICAL_IP=host.docker.internal \
+  -e CONNECT_ON_STARTUP=true \
+  pymechanical-mcp
 ```
 
 **Connect to remote Mechanical:**
@@ -993,6 +1054,28 @@ docker run -p 8080:8080 \
   pymechanical-mcp
 ```
 
+**Explicit transport mode override:**
+```bash
+docker run -p 8080:8080 \
+  -e PYMECHANICAL_IP=host.docker.internal \
+  -e PYMECHANICAL_TRANSPORT_MODE=insecure \
+  pymechanical-mcp
+```
+
+### gRPC Transport Mode in Docker
+
+When the MCP server runs inside a Docker container (Linux), the gRPC transport mode is **auto-detected** by default:
+
+| Scenario | Certs mounted? | Auto-detected mode | Secure? |
+|----------|---------------|-------------------|---------|
+| No certs, no env var | No | `insecure` | ❌ |
+| Certs at `/app/certs` | Yes | `mtls` | ✅ |
+| `PYMECHANICAL_TRANSPORT_MODE=insecure` | N/A | `insecure` | ❌ |
+| `PYMECHANICAL_TRANSPORT_MODE=mtls` | Yes | `mtls` | ✅ |
+
+> [!IMPORTANT]
+> The client transport mode **must match** the mode the Mechanical server was started with. If your Mechanical instance was started with the default Windows mode (`wnua`), you need to restart it with `--transport-mode insecure` or `--transport-mode mtls` to allow cross-platform connections from Docker.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -1001,6 +1084,9 @@ docker run -p 8080:8080 \
 | `PYMECHANICAL_PORT` | `10000` | Mechanical gRPC port |
 | `HTTP_HOST` | `0.0.0.0` | HTTP server host |
 | `HTTP_PORT` | `8080` | HTTP server port |
+| `PYMECHANICAL_TRANSPORT_MODE` | *(auto)* | gRPC transport mode: `auto`, `insecure`, `mtls`, `wnua` |
+| `ANSYS_GRPC_CERTIFICATES` | - | Path to mTLS certificate directory inside the container |
+| `CONNECT_ON_STARTUP` | `false` | Whether to connect to Mechanical on startup (`true`/`false`) |
 | `ANSYSLMD_LICENSE_FILE` | - | License server (format: `port@server`) |
 
 ### MCP Client Configuration

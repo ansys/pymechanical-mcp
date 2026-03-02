@@ -8,17 +8,21 @@ import base64
 import sys
 from io import BytesIO, TextIOWrapper
 
-import matplotlib
-import matplotlib.pyplot as plt
-
 # Set UTF-8 encoding for stdout and stderr to handle Unicode characters
 if sys.stdout.encoding != "utf-8":
     sys.stdout = TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if sys.stderr.encoding != "utf-8":
     sys.stderr = TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-# Use non-interactive backend to prevent blocking on plot displays
-matplotlib.use("Agg")
+# Matplotlib is optional — needed only for create_custom_plot
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    matplotlib.use("Agg")
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 # Optional: Try to import PyVista for 3D visualization
 try:
@@ -95,6 +99,9 @@ def save_matplotlib_plot(dpi=150):
     str
         Base64 data URI of the plot
     """
+    if not MATPLOTLIB_AVAILABLE:
+        return "Error: matplotlib is not available"
+
     buffer = BytesIO()
     plt.savefig(buffer, format="png", dpi=dpi, bbox_inches="tight")
     buffer.seek(0)
@@ -106,7 +113,10 @@ def save_matplotlib_plot(dpi=150):
 
 
 # Print confirmation
-print("Matplotlib configured with non-interactive backend (Agg)")
+if MATPLOTLIB_AVAILABLE:
+    print("Matplotlib configured with non-interactive backend (Agg)")
+else:
+    print("Matplotlib not available (optional — install for custom plots)")
 if PYVISTA_AVAILABLE:
     print("PyVista configured for off-screen rendering")
 else:
