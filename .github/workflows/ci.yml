@@ -7,8 +7,6 @@ on:
       - "v*"
     branches:
       - main
-  schedule:
-    - cron: "30 4 * * *" # Daily at 04:30 UTC
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
