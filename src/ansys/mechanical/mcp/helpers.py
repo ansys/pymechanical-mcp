@@ -2,6 +2,7 @@
 
 import logging
 import os
+import socket
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -22,11 +23,11 @@ def _is_linux() -> bool:
 
 def _is_docker() -> bool:
     """Return True when running inside a Docker container."""
-    return os.path.exists("/.dockerenv") or os.path.isfile("/run/.containerenv")
+    return Path("/.dockerenv").exists() or Path("/run/.containerenv").exists()
 
 
 def _probe_grpc_endpoint(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
-    """Probe a gRPC endpoint to check if a Mechanical server is reachable.
+    """Test whether a gRPC endpoint is reachable via a TCP connect probe.
 
     Parameters
     ----------
@@ -39,21 +40,12 @@ def _probe_grpc_endpoint(host: str, port: int, timeout: float = 3.0) -> dict[str
 
     Returns
     -------
-    dict
+    dict[str, Any]
         ``{"reachable": bool, "host": str, "port": int, "error": str | None}``
     """
-    import grpc
-
-    target = f"{host}:{port}"
     try:
-        channel = grpc.insecure_channel(target)
-        try:
-            grpc.channel_ready_future(channel).result(timeout=timeout)
+        with socket.create_connection((host, port), timeout=timeout):
             return {"reachable": True, "host": host, "port": port, "error": None}
-        except grpc.FutureTimeoutError:
-            return {"reachable": False, "host": host, "port": port, "error": "timeout"}
-        finally:
-            channel.close()
     except Exception as e:
         return {"reachable": False, "host": host, "port": port, "error": str(e)}
 

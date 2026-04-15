@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -178,6 +179,14 @@ def run_python_script(ctx: Context, script: str) -> str:
         )
 
     try:
+        # Warn about f-strings: Mechanical < 2026 R1 uses IronPython 2.7 which doesn't support them
+        if re.search(r'\bf["\']', script):
+            logger.warning(
+                "Detected f-string syntax in script. Mechanical versions before 2026 R1 "
+                "use IronPython 2.7 which does not support f-strings. If execution fails, "
+                "rewrite using .format() instead."
+            )
+
         result = mechanical.run_python_script(script)
         return f"Script executed successfully. Result: {result}"
     except Exception as e:
@@ -259,6 +268,13 @@ def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     results = []
     for i, script in enumerate(scripts, 1):
         try:
+            # Warn about f-strings (IronPython 2.7 doesn't support them)
+            if re.search(r'\bf["\']', script):
+                logger.warning(
+                    "Script %d contains f-string syntax. Mechanical versions before "
+                    "2026 R1 use IronPython 2.7 which does not support f-strings.", i
+                )
+
             result = mechanical.run_python_script(script)
             results.append(f"Script {i}: Success - {result}")
         except Exception as e:
@@ -348,6 +364,7 @@ def launch_mechanical(
             "batch": batch,
             "loglevel": "INFO",
             "cleanup_on_exit": True,
+            "start_timeout": 300,  # 5 minutes for graphical mode launches
         }
 
         if exec_file is not None:
@@ -820,9 +837,11 @@ else:
 # Get Mesh info
 if hasattr(model, 'Mesh') and model.Mesh is not None:
     mesh = model.Mesh
+    nodes = mesh.Nodes
+    elements = mesh.Elements
     model_info['mesh'] = {
-        'node_count': mesh.Nodes.Count if hasattr(mesh, 'Nodes') and mesh.Nodes else 0,
-        'element_count': mesh.Elements.Count if hasattr(mesh, 'Elements') and mesh.Elements else 0,
+        'node_count': nodes.Count if hasattr(nodes, 'Count') else (nodes if isinstance(nodes, int) else 0),
+        'element_count': elements.Count if hasattr(elements, 'Count') else (elements if isinstance(elements, int) else 0),
     }
 else:
     model_info['mesh'] = {'node_count': 0, 'element_count': 0}
@@ -894,8 +913,17 @@ import os
 # Get the Graphics object
 graphics = ExtAPI.Graphics
 
-# Export the current view to image
-graphics.ExportImage(r"{temp_path}", ImageExportFormat.PNG, GraphicsImageExportSettings())
+# Try different export approaches for version compatibility
+try:
+    # Approach 1: Use GraphicsImageExportFormat enum (2025 R2+)
+    settings = Ansys.Mechanical.Graphics.GraphicsImageExportSettings()
+    settings.Resolution = GraphicsResolutionType.EnhancedResolution
+    settings.Width = 1920
+    settings.Height = 1080
+    graphics.ExportImage(r"{temp_path}", GraphicsImageExportFormat.PNG, settings)
+except:
+    # Approach 2: Simpler export (older versions)
+    graphics.ExportImage(r"{temp_path}")
 
 r"{temp_path}"
 """
@@ -923,9 +951,15 @@ r"{temp_path}"
 
         logger.info(f"Screenshot captured successfully: {temp_path}")
 
+        # Clean up temp file
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+
         # Return both text (file path) and image content
         return [
-            TextContent(type="text", text=f"Screenshot saved to: {temp_path}"),
+            TextContent(type="text", text="Screenshot captured successfully."),
             ImageContent(type="image", data=base64_data, mimeType=mime_type),
         ]
 

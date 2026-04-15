@@ -148,7 +148,7 @@ bodies = geometry.GetChildren(DataModelObjectCategory.Body, True)
 
 # Iterate through bodies
 for body in bodies:
-    print(f"Body: {body.Name}, Material: {body.Material}")
+    print("Body: {0}, Material: {1}".format(body.Name, body.Material))
 '''
 mechanical.run_python_script(script)
 ```
@@ -264,8 +264,8 @@ mesh = Model.Mesh
 mesh.GenerateMesh()
 
 # Get mesh statistics
-print(f"Nodes: {mesh.Nodes.Count if mesh.Nodes else 0}")
-print(f"Elements: {mesh.Elements.Count if mesh.Elements else 0}")
+print("Nodes: {0}".format(mesh.Nodes.Count if mesh.Nodes else 0))
+print("Elements: {0}".format(mesh.Elements.Count if mesh.Elements else 0))
 '''
 mechanical.run_python_script(script)
 ```
@@ -608,7 +608,7 @@ analysis.Solve()
 
 # Check solution status
 solution = analysis.Solution
-print(f"Status: {solution.Status}")
+print("Status: {0}".format(solution.Status))
 '''
 mechanical.run_python_script(script)
 ```
@@ -620,8 +620,8 @@ script = '''
 solution = Model.Analyses[0].Solution
 
 # Get solution information
-print(f"Solver Type: {solution.SolverType}")
-print(f"Status: {solution.Status}")
+print("Solver Type: {0}".format(solution.SolverType))
+print("Status: {0}".format(solution.Status))
 '''
 mechanical.run_python_script(script)
 ```
@@ -678,9 +678,9 @@ try:
     if analysis.Solution.Status == SolutionStatusType.Done:
         print("Solution completed successfully")
     else:
-        print(f"Solution status: {analysis.Solution.Status}")
+        print("Solution status: {0}".format(analysis.Solution.Status))
 except Exception as e:
-    print(f"Solution error: {e}")
+    print("Solution error: {0}".format(e))
 '''
 mechanical.run_python_script(script)
 ```
@@ -769,9 +769,9 @@ stress = solution.AddEquivalentStress()
 stress.EvaluateAllResults()
 
 # Get min and max values
-print(f"Maximum Stress: {stress.Maximum}")
-print(f"Minimum Stress: {stress.Minimum}")
-print(f"Average Stress: {stress.Average}")
+print("Maximum Stress: {0}".format(stress.Maximum))
+print("Minimum Stress: {0}".format(stress.Minimum))
+print("Average Stress: {0}".format(stress.Average))
 '''
 mechanical.run_python_script(script)
 ```
@@ -787,7 +787,7 @@ for i in range(1, 11):  # First 10 modes
     deform = solution.AddTotalDeformation()
     deform.Mode = i
     deform.EvaluateAllResults()
-    print(f"Mode {i} Frequency: {deform.ReportedFrequency}")
+    print("Mode {0} Frequency: {1}".format(i, deform.ReportedFrequency))
 '''
 mechanical.run_python_script(script)
 ```
@@ -880,7 +880,7 @@ named_selections = Model.NamedSelections.GetChildren(
 )
 
 for ns in named_selections:
-    print(f"Named Selection: {ns.Name}")
+    print("Named Selection: {0}".format(ns.Name))
 '''
 mechanical.run_python_script(script)
 ```
@@ -891,7 +891,7 @@ mechanical.run_python_script(script)
 script = '''
 # Get specific Named Selection
 ns = ExtAPI.DataModel.GetObjectsByName("FixedSupport")[0]
-print(f"Found: {ns.Name}")
+print("Found: {0}".format(ns.Name))
 '''
 mechanical.run_python_script(script)
 ```
@@ -1022,7 +1022,7 @@ mechanical.run_python_script(script)
 try:
     result = mechanical.run_python_script(script)
 except grpc.RpcError as error:
-    print(f"Script error: {error.details()}")
+    print("Script error: {0}".format(error.details()))
 ```
 
 ## File Transfers
