@@ -75,7 +75,7 @@ Response: Static Structural analysis added: Static Structural
 
 ```python
 geometry_import = Model.GeometryImportGroup.AddGeometryImport()
-geometry_file = r"D:\ANSYS-DEV\models\simple_beam.step"
+geometry_file = r"examples\cantilever_beam\beam.step"
 geometry_import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
 geometry_import_prefs = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
 geometry_import_prefs.ProcessNamedSelections = True
