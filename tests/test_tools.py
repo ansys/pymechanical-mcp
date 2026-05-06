@@ -298,10 +298,16 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10001
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_connect:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_connect,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, port=10001)
 
             # Verify connection with custom port
@@ -322,10 +328,16 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "192.168.1.100"
         mock_mechanical._port = 10000
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_connect:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_connect,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, ip="192.168.1.100")
 
             # Verify connection with custom IP
@@ -346,10 +358,16 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "10.0.0.50"
         mock_mechanical._port = 10099
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_connect:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_connect,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, port=10099, ip="10.0.0.50")
 
             # Verify connection with custom parameters
@@ -562,10 +580,16 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_launch:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
@@ -593,10 +617,16 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_launch:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = launch_mechanical(mock_context_no_mechanical, port=10050)
 
             # Verify successful launch
@@ -617,10 +647,16 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2025 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_launch:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = launch_mechanical(mock_context_no_mechanical, version="252")
 
             # Verify successful launch
@@ -644,10 +680,16 @@ class TestLaunchMechanical:
 
         exec_path = "/path/to/mechanical"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_launch:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = launch_mechanical(
                 mock_context_no_mechanical,
                 exec_file=exec_path,
@@ -758,10 +800,16 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
-        ) as mock_launch:
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
             result = launch_mechanical(mock_context_no_mechanical, port=10060)
 
             # Verify successful launch
@@ -1374,7 +1422,7 @@ class TestSaveProject:
         """Test saving project to non-existent directory."""
         from ansys.mechanical.mcp.tools import save_project
 
-        result = save_project(mock_context, file_path="Z:\\nonexistent\\dir\\project.mechdb")
+        result = save_project(mock_context, file_path="/nonexistent_xyz_dir/subdir/project.mechdb")
         assert "Directory does not exist" in result
 
     def test_save_project_error(self, mock_context):
