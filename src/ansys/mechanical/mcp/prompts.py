@@ -49,8 +49,8 @@ built-in entry points directly (no imports needed):
 - `Tree` — the Outline tree
 - `Graphics` — 3D graphics engine
 
-**Units** — Always use `Quantity("value unit")`:
-`Quantity("1000 N")`, `Quantity("5 mm")`, `Quantity("100 C")`
+**Units** — Always use `Quantity("value [unit]")` with square brackets:
+`Quantity("1000 [N]")`, `Quantity("5 [mm]")`, `Quantity("100 [C]")`
 
 **Performance** — Wrap bulk modifications in `with Transaction(): …`
 

@@ -514,6 +514,7 @@ class TestLaunchMechanical:
                 batch=True,
                 loglevel="INFO",
                 cleanup_on_exit=True,
+                start_timeout=300,
             )
 
             # Verify Mechanical was stored in context
@@ -536,6 +537,7 @@ class TestLaunchMechanical:
                 batch=True,
                 loglevel="INFO",
                 cleanup_on_exit=True,
+                start_timeout=300,
                 port=10050,
             )
 
@@ -557,6 +559,7 @@ class TestLaunchMechanical:
                 batch=True,
                 loglevel="INFO",
                 cleanup_on_exit=True,
+                start_timeout=300,
                 version="252",
             )
 
@@ -586,6 +589,7 @@ class TestLaunchMechanical:
                 batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
+                start_timeout=300,
                 exec_file=exec_path,
                 port=10001,
                 version="241",
@@ -679,6 +683,7 @@ class TestLaunchMechanical:
                 batch=True,
                 loglevel="INFO",
                 cleanup_on_exit=True,
+                start_timeout=300,
                 port=10060,
             )
 
@@ -1180,3 +1185,308 @@ class TestScreenshot:
 
         # Should handle error gracefully
         assert len(result) >= 1
+
+
+@pytest.mark.unit
+class TestSaveProject:
+    """Tests for save_project tool."""
+
+    def test_save_project_no_mechanical(self, mock_context_no_mechanical):
+        """Test saving project without Mechanical connection."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        result = save_project(mock_context_no_mechanical)
+        assert "No Mechanical connection available" in result
+
+    def test_save_project_in_place(self, mock_context):
+        """Test saving project in current location."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = ""
+
+        result = save_project(mock_context)
+        assert "Project saved successfully" in result
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with(
+            "ExtAPI.DataModel.Project.Save()"
+        )
+
+    def test_save_project_as_new_path(self, mock_context, tmp_path):
+        """Test saving project to a new location."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        file_path = str(tmp_path / "test_project.mechdb")
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = ""
+
+        result = save_project(mock_context, file_path=file_path)
+        assert "Project saved to" in result
+        assert file_path in result
+
+    def test_save_project_adds_extension(self, mock_context, tmp_path):
+        """Test that .mechdb extension is added if missing."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        file_path = str(tmp_path / "test_project")
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = ""
+
+        result = save_project(mock_context, file_path=file_path)
+        assert "Project saved to" in result
+        assert ".mechdb" in result
+
+    def test_save_project_invalid_directory(self, mock_context):
+        """Test saving project to non-existent directory."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        result = save_project(mock_context, file_path="Z:\\nonexistent\\dir\\project.mechdb")
+        assert "Directory does not exist" in result
+
+    def test_save_project_error(self, mock_context):
+        """Test error handling during save."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("Save failed: disk full")
+        )
+
+        result = save_project(mock_context)
+        assert "Error saving project" in result
+        assert "disk full" in result
+
+
+@pytest.mark.unit
+class TestOpenProject:
+    """Tests for open_project tool."""
+
+    def test_open_project_no_mechanical(self, mock_context_no_mechanical):
+        """Test opening project without Mechanical connection."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        result = open_project(mock_context_no_mechanical, "test.mechdb")
+        assert "No Mechanical connection available" in result
+
+    def test_open_project_file_not_found(self, mock_context):
+        """Test opening a non-existent project file."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        result = open_project(mock_context, "Z:\\nonexistent\\project.mechdb")
+        assert "Project file not found" in result
+
+    def test_open_project_invalid_extension(self, mock_context, tmp_path):
+        """Test opening a file with wrong extension."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        wrong_file = tmp_path / "test.txt"
+        wrong_file.write_text("not a project")
+
+        result = open_project(mock_context, str(wrong_file))
+        assert "Invalid file type" in result
+        assert ".mechdb" in result
+
+    def test_open_project_success(self, mock_context, tmp_path):
+        """Test opening a valid project file."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        project_file = tmp_path / "test_project.mechdb"
+        project_file.write_bytes(b"dummy")  # Create a dummy file
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = [
+            "",  # Open call
+            '{"name": "TestProject", "product_version": "2025 R2", "body_count": 3, "analyses_count": 1}',
+        ]
+
+        result = open_project(mock_context, str(project_file))
+        assert "Project opened successfully" in result
+        assert "TestProject" in result
+
+    def test_open_project_error(self, mock_context, tmp_path):
+        """Test error handling during project open."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        project_file = tmp_path / "corrupt.mechdb"
+        project_file.write_bytes(b"corrupt")
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("File is corrupt")
+        )
+
+        result = open_project(mock_context, str(project_file))
+        assert "Error opening project" in result
+        assert "corrupt" in result
+
+
+@pytest.mark.unit
+class TestSolveAnalysis:
+    """Tests for solve_analysis tool."""
+
+    def test_solve_no_mechanical(self, mock_context_no_mechanical):
+        """Test solving without Mechanical connection."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        result = solve_analysis(mock_context_no_mechanical)
+        assert "No Mechanical connection available" in result
+
+    def test_solve_success(self, mock_context):
+        """Test successful solve."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": True,
+                "status": "Done",
+                "analysis_name": "Static Structural",
+                "analysis_type": "Static",
+                "elapsed_seconds": 5.2,
+                "warnings": [],
+                "result_objects_count": 2,
+            }
+        )
+
+        result = solve_analysis(mock_context)
+        data = json.loads(result)
+        assert data["success"] is True
+        assert data["status"] == "Done"
+        assert data["analysis_name"] == "Static Structural"
+
+    def test_solve_custom_index(self, mock_context):
+        """Test solving a specific analysis by index."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {"success": True, "status": "Done", "analysis_name": "Modal"}
+        )
+
+        result = solve_analysis(mock_context, analysis_index=1)
+        data = json.loads(result)
+        assert data["success"] is True
+
+    def test_solve_failure(self, mock_context):
+        """Test solve failure response."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": False,
+                "error": "No analyses defined in the model",
+            }
+        )
+
+        result = solve_analysis(mock_context)
+        data = json.loads(result)
+        assert data["success"] is False
+        assert "No analyses defined" in data["error"]
+
+    def test_solve_exception(self, mock_context):
+        """Test solve exception handling."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("gRPC connection lost")
+        )
+
+        result = solve_analysis(mock_context)
+        data = json.loads(result)
+        assert data["success"] is False
+        assert "gRPC connection lost" in data["error"]
+
+
+@pytest.mark.unit
+class TestExportResults:
+    """Tests for export_results tool."""
+
+    def test_export_no_mechanical(self, mock_context_no_mechanical):
+        """Test exporting without Mechanical connection."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        result = export_results(mock_context_no_mechanical)
+        assert "No Mechanical connection available" in result
+
+    def test_export_success(self, mock_context, tmp_path):
+        """Test successful result export."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": True,
+                "exported_files": [
+                    str(tmp_path / "Total_Deformation.png"),
+                    str(tmp_path / "Equivalent_Stress.png"),
+                ],
+                "file_count": 2,
+                "errors": [],
+                "output_directory": str(tmp_path),
+            }
+        )
+
+        result = export_results(mock_context, output_dir=str(tmp_path))
+        data = json.loads(result)
+        assert data["success"] is True
+        assert data["file_count"] == 2
+
+    def test_export_specific_result_type(self, mock_context, tmp_path):
+        """Test exporting specific result type."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": True,
+                "exported_files": [str(tmp_path / "Equivalent_Stress.png")],
+                "file_count": 1,
+                "errors": [],
+                "output_directory": str(tmp_path),
+            }
+        )
+
+        result = export_results(mock_context, result_type="stress", output_dir=str(tmp_path))
+        data = json.loads(result)
+        assert data["success"] is True
+        assert data["file_count"] == 1
+
+    def test_export_both_formats(self, mock_context, tmp_path):
+        """Test exporting in both PNG and TXT formats."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": True,
+                "exported_files": [
+                    str(tmp_path / "Total_Deformation.png"),
+                    str(tmp_path / "Total_Deformation.txt"),
+                ],
+                "file_count": 2,
+                "errors": [],
+                "output_directory": str(tmp_path),
+            }
+        )
+
+        result = export_results(mock_context, export_format="both", output_dir=str(tmp_path))
+        data = json.loads(result)
+        assert data["success"] is True
+        assert data["file_count"] == 2
+
+    def test_export_no_solution(self, mock_context):
+        """Test export when solution has not been run."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
+            {
+                "success": False,
+                "error": "Solution has not been completed. Status: NotSolved",
+            }
+        )
+
+        result = export_results(mock_context)
+        data = json.loads(result)
+        assert data["success"] is False
+        assert "not been completed" in data["error"]
+
+    def test_export_exception(self, mock_context):
+        """Test export exception handling."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("Export error")
+        )
+
+        result = export_results(mock_context)
+        data = json.loads(result)
+        assert data["success"] is False
+        assert "Export error" in data["error"]

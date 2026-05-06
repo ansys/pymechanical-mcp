@@ -65,6 +65,21 @@ When running scripts inside Mechanical, you have access to these entry points:
    - Evaluate results
    - Export images and data
 
+## Unit System
+
+Always set the unit system explicitly before defining geometry, loads, or results:
+
+```python
+script = '''
+ExtAPI.Application.ActiveUnitSystem = MechanicalUnitSystem.StandardMKS
+ExtAPI.Application.ActiveAngleUnit = AngleUnitType.Radian
+'''
+mechanical.run_python_script(script)
+```
+
+Common unit systems: `StandardMKS`, `StandardCGS`, `StandardNMM`,
+`StandardBIN`, `StandardBFT`.
+
 ## Code Execution Pattern
 
 Use `mechanical.run_python_script()` to execute scripts inside Mechanical:
@@ -122,16 +137,43 @@ Mechanical supports various CAD formats:
 
 ```python
 script = '''
-import os
-
-# Get the geometry import object
+# Get the geometry import group
 geometry_import = Model.GeometryImportGroup.AddGeometryImport()
 
 # Set the geometry file path
 geometry_file = r"C:\\path\\to\\your\\geometry.stp"
 
+# Set import format and preferences
+geometry_import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
+geometry_import_prefs = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
+geometry_import_prefs.ProcessNamedSelections = True
+geometry_import_prefs.ProcessCoordinateSystems = True
+
 # Import the geometry
-geometry_import.Import(geometry_file)
+geometry_import.Import(geometry_file, geometry_import_format, geometry_import_prefs)
+'''
+mechanical.run_python_script(script)
+```
+
+## Uploading and Importing Geometry (Remote Session)
+
+When using a remote Mechanical session, upload the file first:
+
+```python
+# Upload file from local to Mechanical working directory
+mechanical.upload("local_geometry.stp")
+
+# Then import using the file in the project directory
+script = '''
+import os
+geometry_import = Model.GeometryImportGroup.AddGeometryImport()
+project_dir = ExtAPI.DataModel.Project.ProjectDirectory
+geometry_file = os.path.join(project_dir, "local_geometry.stp")
+
+geometry_import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
+geometry_import_prefs = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
+geometry_import_prefs.ProcessNamedSelections = True
+geometry_import.Import(geometry_file, geometry_import_format, geometry_import_prefs)
 '''
 mechanical.run_python_script(script)
 ```
@@ -278,8 +320,8 @@ mechanical.run_python_script(script)
 script = '''
 mesh = Model.Mesh
 
-# Set global element size
-mesh.ElementSize = Quantity("10 mm")
+# Set global element size (use square brackets for units)
+mesh.ElementSize = Quantity("10 [mm]")
 '''
 mechanical.run_python_script(script)
 ```
@@ -290,14 +332,11 @@ mechanical.run_python_script(script)
 script = '''
 mesh = Model.Mesh
 
-# Add sizing control
+# Add sizing control scoped to a Named Selection
 sizing = mesh.AddSizing()
-
-# Select geometry for sizing
-# sizing.Location = ... (requires Named Selection or geometry reference)
-
-# Set element size
-sizing.ElementSize = Quantity("5 mm")
+ns = ExtAPI.DataModel.GetObjectsByName("CriticalRegion")[0]
+sizing.Location = ns
+sizing.ElementSize = Quantity("2 [mm]")
 
 # Generate mesh
 mesh.GenerateMesh()
@@ -333,7 +372,10 @@ mechanical.run_python_script(script)
 - Start with coarser mesh for initial analysis
 - Refine mesh in areas of high stress gradients
 - Use mesh refinement studies for convergence
-- Check element quality metrics (aspect ratio, skewness)
+- Check element quality: skewness < 0.95, aspect ratio < 20 for good quality
+- Aim for skewness < 0.5 and aspect ratio < 5 in critical regions
+- Use at least 2-3 elements through thickness for bending-dominated problems
+- For contact regions, ensure matching mesh density on both surfaces
 """
 
 
@@ -403,8 +445,8 @@ settings = analysis.AnalysisSettings
 settings.MaximumModesToFind = 10
 
 # Set frequency range if needed
-# settings.RangeMinimum = Quantity("0 Hz")
-# settings.RangeMaximum = Quantity("1000 Hz")
+# settings.RangeMinimum = Quantity("0 [Hz]")
+# settings.RangeMaximum = Quantity("1000 [Hz]")
 '''
 mechanical.run_python_script(script)
 ```
@@ -416,14 +458,40 @@ script = '''
 analysis = Model.Analyses[0]
 settings = analysis.AnalysisSettings
 
-# Solver type
-settings.SolverType = SolverType.Direct  # or Iterative
+# Solver type: Direct is more robust, Iterative is faster for large models
+settings.SolverType = SolverType.Direct  # or SolverType.Iterative (PCG)
 
-# For nonlinear analysis
+# For nonlinear analysis - substepping
 settings.AutomaticTimeStepping = AutomaticTimeStepping.On
+settings.DefineBy = TimeStepDefineByType.Substeps
+settings.InitialSubsteps = 10
+settings.MinimumSubsteps = 5
+settings.MaximumSubsteps = 100
 '''
 mechanical.run_python_script(script)
 ```
+
+## Contact Setup
+
+```python
+script = '''
+# Access existing contact regions (auto-detected)
+connections = Model.Connections
+if connections.Children.Count > 0:
+    contact_region = connections.Children[0].Children[0]  # First contact region
+    contact_region.ContactType = ContactType.Bonded  # or Frictional, Frictionless, NoSeparation
+    contact_region.ContactFormulation = ContactFormulation.AugmentedLagrange
+'''
+mechanical.run_python_script(script)
+```
+
+## Nonlinear Analysis Best Practices
+
+- Enable `LargeDeflection = True` for any analysis with expected strains > 5%
+- Use Direct solver for nonlinear problems (more robust convergence)
+- Start with at least 10 initial substeps for nonlinear contact or material
+- Enable Newton-Raphson line search for difficult convergence
+- For contact problems, use Augmented Lagrange formulation (default)
 """
 
 
@@ -448,13 +516,10 @@ def get_guidelines_for_boundary_conditions() -> str:
 script = '''
 analysis = Model.Analyses[0]
 
-# Add Fixed Support
+# Add Fixed Support scoped to Named Selection (recommended)
 fixed_support = analysis.AddFixedSupport()
-
-# Assign to Named Selection (recommended)
-# fixed_support.Location = ExtAPI.DataModel.GetObjectsByName("MySelection")[0]
-
-# Or scope to geometry directly through selection
+ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedFace"][0]
+fixed_support.Location = ns
 '''
 mechanical.run_python_script(script)
 ```
@@ -468,10 +533,10 @@ analysis = Model.Analyses[0]
 # Add Displacement
 displacement = analysis.AddDisplacement()
 
-# Set displacement values
-displacement.XComponent.Output.SetDiscreteValue(0, Quantity("0 mm"))
-displacement.YComponent.Output.SetDiscreteValue(0, Quantity("0 mm"))
-displacement.ZComponent.Output.SetDiscreteValue(0, Quantity("0 mm"))
+# Set displacement values (use square brackets for units)
+displacement.XComponent.Output.SetDiscreteValue(0, Quantity("0 [mm]"))
+displacement.YComponent.Output.SetDiscreteValue(0, Quantity("0 [mm]"))
+# Leave Z free (don't set it) for a partial constraint
 '''
 mechanical.run_python_script(script)
 ```
@@ -494,14 +559,16 @@ mechanical.run_python_script(script)
 script = '''
 analysis = Model.Analyses[0]
 
-# Add Force
+# Add Force scoped to Named Selection
 force = analysis.AddForce()
+ns = [n for n in Model.NamedSelections.Children if n.Name == "LoadFace"][0]
+force.Location = ns
 
-# Define force magnitude and direction
+# Define force by components (use .Output.DiscreteValues list)
 force.DefineBy = LoadDefineBy.Components
-force.XComponent.Output.SetDiscreteValue(0, Quantity("0 N"))
-force.YComponent.Output.SetDiscreteValue(0, Quantity("-1000 N"))
-force.ZComponent.Output.SetDiscreteValue(0, Quantity("0 N"))
+force.XComponent.Output.DiscreteValues = [Quantity("0 [N]")]
+force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]
+force.ZComponent.Output.DiscreteValues = [Quantity("0 [N]")]
 '''
 mechanical.run_python_script(script)
 ```
@@ -514,9 +581,11 @@ analysis = Model.Analyses[0]
 
 # Add Pressure
 pressure = analysis.AddPressure()
+ns = [n for n in Model.NamedSelections.Children if n.Name == "PressureFace"][0]
+pressure.Location = ns
 
 # Set pressure value
-pressure.Magnitude.Output.SetDiscreteValue(0, Quantity("1 MPa"))
+pressure.Magnitude.Output.SetDiscreteValue(0, Quantity("1 [MPa]"))
 '''
 mechanical.run_python_script(script)
 ```
@@ -527,11 +596,11 @@ mechanical.run_python_script(script)
 script = '''
 analysis = Model.Analyses[0]
 
-# Add Remote Force
+# Add Remote Force with remote point
 remote_force = analysis.AddRemoteForce()
-
-# Set location and magnitude
-remote_force.XComponent.Output.SetDiscreteValue(0, Quantity("100 N"))
+remote_force.Location = Model.RemotePoints.Children[0]  # scope to remote point
+remote_force.DefineBy = LoadDefineBy.Components
+remote_force.XComponent.Output.DiscreteValues = [Quantity("100 [N]")]
 '''
 mechanical.run_python_script(script)
 ```
@@ -546,7 +615,7 @@ analysis = Model.Analyses[0]
 
 # Add Temperature
 temp = analysis.AddTemperature()
-temp.Magnitude.Output.SetDiscreteValue(0, Quantity("100 C"))
+temp.Magnitude.Output.SetDiscreteValue(0, Quantity("100 [C]"))
 '''
 mechanical.run_python_script(script)
 ```
@@ -559,8 +628,8 @@ analysis = Model.Analyses[0]
 
 # Add Convection
 convection = analysis.AddConvection()
-convection.FilmCoefficient.Output.SetDiscreteValue(0, Quantity("10 W/m^2/C"))
-convection.AmbientTemperature.Output.SetDiscreteValue(0, Quantity("22 C"))
+convection.FilmCoefficient.Output.SetDiscreteValue(0, Quantity("10 [W m^-1 m^-1 C^-1]"))
+convection.AmbientTemperature.Output.SetDiscreteValue(0, Quantity("22 [C]"))
 '''
 mechanical.run_python_script(script)
 ```
@@ -571,8 +640,10 @@ Named Selections are the preferred way to scope loads and supports:
 
 ```python
 script = '''
-# Get Named Selection by name
-ns = ExtAPI.DataModel.GetObjectsByName("FixedFace")[0]
+analysis = Model.Analyses[0]
+
+# Get Named Selection by name (preferred pattern)
+ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedFace"][0]
 
 # Apply to boundary condition
 fixed_support = analysis.AddFixedSupport()
@@ -580,6 +651,14 @@ fixed_support.Location = ns
 '''
 mechanical.run_python_script(script)
 ```
+
+## Important Notes
+
+1. **Component values are read-only properties** — set values via:
+   `force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]`
+2. **Always scope BCs to Named Selections** for reliability and reproducibility
+3. **Ensure BCs prevent rigid-body motion** — at least 6 DOF must be constrained
+4. **Use square brackets in Quantity units**: `Quantity("5 [mm]")` not `Quantity("5 mm")`
 """
 
 
@@ -661,11 +740,24 @@ mechanical.run_python_script(script)
 ## Convergence Issues
 
 If the solution doesn't converge:
-1. Check mesh quality
-2. Verify boundary conditions (no rigid body motion)
-3. Review load magnitudes
-4. Enable large deflection for geometric nonlinearity
-5. Adjust solver settings (substeps, convergence criteria)
+1. **Check mesh quality** — skewness > 0.95 or aspect ratio > 50 causes issues
+2. **Verify boundary conditions** — model must be fully constrained (no rigid body motion)
+3. **Review load magnitudes** — start with smaller loads and ramp up
+4. **Enable Large Deflection** — `settings.LargeDeflection = True` for strains > 5%
+5. **Increase substeps** — `settings.InitialSubsteps = 20` for nonlinear problems
+6. **Use Direct solver** — `settings.SolverType = SolverType.Direct` for difficult convergence
+7. **Check contact** — ensure initial penetration is zero, use Augmented Lagrange
+8. **Review solve.out** — download and inspect for warnings/errors
+
+## Solver Selection Guide
+
+| Problem Type | Recommended Solver | Notes |
+|---|---|---|
+| Small model (< 100k nodes) | Direct | More robust, higher memory |
+| Large model (> 500k nodes) | Iterative (PCG) | Faster, less memory |
+| Nonlinear / Contact | Direct | Better convergence |
+| Modal Analysis | Direct (default) | Block Lanczos |
+| Ill-conditioned | Direct | PCG may not converge |
 
 ## Error Handling
 
@@ -857,18 +949,44 @@ supports, and results in Mechanical scripting.
 
 ## Creating Named Selections
 
-### From Script
+### Worksheet-Based (Recommended for Scripting)
 
 ```python
 script = '''
-# Add a Named Selection
+# Create a Named Selection using worksheet criteria (location-based)
 ns = Model.AddNamedSelection()
-ns.Name = "MySelection"
+ns.ScopingMethod = GeometryDefineByType.Worksheet
+worksheet = ns.GenerationCriteria
 
-# The selection needs to be defined through geometry picking or criteria
+# Define criterion (e.g., faces at X = 0)
+criterion = Ansys.ACT.Automation.Mechanical.NamedSelectionCriterion()
+criterion.Active = True
+criterion.Action = SelectionActionType.Add
+criterion.EntityType = SelectionType.GeoFace
+criterion.Criterion = SelectionCriterionType.LocationX
+criterion.Operator = SelectionOperatorType.Equal
+criterion.Value = Quantity("0 [mm]")
+worksheet.Add(criterion)
+
+ns.Generate()
+ns.Name = "FixedEnd"
 '''
 mechanical.run_python_script(script)
 ```
+
+### Available Criterion Types
+
+- `SelectionCriterionType.LocationX/Y/Z` — filter by coordinate
+- `SelectionCriterionType.Size` — filter by area/volume
+- `SelectionCriterionType.Type` — filter by entity type
+- `SelectionCriterionType.Name` — filter by CAD body name
+
+### Available Entity Types
+
+- `SelectionType.GeoFace` — faces
+- `SelectionType.GeoEdge` — edges
+- `SelectionType.GeoVertex` — vertices
+- `SelectionType.GeoBody` — bodies
 
 ### Accessing Existing Named Selections
 
@@ -889,9 +1007,11 @@ mechanical.run_python_script(script)
 
 ```python
 script = '''
-# Get specific Named Selection
-ns = ExtAPI.DataModel.GetObjectsByName("FixedSupport")[0]
-print("Found: {0}".format(ns.Name))
+# Preferred pattern: iterate Children (reliable)
+ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedEnd"][0]
+
+# Alternative: ExtAPI lookup
+ns = ExtAPI.DataModel.GetObjectsByName("FixedEnd")[0]
 '''
 mechanical.run_python_script(script)
 ```
@@ -904,11 +1024,9 @@ mechanical.run_python_script(script)
 script = '''
 analysis = Model.Analyses[0]
 
-# Add fixed support
+# Add fixed support scoped to Named Selection
 fixed = analysis.AddFixedSupport()
-
-# Assign Named Selection
-ns = ExtAPI.DataModel.GetObjectsByName("FixedFace")[0]
+ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedEnd"][0]
 fixed.Location = ns
 '''
 mechanical.run_python_script(script)
@@ -922,7 +1040,7 @@ solution = Model.Analyses[0].Solution
 
 # Add stress result scoped to Named Selection
 stress = solution.AddEquivalentStress()
-ns = ExtAPI.DataModel.GetObjectsByName("CriticalArea")[0]
+ns = [n for n in Model.NamedSelections.Children if n.Name == "CriticalArea"][0]
 stress.Location = ns
 
 stress.EvaluateAllResults()
@@ -982,23 +1100,43 @@ mechanical.run_python_script("x = 10")
 
 ## Using Quantities
 
-Mechanical uses the Quantity class for values with units:
+Mechanical uses the Quantity class for values with units.
+**Always use square brackets** around the unit string:
 
 ```python
 script = '''
 # Force in Newtons
-force = Quantity("1000 N")
+force = Quantity("1000 [N]")
 
 # Length in millimeters
-length = Quantity("100 mm")
+length = Quantity("100 [mm]")
 
 # Pressure in MPa
-pressure = Quantity("1 MPa")
+pressure = Quantity("1 [MPa]")
 
 # Temperature in Celsius
-temp = Quantity("100 C")
+temp = Quantity("100 [C]")
+
+# Angular velocity
+omega = Quantity("10 [rad/s]")
 '''
 mechanical.run_python_script(script)
+```
+
+## IronPython Compatibility (Mechanical 2025 R2 and earlier)
+
+Mechanical versions before 2026 R1 use **IronPython 2.7**. Do NOT use:
+- f-strings (`f"value: {x}"`) — use `.format()` instead
+- walrus operator (`:=`)
+- Type hints in scripts
+- `pathlib.Path` — use `os.path` instead
+
+```python
+# WRONG (f-string):
+# script = 'f"Result: {value}"'
+
+# CORRECT (.format()):
+script = '"Result: {0}".format(value)'
 ```
 
 ## Transaction for Performance
@@ -1046,7 +1184,10 @@ mechanical.download_project(target_dir="./project_backup")
 2. **Missing mesh generation** before solving
 3. **No boundary conditions** causing rigid body motion
 4. **Forgetting to evaluate results** after adding result objects
-5. **Path issues** - use raw strings (r"path") or forward slashes
+5. **Path issues** — use raw strings (r"path") or double backslashes
+6. **Using f-strings** — Mechanical 2025 R2 uses IronPython 2.7 (no f-strings)
+7. **Wrong Quantity format** — use `Quantity("5 [mm]")` with square brackets
+8. **Setting component values directly** — use `.Output.DiscreteValues = [...]`
 
 ## Verification Steps
 
@@ -1055,4 +1196,5 @@ mechanical.download_project(target_dir="./project_backup")
 3. Review solver messages for warnings
 4. Validate results against expected behavior
 5. Check mesh convergence for critical results
+6. Compare stress results against material yield strength
 """

@@ -1197,6 +1197,373 @@ def create_custom_plot(
         return [TextContent(type="text", text=error_msg)]
 
 
+####################################################################################################
+# Project Management Tools
+
+
+@app.tool()
+def save_project(ctx: Context, file_path: str | None = None) -> str:
+    """Save the current Mechanical project.
+
+    This tool saves the current project to disk. If a file_path is provided,
+    the project is saved to that location (Save As). Otherwise, the project
+    is saved in place.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    file_path : str, optional
+        Full path for saving the project (Save As). The path should end with
+        .mechdb extension. If None, saves the project in the current location.
+
+    Returns
+    -------
+    str
+        Save status message with the project file path.
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return (
+            "No Mechanical connection available. "
+            "Use connect_to_mechanical tool to establish a connection."
+        )
+
+    try:
+        if file_path is not None:
+            # Validate extension
+            if not file_path.lower().endswith(".mechdb"):
+                file_path = file_path + ".mechdb"
+
+            # Ensure parent directory exists
+            parent = Path(file_path).parent
+            if not parent.exists():
+                return f"Directory does not exist: {parent}"
+
+            # Save As: use scripting API
+            script = f'ExtAPI.DataModel.Project.SaveAs(r"{file_path}")'
+            mechanical.run_python_script(script)
+            return f"Project saved to: {file_path}"
+        else:
+            # Save in place
+            script = "ExtAPI.DataModel.Project.Save()"
+            mechanical.run_python_script(script)
+            # Get the saved path
+            proj_dir = mechanical.project_directory
+            return f"Project saved successfully. Project directory: {proj_dir}"
+
+    except Exception as e:
+        error_msg = f"Error saving project: {str(e)}"
+        logger.error(error_msg)
+        return error_msg
+
+
+@app.tool()
+def open_project(ctx: Context, file_path: str) -> str:
+    """Open an existing Mechanical project file.
+
+    This tool opens a .mechdb project file in the connected Mechanical instance.
+    Any unsaved work in the current project will be lost.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    file_path : str
+        Full path to the .mechdb file to open.
+
+    Returns
+    -------
+    str
+        Open status message with project information.
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return (
+            "No Mechanical connection available. "
+            "Use connect_to_mechanical tool to establish a connection."
+        )
+
+    if not Path(file_path).exists():
+        return f"Project file not found: {file_path}"
+
+    if not file_path.lower().endswith(".mechdb"):
+        return f"Invalid file type. Expected .mechdb file, got: {file_path}"
+
+    try:
+        script = f'ExtAPI.DataModel.Project.Open(r"{file_path}")'
+        mechanical.run_python_script(script)
+
+        # Get project info after opening
+        info_script = """
+import json
+project = ExtAPI.DataModel.Project
+info = {
+    "name": project.Name if hasattr(project, 'Name') else 'N/A',
+    "product_version": project.ProductVersion,
+}
+# Count bodies and analyses
+model = Model
+info["body_count"] = model.Geometry.GetChildren(
+    DataModelObjectCategory.Body, True
+).Count if hasattr(model, 'Geometry') and model.Geometry else 0
+info["analyses_count"] = model.Analyses.Count if hasattr(model, 'Analyses') else 0
+json.dumps(info)
+"""
+        result = mechanical.run_python_script(info_script)
+        return f"Project opened successfully: {file_path}\nProject info: {result}"
+
+    except Exception as e:
+        error_msg = f"Error opening project: {str(e)}"
+        logger.error(error_msg)
+        return error_msg
+
+
+@app.tool()
+def solve_analysis(
+    ctx: Context,
+    analysis_index: int = 0,
+    wait: bool = True,
+) -> str:
+    """Solve the specified analysis in Mechanical.
+
+    This tool runs the solver for the specified analysis and returns the
+    solution status. It checks for common issues and provides diagnostic
+    information if the solve fails.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    analysis_index : int, optional
+        The index of the analysis to solve (0-based). Default is 0 (first analysis).
+    wait : bool, optional
+        Whether to wait for the solution to complete. Default is True.
+
+    Returns
+    -------
+    str
+        JSON string with solution status, timing, and result summary.
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return (
+            "No Mechanical connection available. "
+            "Use connect_to_mechanical tool to establish a connection."
+        )
+
+    try:
+        script = f"""
+import json
+import time
+
+# Validate analysis index
+if Model.Analyses.Count == 0:
+    result = json.dumps({{"success": False, "error": "No analyses defined in the model"}})
+elif {analysis_index} >= Model.Analyses.Count:
+    result = json.dumps({{
+        "success": False,
+        "error": "Analysis index {analysis_index} out of range. Model has {{0}} analyses.".format(
+            Model.Analyses.Count
+        )
+    }})
+else:
+    analysis = Model.Analyses[{analysis_index}]
+
+    # Pre-solve checks
+    warnings = []
+    mesh = Model.Mesh
+    if mesh is None or mesh.Elements == 0:
+        warnings.append("No mesh generated - mesh must be generated before solving")
+
+    # Solve (always wait - background solve not supported with local solve config)
+    start_time = time.time()
+    analysis.Solve(True)
+    elapsed = time.time() - start_time
+
+    # Get solution status
+    solution = analysis.Solution
+    status = str(solution.Status)
+
+    # Build result
+    solve_result = {{
+        "success": status == "Done",
+        "status": status,
+        "analysis_name": analysis.Name,
+        "analysis_type": str(analysis.AnalysisType),
+        "elapsed_seconds": round(elapsed, 2),
+        "warnings": warnings,
+    }}
+
+    # If solved successfully, get result summary
+    if status == "Done":
+        result_count = 0
+        for i in range(solution.Children.Count):
+            child = solution.Children[i]
+            if hasattr(child, 'Maximum'):
+                result_count += 1
+        solve_result["result_objects_count"] = result_count
+
+    result = json.dumps(solve_result)
+
+result
+"""
+        result = mechanical.run_python_script(script)
+        return result if result else json.dumps({"success": False, "error": "No response from solver"})
+
+    except Exception as e:
+        error_msg = f"Error during solve: {str(e)}"
+        logger.error(error_msg)
+        return json.dumps({"success": False, "error": error_msg})
+
+
+@app.tool()
+def export_results(
+    ctx: Context,
+    result_type: str = "all",
+    export_format: str = "png",
+    output_dir: str | None = None,
+) -> str:
+    """Export results from the solved analysis.
+
+    This tool exports result images (contour plots) and/or data from the
+    current solution. It can export individual result types or all available
+    results at once.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    result_type : str, optional
+        Type of result to export: "all", "deformation", "stress", "strain",
+        or a specific result object name. Default is "all".
+    export_format : str, optional
+        Export format: "png" for images, "txt" for text data, "both" for
+        images and text. Default is "png".
+    output_dir : str, optional
+        Directory to save exported files. If None, uses the project directory.
+
+    Returns
+    -------
+    str
+        JSON string with export status and file paths.
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return (
+            "No Mechanical connection available. "
+            "Use connect_to_mechanical tool to establish a connection."
+        )
+
+    try:
+        # Determine output directory
+        if output_dir is None:
+            output_dir = mechanical.project_directory
+
+        # Strip trailing backslash to avoid breaking raw string literals
+        output_dir = output_dir.rstrip("\\")
+
+        if not Path(output_dir).exists():
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+        script = f"""
+import json
+import os
+
+output_dir = r"{output_dir}"
+result_type = "{result_type}"
+export_format = "{export_format}"
+
+solution = Model.Analyses[0].Solution if Model.Analyses.Count > 0 else None
+
+if solution is None:
+    result = json.dumps({{"success": False, "error": "No analysis found in the model"}})
+elif str(solution.Status) != "Done":
+    result = json.dumps({{
+        "success": False,
+        "error": "Solution has not been completed. Status: {{0}}".format(solution.Status)
+    }})
+else:
+    exported_files = []
+    errors = []
+
+    # Evaluate all results first
+    try:
+        solution.EvaluateAllResults()
+    except:
+        pass
+
+    # Iterate through result objects
+    for i in range(solution.Children.Count):
+        child = solution.Children[i]
+
+        # Check if this is a result object (has Maximum property)
+        if not hasattr(child, 'Maximum'):
+            continue
+
+        # Filter by result_type
+        child_name = child.Name
+        if result_type != "all":
+            if result_type.lower() == "deformation" and "Deformation" not in child_name:
+                continue
+            elif result_type.lower() == "stress" and "Stress" not in child_name:
+                continue
+            elif result_type.lower() == "strain" and "Strain" not in child_name:
+                continue
+            elif result_type.lower() not in ["all", "deformation", "stress", "strain"]:
+                if result_type.lower() not in child_name.lower():
+                    continue
+
+        # Activate the result for export
+        child.Activate()
+
+        safe_name = child_name.replace(" ", "_").replace("/", "_")
+
+        # Export image
+        if export_format in ("png", "both"):
+            try:
+                img_path = os.path.join(output_dir, safe_name + ".png")
+                Graphics.ExportImage(img_path, GraphicsImageExportFormat.PNG)
+                exported_files.append(img_path)
+            except Exception as e:
+                errors.append("Image export failed for {{0}}: {{1}}".format(child_name, str(e)))
+
+        # Export text data
+        if export_format in ("txt", "both"):
+            try:
+                txt_path = os.path.join(output_dir, safe_name + ".txt")
+                child.ExportToTextFile(txt_path)
+                exported_files.append(txt_path)
+            except Exception as e:
+                errors.append("Text export failed for {{0}}: {{1}}".format(child_name, str(e)))
+
+    result = json.dumps({{
+        "success": len(exported_files) > 0,
+        "exported_files": exported_files,
+        "file_count": len(exported_files),
+        "errors": errors,
+        "output_directory": output_dir,
+    }})
+
+result
+"""
+        result = mechanical.run_python_script(script)
+        return result if result else json.dumps({"success": False, "error": "No response"})
+
+    except Exception as e:
+        error_msg = f"Error exporting results: {str(e)}"
+        logger.error(error_msg)
+        return json.dumps({"success": False, "error": error_msg})
+
+
+####################################################################################################
+# Internal helpers
+
+
 def _sanitize_output(text: str) -> str:
     """Sanitize output text to handle encoding issues.
 
