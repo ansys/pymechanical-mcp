@@ -14,8 +14,8 @@ import pytest
 from ansys.mechanical.mcp.server import PyMechanicalAppContext
 from ansys.mechanical.mcp.tools import (
     check_mechanical_status,
-    run_python_script,
     run_multiple_scripts,
+    run_python_script,
 )
 
 ON_LOCAL = os.getenv("ON_LOCAL", "true") == "true"
@@ -84,7 +84,9 @@ class TestMechanicalIntegration:
 
         context = MagicMock()
         context.request_context = MagicMock()
-        context.request_context.lifespan_context = PyMechanicalAppContext(mechanical=real_mechanical)
+        context.request_context.lifespan_context = PyMechanicalAppContext(
+            mechanical=real_mechanical
+        )
 
         return context
 
@@ -315,7 +317,9 @@ class TestPythonPersistentSessionIntegration:
 
         # Attach a mocked persistent python session to the real_context lifespan
         session = MagicMock()
-        session.metadata = {"mechanical": persistent_real_context.request_context.lifespan_context.mechanical}
+        session.metadata = {
+            "mechanical": persistent_real_context.request_context.lifespan_context.mechanical
+        }
         # Simulate a normal dict-shaped execution result
         session.execute.return_value = {"success": True, "stdout": "hello\n", "stderr": ""}
         persistent_real_context.request_context.lifespan_context.python_session = session
@@ -325,4 +329,3 @@ class TestPythonPersistentSessionIntegration:
         data = json.loads(result)
         assert data["success"] is True
         assert data["stdout"].strip() == "hello"
-

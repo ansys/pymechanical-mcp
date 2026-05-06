@@ -94,7 +94,7 @@ def _find_certs_dir(certs_dir: str | None = None) -> Path | None:
 def resolve_transport_mode(
     transport_mode: str | None = None,
     certs_dir: str | None = None,
-) -> tuple[str, str | None]:
+) -> tuple[str | None, str | None]:
     """Determine the gRPC transport mode and certificate directory to use.
 
     The resolution strategy is:
@@ -184,8 +184,7 @@ def resolve_transport_mode(
         return "mtls", str(cert_path)
 
     logger.info(
-        "Auto-detect: Linux platform without mTLS certificates; "
-        "using transport_mode='insecure'."
+        "Auto-detect: Linux platform without mTLS certificates; " "using transport_mode='insecure'."
     )
     return "insecure", None
 
@@ -237,7 +236,11 @@ def list_instances(
         """Check if process uses gRPC."""
         cmdline = proc.cmdline()
         # Check for --port flag or grpc indicators
-        return "--port" in cmdline or "-grpc" in cmdline or any("grpc" in arg.lower() for arg in cmdline)
+        return (
+            "--port" in cmdline
+            or "-grpc" in cmdline
+            or any("grpc" in arg.lower() for arg in cmdline)
+        )
 
     def get_port(proc):
         """Extract port from command line."""
@@ -259,15 +262,15 @@ def list_instances(
         ]
         name_lower = proc.name().lower()
         cmdline_str = " ".join(proc.cmdline()).lower()
-        
+
         # Check for Mechanical process indicators
         is_mechanical = (
-            "ansyswbu" in name_lower or
-            "mechanical" in name_lower or
-            "ansys mechanical" in cmdline_str or
-            "ansys-mechanical" in cmdline_str
+            "ansyswbu" in name_lower
+            or "mechanical" in name_lower
+            or "ansys mechanical" in cmdline_str
+            or "ansys-mechanical" in cmdline_str
         )
-        
+
         return valid_status and is_mechanical
 
     for proc in psutil.process_iter():
@@ -384,6 +387,7 @@ json.dumps(model_info)
         result = mechanical.run_python_script(script)
         if result:
             import json
+
             model_data = json.loads(result)
             info["model"] = model_data
     except Exception as e:

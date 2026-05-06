@@ -137,9 +137,7 @@ class TestResolveTransportMode:
         for name in ("ca.crt", "client.crt", "client.key"):
             (tmp_path / name).write_text("dummy")
 
-        mode, certs = resolve_transport_mode(
-            transport_mode="mtls", certs_dir=str(tmp_path)
-        )
+        mode, certs = resolve_transport_mode(transport_mode="mtls", certs_dir=str(tmp_path))
         assert mode == "mtls"
         assert certs == str(tmp_path)
 
@@ -251,7 +249,9 @@ class TestConnectToMechanicalTransportMode:
     transport_mode correctly to pymechanical.connect_to_mechanical."""
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_connect_auto_linux_no_certs(self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch):
+    def test_connect_auto_linux_no_certs(
+        self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
+    ):
         """On Linux without certs, auto-detect passes transport_mode='insecure'."""
         monkeypatch.delenv("ANSYS_GRPC_CERTIFICATES", raising=False)
         monkeypatch.chdir(tmp_path)
@@ -279,7 +279,9 @@ class TestConnectToMechanicalTransportMode:
             assert "certs_dir" not in call_kwargs
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_connect_auto_linux_with_certs(self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch):
+    def test_connect_auto_linux_with_certs(
+        self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
+    ):
         """On Linux with certs, auto-detect passes transport_mode='mtls'."""
         certs_dir = tmp_path / "certs"
         certs_dir.mkdir()
@@ -310,7 +312,9 @@ class TestConnectToMechanicalTransportMode:
             assert call_kwargs["certs_dir"] == str(Path("certs"))
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=False)
-    def test_connect_auto_windows(self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch):
+    def test_connect_auto_windows(
+        self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
+    ):
         """On Windows, auto-detect does not pass transport_mode (defer to pymechanical)."""
         monkeypatch.chdir(tmp_path)
 
@@ -420,7 +424,9 @@ class TestLaunchMechanicalTransportMode:
     """Tests that launch_mechanical resolves and passes transport_mode."""
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_launch_auto_linux_no_certs(self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch):
+    def test_launch_auto_linux_no_certs(
+        self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
+    ):
         """On Linux, auto passes transport_mode='insecure' to launch."""
         monkeypatch.delenv("ANSYS_GRPC_CERTIFICATES", raising=False)
         monkeypatch.chdir(tmp_path)
@@ -463,7 +469,9 @@ class TestLaunchMechanicalTransportMode:
             assert call_kwargs["transport_mode"] == "insecure"
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=False)
-    def test_launch_auto_windows(self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch):
+    def test_launch_auto_windows(
+        self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
+    ):
         """On Windows auto, transport_mode is not passed (defer to pymechanical)."""
         monkeypatch.chdir(tmp_path)
 

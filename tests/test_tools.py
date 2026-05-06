@@ -19,9 +19,9 @@ from ansys.mechanical.mcp.tools import (
     launch_mechanical,
     list_files,
     list_mechanical_instances,
+    run_multiple_scripts,
     run_python_script,
     run_python_script_from_file,
-    run_multiple_scripts,
     screenshot,
     upload_file,
 )
@@ -34,7 +34,9 @@ class TestCheckMechanicalStatus:
     def test_check_status_with_mechanical(self, mock_context):
         """Test checking Mechanical status when Mechanical is available."""
         # Mock get_product_info method
-        mock_context.request_context.lifespan_context.mechanical.get_product_info = MagicMock(return_value="Product Info")
+        mock_context.request_context.lifespan_context.mechanical.get_product_info = MagicMock(
+            return_value="Product Info"
+        )
         mock_context.request_context.lifespan_context.mechanical.busy = False
         mock_context.request_context.lifespan_context.mechanical.exited = False
 
@@ -72,7 +74,9 @@ class TestCheckMechanicalStatus:
         import json
 
         # Mock get_product_info method
-        mock_context.request_context.lifespan_context.mechanical.get_product_info = MagicMock(return_value="Product Info")
+        mock_context.request_context.lifespan_context.mechanical.get_product_info = MagicMock(
+            return_value="Product Info"
+        )
         mock_context.request_context.lifespan_context.mechanical.busy = False
         mock_context.request_context.lifespan_context.mechanical.exited = False
 
@@ -100,7 +104,9 @@ class TestRunMechanicalScript:
         assert "Script executed successfully" in result
 
         # Verify that Mechanical's run_python_script method was called
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with(script)
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with(
+            script
+        )
 
     def test_run_script_with_arguments(self, mock_context):
         """Test running a Mechanical script with arguments."""
@@ -128,7 +134,10 @@ class TestRunMechanicalScript:
             assert "Script executed successfully" in result
 
         # Verify all scripts were called
-        assert mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count == len(scripts)
+        assert (
+            mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count
+            == len(scripts)
+        )
 
 
 @pytest.mark.unit
@@ -151,12 +160,18 @@ class TestRunMultipleScripts:
         assert "Script 3: Success" in result
 
         # Verify that Mechanical's run_python_script method was called 3 times
-        assert mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count == 3
+        assert (
+            mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count
+            == 3
+        )
 
     def test_run_multiple_scripts_with_output(self, mock_context):
         """Test running multiple scripts with Mechanical output."""
         scripts = ["print('1')", "print('2')"]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = ["1", "2"]
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = [
+            "1",
+            "2",
+        ]
 
         result = run_multiple_scripts(mock_context, scripts)
 
@@ -183,7 +198,9 @@ class TestRunMultipleScripts:
     def test_run_multiple_scripts_single_script(self, mock_context):
         """Test running a single script through multiple scripts."""
         scripts = ["print('hello')"]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = "hello"
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            "hello"
+        )
 
         result = run_multiple_scripts(mock_context, scripts)
 
@@ -212,13 +229,18 @@ class TestRunMultipleScripts:
         """Test running a large batch of scripts."""
         # Create 10 scripts
         scripts = [f"x_{i} = {i}" for i in range(1, 11)]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = "ok"
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            "ok"
+        )
 
         result = run_multiple_scripts(mock_context, scripts)
 
         assert "Executed 10 scripts" in result
         # Verify run_python_script was called for each script
-        assert mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count == 10
+        assert (
+            mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count
+            == 10
+        )
 
     def test_run_multiple_scripts_sequential_execution(self, mock_context):
         """Test that scripts are executed in the correct sequence."""
@@ -229,7 +251,9 @@ class TestRunMultipleScripts:
             call_order.append(script)
             return "ok"
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = track_calls
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            track_calls
+        )
 
         run_multiple_scripts(mock_context, scripts)
 
@@ -249,7 +273,10 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10000
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify successful connection
@@ -259,7 +286,10 @@ class TestConnectToMechanical:
             assert "2024 R2" in result
 
             # Verify Mechanical was stored in context
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical == mock_mechanical
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical
+                == mock_mechanical
+            )
 
     def test_connect_custom_port(self, mock_context_no_mechanical):
         """Test connecting to Mechanical with custom port."""
@@ -268,7 +298,10 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10001
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical) as mock_connect:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_connect:
             result = connect_to_mechanical(mock_context_no_mechanical, port=10001)
 
             # Verify connection with custom port
@@ -289,7 +322,10 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "192.168.1.100"
         mock_mechanical._port = 10000
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical) as mock_connect:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_connect:
             result = connect_to_mechanical(mock_context_no_mechanical, ip="192.168.1.100")
 
             # Verify connection with custom IP
@@ -310,7 +346,10 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "10.0.0.50"
         mock_mechanical._port = 10099
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical) as mock_connect:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_connect:
             result = connect_to_mechanical(mock_context_no_mechanical, port=10099, ip="10.0.0.50")
 
             # Verify connection with custom parameters
@@ -335,7 +374,10 @@ class TestConnectToMechanical:
 
     def test_connect_connection_error(self, mock_context_no_mechanical):
         """Test handling connection errors."""
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", side_effect=Exception("Connection refused")):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            side_effect=Exception("Connection refused"),
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, port=10000, ip="127.0.0.1")
 
             # Verify error message is returned
@@ -347,8 +389,13 @@ class TestConnectToMechanical:
 
     def test_connect_network_error(self, mock_context_no_mechanical):
         """Test handling network errors during connection."""
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", side_effect=ConnectionError("Network unreachable")):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10000, ip="192.168.1.999")
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            side_effect=ConnectionError("Network unreachable"),
+        ):
+            result = connect_to_mechanical(
+                mock_context_no_mechanical, port=10000, ip="192.168.1.999"
+            )
 
             # Verify error message
             assert "Failed to connect to Mechanical" in result
@@ -356,7 +403,10 @@ class TestConnectToMechanical:
 
     def test_connect_timeout_error(self, mock_context_no_mechanical):
         """Test handling timeout errors during connection."""
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", side_effect=TimeoutError("Connection timed out")):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            side_effect=TimeoutError("Connection timed out"),
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify timeout error is handled
@@ -373,15 +423,23 @@ class TestConnectToMechanical:
         # Verify context starts with no Mechanical
         assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is None
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify successful connection
             assert "Successfully connected" in result
 
             # Verify Mechanical is stored in context
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is not None
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical == mock_mechanical
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical is not None
+            )
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical
+                == mock_mechanical
+            )
 
     def test_connect_result_message(self, mock_context_no_mechanical):
         """Test that connect_to_mechanical returns informative success message."""
@@ -390,7 +448,10 @@ class TestConnectToMechanical:
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10000
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify the result contains connection information
@@ -501,7 +562,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical) as mock_launch:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_launch:
             result = launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
@@ -518,7 +582,10 @@ class TestLaunchMechanical:
             )
 
             # Verify Mechanical was stored in context
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical == mock_mechanical
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical
+                == mock_mechanical
+            )
 
     def test_launch_with_port(self, mock_context_no_mechanical):
         """Test launching Mechanical with custom port."""
@@ -526,7 +593,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical) as mock_launch:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_launch:
             result = launch_mechanical(mock_context_no_mechanical, port=10050)
 
             # Verify successful launch
@@ -547,7 +617,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2025 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical) as mock_launch:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_launch:
             result = launch_mechanical(mock_context_no_mechanical, version="252")
 
             # Verify successful launch
@@ -571,7 +644,10 @@ class TestLaunchMechanical:
 
         exec_path = "/path/to/mechanical"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical) as mock_launch:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_launch:
             result = launch_mechanical(
                 mock_context_no_mechanical,
                 exec_file=exec_path,
@@ -640,15 +716,23 @@ class TestLaunchMechanical:
         # Verify context starts with no Mechanical
         assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is None
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
             assert "Successfully launched Mechanical" in result
 
             # Verify Mechanical is stored in context
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is not None
-            assert mock_context_no_mechanical.request_context.lifespan_context.mechanical == mock_mechanical
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical is not None
+            )
+            assert (
+                mock_context_no_mechanical.request_context.lifespan_context.mechanical
+                == mock_mechanical
+            )
 
     def test_launch_result_message(self, mock_context_no_mechanical):
         """Test that launch_mechanical returns informative success message."""
@@ -656,7 +740,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
 
             # Verify the result contains launch information
@@ -671,7 +758,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical) as mock_launch:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ) as mock_launch:
             result = launch_mechanical(mock_context_no_mechanical, port=10060)
 
             # Verify successful launch
@@ -693,7 +783,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/home/user/mechanical_work"
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
 
             # Verify all connection details are in result
@@ -721,7 +814,10 @@ class TestConnectionLifecycle:
         mock_mechanical.get_product_info = MagicMock(return_value="Product Info")
 
         # Step 1: Connect
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical)
             assert "Successfully connected" in result
 
@@ -755,7 +851,10 @@ class TestConnectionLifecycle:
         mock_mechanical2._port = 10001
 
         # First connection
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical1):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical1,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, port=10000)
             assert "Successfully connected" in result
             assert "10000" in result
@@ -764,7 +863,10 @@ class TestConnectionLifecycle:
         disconnect_from_mechanical(mock_context_no_mechanical)
 
         # Second connection with different parameters
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical2):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical2,
+        ):
             result = connect_to_mechanical(mock_context_no_mechanical, port=10001)
             assert "Successfully connected" in result
             assert "10001" in result
@@ -803,7 +905,10 @@ class TestLaunchWorkflow:
         mock_mechanical.get_product_info = MagicMock(return_value="Product Info")
 
         # Step 1: Launch
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
 
@@ -835,7 +940,10 @@ class TestLaunchWorkflow:
         mock_mechanical2.project_directory = "/tmp/ansys_mechanical_5678"
 
         # First launch
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical1):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical1,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
             assert "2024 R2" in result
@@ -844,7 +952,10 @@ class TestLaunchWorkflow:
         disconnect_from_mechanical(mock_context_no_mechanical)
 
         # Second launch
-        with patch("ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mock_mechanical2):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical2,
+        ):
             result = launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
             assert "2024 R1" in result
@@ -857,7 +968,10 @@ class TestLaunchWorkflow:
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10000
 
-        with patch("ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical", return_value=mock_mechanical):
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
             connect_result = connect_to_mechanical(mock_context_no_mechanical)
             assert "Successfully connected" in connect_result
 
@@ -889,8 +1003,10 @@ class TestCheckMechanicalInstalled:
 
     def test_check_installed_exception(self):
         """Test error handling during installation check."""
-        with patch("ansys.mechanical.core.mechanical.check_valid_mechanical", 
-                   side_effect=Exception("System error")):
+        with patch(
+            "ansys.mechanical.core.mechanical.check_valid_mechanical",
+            side_effect=Exception("System error"),
+        ):
             result = check_mechanical_installed(MagicMock())
 
             assert isinstance(result, str)
@@ -906,8 +1022,10 @@ class TestRunPythonScriptFromFile:
         # Create a temporary script file
         script_file = tmp_path / "test_script.py"
         script_file.write_text("print('hello')")
-        
-        mock_context.request_context.lifespan_context.mechanical.run_python_script_from_file.return_value = "hello"
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script_from_file.return_value = (
+            "hello"
+        )
 
         result = run_python_script_from_file(mock_context, str(script_file))
 
@@ -935,14 +1053,18 @@ class TestListMechanicalInstances:
 
     def test_list_instances(self):
         """Test listing Mechanical instances."""
-        with patch("ansys.mechanical.mcp.helpers.list_instances", return_value="Instance 1\nInstance 2"):
+        with patch(
+            "ansys.mechanical.mcp.helpers.list_instances", return_value="Instance 1\nInstance 2"
+        ):
             result = list_mechanical_instances()
 
             assert isinstance(result, str)
 
     def test_list_instances_no_instances(self):
         """Test when no Mechanical instances are running."""
-        with patch("ansys.mechanical.mcp.helpers.list_instances", return_value="No instances found"):
+        with patch(
+            "ansys.mechanical.mcp.helpers.list_instances", return_value="No instances found"
+        ):
             result = list_mechanical_instances()
 
             assert isinstance(result, str)
@@ -955,7 +1077,9 @@ class TestListFiles:
     def test_list_files_success(self, mock_context):
         """Test listing files successfully."""
         mock_context.request_context.lifespan_context.mechanical.list_files.return_value = [
-            "file1.txt", "file2.txt", "model.mechdb"
+            "file1.txt",
+            "file2.txt",
+            "model.mechdb",
         ]
 
         result = list_files(mock_context)
@@ -980,8 +1104,9 @@ class TestListFiles:
 
     def test_list_files_error(self, mock_context):
         """Test error handling during file listing."""
-        mock_context.request_context.lifespan_context.mechanical.list_files.side_effect = \
-            Exception("Permission denied")
+        mock_context.request_context.lifespan_context.mechanical.list_files.side_effect = Exception(
+            "Permission denied"
+        )
 
         result = list_files(mock_context)
 
@@ -998,7 +1123,9 @@ class TestUploadFile:
         test_file = tmp_path / "test_upload.txt"
         test_file.write_text("test content")
 
-        mock_context.request_context.lifespan_context.mechanical.upload.return_value = "test_upload.txt"
+        mock_context.request_context.lifespan_context.mechanical.upload.return_value = (
+            "test_upload.txt"
+        )
 
         result = upload_file(mock_context, str(test_file))
 
@@ -1024,8 +1151,9 @@ class TestUploadFile:
         test_file = tmp_path / "test.txt"
         test_file.write_text("test")
 
-        mock_context.request_context.lifespan_context.mechanical.upload.side_effect = \
-            Exception("Upload failed")
+        mock_context.request_context.lifespan_context.mechanical.upload.side_effect = Exception(
+            "Upload failed"
+        )
 
         result = upload_file(mock_context, str(test_file))
 
@@ -1062,8 +1190,9 @@ class TestDownloadFile:
 
     def test_download_file_error(self, mock_context):
         """Test error handling during download."""
-        mock_context.request_context.lifespan_context.mechanical.download.side_effect = \
-            Exception("Download failed")
+        mock_context.request_context.lifespan_context.mechanical.download.side_effect = Exception(
+            "Download failed"
+        )
 
         result = download_file(mock_context, "test.txt")
 
@@ -1090,8 +1219,9 @@ class TestClearMechanical:
 
     def test_clear_error(self, mock_context):
         """Test error handling during clear."""
-        mock_context.request_context.lifespan_context.mechanical.clear.side_effect = \
-            Exception("Cannot clear")
+        mock_context.request_context.lifespan_context.mechanical.clear.side_effect = Exception(
+            "Cannot clear"
+        )
 
         result = clear_mechanical(mock_context)
 
@@ -1122,8 +1252,9 @@ class TestGetModelInfo:
 
     def test_get_model_info_success(self, mock_context):
         """Test getting model info successfully."""
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = \
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
             '{"project": {"name": "Test"}, "model": {"name": "Model1"}}'
+        )
 
         result = get_model_info(mock_context)
 
@@ -1137,8 +1268,9 @@ class TestGetModelInfo:
 
     def test_get_model_info_error(self, mock_context):
         """Test error handling when getting model info."""
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = \
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
             Exception("Script error")
+        )
 
         result = get_model_info(mock_context)
 
@@ -1161,16 +1293,21 @@ class TestScreenshot:
         """Test screenshot capture successfully."""
         # Mock the script execution and file creation
         test_image_path = tmp_path / "screenshot.png"
-        test_image_path.write_bytes(b'\x89PNG\r\n\x1a\n' + b'\x00' * 100)  # Fake PNG
+        test_image_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)  # Fake PNG
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = \
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
             str(test_image_path)
+        )
 
-        with patch("tempfile.mkstemp", return_value=(0, str(test_image_path))), \
-             patch("os.close"), \
-             patch("os.path.exists", return_value=True), \
-             patch("builtins.open", create=True) as mock_open:
-            mock_open.return_value.__enter__.return_value.read.return_value = b'\x89PNG\r\n\x1a\n' + b'\x00' * 100
+        with (
+            patch("tempfile.mkstemp", return_value=(0, str(test_image_path))),
+            patch("os.close"),
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", create=True) as mock_open,
+        ):
+            mock_open.return_value.__enter__.return_value.read.return_value = (
+                b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+            )
             result = screenshot(mock_context)
 
             # Either success with image content or text content with error
@@ -1178,8 +1315,9 @@ class TestScreenshot:
 
     def test_screenshot_with_view_type(self, mock_context):
         """Test screenshot with different view types."""
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = \
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
             Exception("Graphics not available")
+        )
 
         result = screenshot(mock_context, view_type="mesh")
 
@@ -1328,16 +1466,18 @@ class TestSolveAnalysis:
         """Test successful solve."""
         from ansys.mechanical.mcp.tools import solve_analysis
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": True,
-                "status": "Done",
-                "analysis_name": "Static Structural",
-                "analysis_type": "Static",
-                "elapsed_seconds": 5.2,
-                "warnings": [],
-                "result_objects_count": 2,
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": True,
+                    "status": "Done",
+                    "analysis_name": "Static Structural",
+                    "analysis_type": "Static",
+                    "elapsed_seconds": 5.2,
+                    "warnings": [],
+                    "result_objects_count": 2,
+                }
+            )
         )
 
         result = solve_analysis(mock_context)
@@ -1350,8 +1490,8 @@ class TestSolveAnalysis:
         """Test solving a specific analysis by index."""
         from ansys.mechanical.mcp.tools import solve_analysis
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {"success": True, "status": "Done", "analysis_name": "Modal"}
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps({"success": True, "status": "Done", "analysis_name": "Modal"})
         )
 
         result = solve_analysis(mock_context, analysis_index=1)
@@ -1362,11 +1502,13 @@ class TestSolveAnalysis:
         """Test solve failure response."""
         from ansys.mechanical.mcp.tools import solve_analysis
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": False,
-                "error": "No analyses defined in the model",
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": False,
+                    "error": "No analyses defined in the model",
+                }
+            )
         )
 
         result = solve_analysis(mock_context)
@@ -1403,17 +1545,19 @@ class TestExportResults:
         """Test successful result export."""
         from ansys.mechanical.mcp.tools import export_results
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": True,
-                "exported_files": [
-                    str(tmp_path / "Total_Deformation.png"),
-                    str(tmp_path / "Equivalent_Stress.png"),
-                ],
-                "file_count": 2,
-                "errors": [],
-                "output_directory": str(tmp_path),
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": True,
+                    "exported_files": [
+                        str(tmp_path / "Total_Deformation.png"),
+                        str(tmp_path / "Equivalent_Stress.png"),
+                    ],
+                    "file_count": 2,
+                    "errors": [],
+                    "output_directory": str(tmp_path),
+                }
+            )
         )
 
         result = export_results(mock_context, output_dir=str(tmp_path))
@@ -1425,14 +1569,16 @@ class TestExportResults:
         """Test exporting specific result type."""
         from ansys.mechanical.mcp.tools import export_results
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": True,
-                "exported_files": [str(tmp_path / "Equivalent_Stress.png")],
-                "file_count": 1,
-                "errors": [],
-                "output_directory": str(tmp_path),
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": True,
+                    "exported_files": [str(tmp_path / "Equivalent_Stress.png")],
+                    "file_count": 1,
+                    "errors": [],
+                    "output_directory": str(tmp_path),
+                }
+            )
         )
 
         result = export_results(mock_context, result_type="stress", output_dir=str(tmp_path))
@@ -1444,17 +1590,19 @@ class TestExportResults:
         """Test exporting in both PNG and TXT formats."""
         from ansys.mechanical.mcp.tools import export_results
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": True,
-                "exported_files": [
-                    str(tmp_path / "Total_Deformation.png"),
-                    str(tmp_path / "Total_Deformation.txt"),
-                ],
-                "file_count": 2,
-                "errors": [],
-                "output_directory": str(tmp_path),
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": True,
+                    "exported_files": [
+                        str(tmp_path / "Total_Deformation.png"),
+                        str(tmp_path / "Total_Deformation.txt"),
+                    ],
+                    "file_count": 2,
+                    "errors": [],
+                    "output_directory": str(tmp_path),
+                }
+            )
         )
 
         result = export_results(mock_context, export_format="both", output_dir=str(tmp_path))
@@ -1466,11 +1614,13 @@ class TestExportResults:
         """Test export when solution has not been run."""
         from ansys.mechanical.mcp.tools import export_results
 
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = json.dumps(
-            {
-                "success": False,
-                "error": "Solution has not been completed. Status: NotSolved",
-            }
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
+            json.dumps(
+                {
+                    "success": False,
+                    "error": "Solution has not been completed. Status: NotSolved",
+                }
+            )
         )
 
         result = export_results(mock_context)

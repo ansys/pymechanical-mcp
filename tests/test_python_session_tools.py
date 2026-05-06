@@ -188,7 +188,6 @@ class TestCreateCustomPlot:
         assert isinstance(result[0], TextContent)
         assert "unexpected output format" in result[0].text
 
-
     def test_pyvista_plot_branch(self, mock_context, mock_python_session):
         mock_context.request_context.lifespan_context.python_session = mock_python_session
 
@@ -234,4 +233,3 @@ class TestCreateCustomPlot:
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "Plot creation timed out after" in result[0].text
-

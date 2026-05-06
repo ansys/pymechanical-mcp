@@ -13,6 +13,7 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-json
+        exclude: ^\.devcontainer/
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements

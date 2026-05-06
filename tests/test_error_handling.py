@@ -14,8 +14,8 @@ class TestErrorHandling:
     def test_mechanical_script_failure(self, mock_context):
         """Test handling of Mechanical script failures."""
         # Make the run method raise an exception
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = RuntimeError(
-            "Mechanical script failed"
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            RuntimeError("Mechanical script failed")
         )
 
         # The function catches exceptions and returns error messages
@@ -44,8 +44,8 @@ class TestErrorHandling:
     def test_mechanical_timeout(self, mock_context):
         """Test handling of Mechanical timeout scenarios."""
         # Simulate a timeout
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = TimeoutError(
-            "Mechanical script timed out"
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            TimeoutError("Mechanical script timed out")
         )
 
         # The function catches exceptions and returns error messages
@@ -59,7 +59,9 @@ class TestErrorHandling:
         result = run_python_script(mock_context, "")
 
         assert "Script executed successfully" in result
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with("")
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with(
+            ""
+        )
 
     def test_very_long_script(self, mock_context):
         """Test handling of very long scripts."""
@@ -68,4 +70,3 @@ class TestErrorHandling:
         result = run_python_script(mock_context, long_script)
 
         assert "Script executed successfully" in result
-

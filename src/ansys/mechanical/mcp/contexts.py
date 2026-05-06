@@ -766,7 +766,7 @@ script = '''
 try:
     analysis = Model.Analyses[0]
     analysis.Solve()
-    
+
     if analysis.Solution.Status == SolutionStatusType.Done:
         print("Solution completed successfully")
     else:

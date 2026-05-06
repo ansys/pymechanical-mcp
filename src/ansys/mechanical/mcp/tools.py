@@ -272,7 +272,8 @@ def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
             if re.search(r'\bf["\']', script):
                 logger.warning(
                     "Script %d contains f-string syntax. Mechanical versions before "
-                    "2026 R1 use IronPython 2.7 which does not support f-strings.", i
+                    "2026 R1 use IronPython 2.7 which does not support f-strings.",
+                    i,
                 )
 
             result = mechanical.run_python_script(script)
@@ -469,8 +470,7 @@ def connect_to_mechanical(
         )
 
         logger.info(
-            f"Resolved gRPC transport: mode={resolved_mode!r}, "
-            f"certs_dir={resolved_certs!r}"
+            f"Resolved gRPC transport: mode={resolved_mode!r}, " f"certs_dir={resolved_certs!r}"
         )
 
         # Build connection kwargs
@@ -839,9 +839,15 @@ if hasattr(model, 'Mesh') and model.Mesh is not None:
     mesh = model.Mesh
     nodes = mesh.Nodes
     elements = mesh.Elements
+    node_count = nodes.Count if hasattr(nodes, 'Count') else (
+        nodes if isinstance(nodes, int) else 0
+    )
+    element_count = elements.Count if hasattr(elements, 'Count') else (
+        elements if isinstance(elements, int) else 0
+    )
     model_info['mesh'] = {
-        'node_count': nodes.Count if hasattr(nodes, 'Count') else (nodes if isinstance(nodes, int) else 0),
-        'element_count': elements.Count if hasattr(elements, 'Count') else (elements if isinstance(elements, int) else 0),
+        'node_count': node_count,
+        'element_count': element_count,
     }
 else:
     model_info['mesh'] = {'node_count': 0, 'element_count': 0}
@@ -855,7 +861,7 @@ else:
 json.dumps(model_info)
 """
         result = mechanical.run_python_script(script)
-        return result if result else json.dumps({"error": "Could not retrieve model info"})
+        return str(result) if result else json.dumps({"error": "Could not retrieve model info"})
     except Exception as e:
         error_msg = f"Error getting model info: {str(e)}"
         logger.error(error_msg)
@@ -1012,7 +1018,10 @@ def run_python_code(
         return json.dumps(
             {
                 "success": False,
-                "error": "No Python session available. The persistent Python session was not initialized.",
+                "error": (
+                    "No Python session available. "
+                    "The persistent Python session was not initialized."
+                ),
             },
             ensure_ascii=False,
         )
@@ -1121,7 +1130,10 @@ def create_custom_plot(
         return [
             TextContent(
                 type="text",
-                text="No Python session available. The persistent Python session was not initialized.",
+                text=(
+                    "No Python session available. "
+                    "The persistent Python session was not initialized."
+                ),
             )
         ]
 
@@ -1175,14 +1187,19 @@ def create_custom_plot(
                 return [
                     TextContent(
                         type="text",
-                        text=f"Error creating custom {plot_type} plot: {error_msg}\nStdout: {stdout}\nStderr: {stderr}",
+                        text=(
+                            f"Error creating custom {plot_type} plot: "
+                            f"{error_msg}\nStdout: {stdout}\n"
+                            f"Stderr: {stderr}"
+                        ),
                     )
                 ]
         else:
+            sanitized = _sanitize_output(str(result)) if result else "No result"
             return [
                 TextContent(
                     type="text",
-                    text=f"Unexpected result format: {_sanitize_output(str(result)) if result else 'No result'}",
+                    text=f"Unexpected result format: {sanitized}",
                 )
             ]
 
@@ -1412,7 +1429,11 @@ else:
 result
 """
         result = mechanical.run_python_script(script)
-        return result if result else json.dumps({"success": False, "error": "No response from solver"})
+        return (
+            str(result)
+            if result
+            else json.dumps({"success": False, "error": "No response from solver"})
+        )
 
     except Exception as e:
         error_msg = f"Error during solve: {str(e)}"
@@ -1552,7 +1573,7 @@ else:
 result
 """
         result = mechanical.run_python_script(script)
-        return result if result else json.dumps({"success": False, "error": "No response"})
+        return str(result) if result else json.dumps({"success": False, "error": "No response"})
 
     except Exception as e:
         error_msg = f"Error exporting results: {str(e)}"

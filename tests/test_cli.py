@@ -64,7 +64,9 @@ def test_product_startup_attempts_connect_on_startup():
     fake_mechanical.exit = MagicMock()
 
     # Mock connect_to_mechanical to return our fake instance
-    with patch("ansys.mechanical.core.connect_to_mechanical", return_value=fake_mechanical) as mock_connect:
+    with patch(
+        "ansys.mechanical.core.connect_to_mechanical", return_value=fake_mechanical
+    ) as mock_connect:
         # Create MCP instance and attach CLI config directly
         mcp = PyMechanicalMCP()
         setattr(
