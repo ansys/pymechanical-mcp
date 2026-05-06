@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.title="PyMechanical MCP Server"
 LABEL org.opencontainers.image.description="Model Context Protocol server for Ansys Mechanical through PyMechanical"
 LABEL org.opencontainers.image.source="https://github.com/ansys/pymechanical-mcp"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.authors="German Martinez-Ayuso,Camille Latapie,pyansys.core@ansys.com"
+LABEL org.opencontainers.image.authors="Tushar Bana,pyansys.core@ansys.com"
 LABEL org.opencontainers.image.vendor="ANSYS, Inc."
 
 # Legacy Contact Labels (for backward compatibility)
