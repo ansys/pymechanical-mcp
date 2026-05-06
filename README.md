@@ -808,18 +808,18 @@ flowchart TB
         Transport["Transport Layer<br/>(STDIO / HTTP+SSE)"]
         Server["PyMechanicalMCP<br/>(FastMCP Server)"]
         Context["PyMechanicalAppContext"]
-        
+
         subgraph Tools["MCP Tools"]
             direction LR
             ConnTools["Connection Tools<br/>• launch_mechanical<br/>• connect_to_mechanical<br/>• disconnect_from_mechanical"]
             ExecTools["Execution Tools<br/>• run_python_script<br/>• run_multiple_scripts<br/>• check_mechanical_status"]
             PyTools["Python Session Tools<br/>• run_python_code<br/>• create_custom_plot"]
         end
-        
+
         subgraph ContextTools["Context Tools (Workflow Guidance)"]
             Guidelines["• Geometry Import<br/>• Material Assignment<br/>• Mesh Generation<br/>• Boundary Conditions<br/>• Analysis Setup<br/>• Results Processing"]
         end
-        
+
         PythonSession["Persistent Python Session<br/>(matplotlib, numpy, pandas)"]
     end
 
@@ -836,7 +836,7 @@ flowchart TB
     Context --> Tools
     Context --> ContextTools
     Context --> PythonSession
-    
+
     ExecTools <-->|"PyMechanical<br/>run_python_script()"| gRPC
     ConnTools <-->|"connect_to_mechanical()<br/>launch_mechanical()"| gRPC
     gRPC <--> MechInstance
