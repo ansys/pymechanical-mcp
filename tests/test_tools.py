@@ -1779,3 +1779,59 @@ class TestRequiresMechanicalVisibility:
         """Successful disconnect_from_mechanical should call ctx.disable_components."""
         await disconnect_from_mechanical(mock_context)
         mock_context.disable_components.assert_called_once_with(tags={"requires_mechanical"})
+
+    def test_no_tool_surface_drift(self):
+        """Every tool must be in the always-available allowlist or carry
+        the ``requires_mechanical`` gating tag.
+
+        This test prevents accidental "tool surface drift" — i.e. someone
+        adding a new tool that needs a Mechanical connection but
+        forgetting to tag it ``requires_mechanical``. Without the tag,
+        the tool would be exposed to clients before any Mechanical
+        session exists and would crash at call time.
+
+        If you add a brand-new tool that legitimately must be reachable
+        BEFORE any Mechanical connection is established (e.g. a pure
+        installation / diagnostic helper), add its name to
+        ``ALWAYS_AVAILABLE_TOOLS`` below. Otherwise, tag the tool
+        ``requires_mechanical`` (see ``REQUIRES_MECHANICAL_TAG`` in
+        tools.py).
+        """
+        import asyncio
+
+        from ansys.mechanical.mcp.server import app
+
+        # Tools that are intentionally reachable before any Mechanical
+        # session. Keep this list minimal — anything that touches a
+        # connected Mechanical instance must NOT be here.
+        ALWAYS_AVAILABLE_TOOLS = {
+            "check_mechanical_installed",
+            "launch_mechanical",
+            "connect_to_mechanical",
+            "list_mechanical_instances",
+            "run_python_code",
+            "create_custom_plot",
+            "get_guidelines_for",
+        }
+
+        async def _list():
+            return await app._local_provider._list_tools()
+
+        tools = asyncio.run(_list())
+        offenders = []
+        for t in tools:
+            tags = t.tags or set()
+            if t.name in ALWAYS_AVAILABLE_TOOLS:
+                continue
+            if "requires_mechanical" not in tags:
+                offenders.append(t.name)
+
+        assert not offenders, (
+            "The following tools are missing the 'requires_mechanical' "
+            "tag and are not in the ALWAYS_AVAILABLE_TOOLS allowlist:\n  - "
+            + "\n  - ".join(sorted(offenders))
+            + "\n\nEither tag the tool with REQUIRES_MECHANICAL_TAG (the "
+            "common case) or — if the tool genuinely does not need a "
+            "Mechanical session — add it to ALWAYS_AVAILABLE_TOOLS in "
+            "this test."
+        )
