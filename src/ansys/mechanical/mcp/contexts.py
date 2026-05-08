@@ -8,10 +8,24 @@ aspects of Mechanical simulations.
 
 # flake8: noqa: E501
 
+from typing import Literal
+
 from ansys.mechanical.mcp import app
 
+GuidelinesContent = Literal[
+    "workflow",
+    "geometry",
+    "materials",
+    "meshing",
+    "analysis_setup",
+    "boundary_conditions",
+    "solution",
+    "postprocessing",
+    "named_selections",
+    "general",
+]
 
-@app.tool()
+
 def get_guidelines_for_workflow_overview() -> str:
     """Get general Mechanical simulation workflow guidelines.
 
@@ -108,7 +122,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_geometry_import() -> str:
     """Get geometry import guidelines for Mechanical.
 
@@ -204,7 +217,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_materials() -> str:
     """Get material definition guidelines for Mechanical.
 
@@ -282,7 +294,6 @@ For thermal analysis:
 """
 
 
-@app.tool()
 def get_guidelines_for_meshing() -> str:
     """Get mesh generation guidelines for Mechanical.
 
@@ -379,7 +390,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_analysis_setup() -> str:
     """Get analysis setup guidelines for Mechanical.
 
@@ -495,7 +505,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_boundary_conditions() -> str:
     """Get boundary conditions and loads guidelines for Mechanical.
 
@@ -662,7 +671,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_solution() -> str:
     """Get solution phase guidelines for Mechanical.
 
@@ -779,7 +787,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_postprocessing() -> str:
     """Get postprocessing guidelines for Mechanical.
 
@@ -931,7 +938,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_named_selections() -> str:
     """Get Named Selection guidelines for Mechanical.
 
@@ -1057,7 +1063,6 @@ mechanical.run_python_script(script)
 """
 
 
-@app.tool()
 def get_guidelines_for_general_rules() -> str:
     """Get general rules and best practices for Mechanical workflows.
 
@@ -1198,3 +1203,52 @@ mechanical.download_project(target_dir="./project_backup")
 5. Check mesh convergence for critical results
 6. Compare stress results against material yield strength
 """
+
+
+_CONTENT_MAP = {
+    "workflow": get_guidelines_for_workflow_overview,
+    "geometry": get_guidelines_for_geometry_import,
+    "materials": get_guidelines_for_materials,
+    "meshing": get_guidelines_for_meshing,
+    "analysis_setup": get_guidelines_for_analysis_setup,
+    "boundary_conditions": get_guidelines_for_boundary_conditions,
+    "solution": get_guidelines_for_solution,
+    "postprocessing": get_guidelines_for_postprocessing,
+    "named_selections": get_guidelines_for_named_selections,
+    "general": get_guidelines_for_general_rules,
+}
+
+
+@app.tool()
+def get_guidelines_for(content: GuidelinesContent) -> str:
+    """Get Mechanical simulation guidelines for a specific topic.
+
+    Use this tool before writing PyMechanical or Ansys Mechanical scripting
+    code to retrieve the relevant guidelines for the workflow step you are
+    about to implement. Call it once per topic needed; it is strongly
+    recommended before every code-generation task.
+
+    Parameters
+    ----------
+    content : str
+        The guideline topic to retrieve. One of:
+
+        - ``"workflow"``: Mechanical simulation workflow overview.
+        - ``"geometry"``: Geometry import (CAD files, units, scoping).
+        - ``"materials"``: Material assignment and engineering data.
+        - ``"meshing"``: Mesh controls, sizing, quality.
+        - ``"analysis_setup"``: Analysis system creation
+          (Static Structural, Modal, Thermal, etc.).
+        - ``"boundary_conditions"``: Supports, constraints, loads
+          (forces, pressures, temperatures).
+        - ``"solution"``: Solver configuration and execution.
+        - ``"postprocessing"``: Result objects, evaluation, exports.
+        - ``"named_selections"``: Creating and using named selections.
+        - ``"general"``: General Mechanical rules and best practices.
+
+    Returns
+    -------
+    str
+        Guideline text for the requested topic.
+    """
+    return _CONTENT_MAP[content]()

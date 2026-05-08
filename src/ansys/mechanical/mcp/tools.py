@@ -21,8 +21,14 @@ from ansys.mechanical.mcp.server import session
 logger = get_logger(__name__)
 
 
+# Tag applied to all tools that require an active Mechanical connection.
+# These tools are disabled at startup (before Mechanical is connected) and enabled
+# once a connection is established via connect_to_mechanical or launch_mechanical.
+REQUIRES_MECHANICAL_TAG = "requires_mechanical"
+
+
 # Access type-safe lifespan context in tools
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def check_mechanical_status(ctx: Context) -> str:
     """Check the status of Mechanical initialization.
 
@@ -149,7 +155,7 @@ def check_mechanical_installed(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def run_python_script(ctx: Context, script: str) -> str:
     """Execute a Python script inside Mechanical.
 
@@ -195,7 +201,7 @@ def run_python_script(ctx: Context, script: str) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def run_python_script_from_file(ctx: Context, file_path: str) -> str:
     """Execute a Python script file inside Mechanical.
 
@@ -234,7 +240,7 @@ def run_python_script_from_file(ctx: Context, file_path: str) -> str:
         return error_msg
 
 
-@app.tool(tags={"aali"})
+@app.tool(tags={"aali", REQUIRES_MECHANICAL_TAG})
 def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
     """Execute multiple Python scripts inside Mechanical in sequence.
 
@@ -286,7 +292,7 @@ def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
 
 
 @app.tool(tags={"aali", "locked_connection"})
-def launch_mechanical(
+async def launch_mechanical(
     ctx: Context,
     exec_file: str | None = None,
     port: int | None = None,
@@ -298,7 +304,8 @@ def launch_mechanical(
 
     This tool starts a new Mechanical instance using PyMechanical's launch_mechanical
     function. The launched instance will be automatically connected and stored in
-    the context for subsequent operations.
+    the context for subsequent operations. Once connected, additional tools become
+    available to interact with it (run_python_script, screenshot, save_project, etc.).
 
     Parameters
     ----------
@@ -389,6 +396,7 @@ def launch_mechanical(
         # Store in context for later use
         ctx.request_context.lifespan_context.mechanical = mechanical
 
+        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
         logger.info("Mechanical launched successfully!")
         return (
             f"Successfully launched Mechanical\n"
@@ -403,7 +411,7 @@ def launch_mechanical(
 
 
 @app.tool(tags={"aali", "locked_connection"})
-def connect_to_mechanical(
+async def connect_to_mechanical(
     ctx: Context,
     port: int = 10000,
     ip: str = "127.0.0.1",
@@ -413,7 +421,9 @@ def connect_to_mechanical(
 
     This tool establishes a connection to a running Mechanical instance using the
     provided port and IP address. The connection is stored for subsequent
-    operations and can be closed using the disconnect_from_mechanical tool.
+    operations and can be closed using the disconnect_from_mechanical tool. Once
+    connected, additional tools become available to interact with it
+    (run_python_script, screenshot, save_project, etc.).
 
     Parameters
     ----------
@@ -490,6 +500,7 @@ def connect_to_mechanical(
         # Store in context for later use
         ctx.request_context.lifespan_context.mechanical = mechanical
 
+        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
         logger.info(f"Connected to Mechanical successfully at {ip}:{port}!")
         return (
             f"Successfully connected to Mechanical at {ip}:{port}\n"
@@ -503,8 +514,8 @@ def connect_to_mechanical(
         return error_msg
 
 
-@app.tool(tags={"aali", "locked_connection"})
-def disconnect_from_mechanical(ctx: Context) -> str:
+@app.tool(tags={"aali", "locked_connection", REQUIRES_MECHANICAL_TAG})
+async def disconnect_from_mechanical(ctx: Context) -> str:
     """Disconnect from the connected Mechanical instance.
 
     This tool closes the connection to the Mechanical instance and releases
@@ -534,6 +545,7 @@ def disconnect_from_mechanical(ctx: Context) -> str:
         # Clear from context
         ctx.request_context.lifespan_context.mechanical = None
 
+        await ctx.disable_components(tags={REQUIRES_MECHANICAL_TAG})
         logger.info("Disconnected successfully!")
         return "Successfully disconnected from Mechanical"
 
@@ -594,7 +606,7 @@ def list_mechanical_instances() -> str:
     return list_instances(long=True, instances=True)
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def list_files(ctx: Context) -> str:
     """List files in the Mechanical working directory.
 
@@ -632,7 +644,7 @@ def list_files(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def upload_file(ctx: Context, file_path: str) -> str:
     """Upload a file to the Mechanical instance.
 
@@ -670,7 +682,7 @@ def upload_file(ctx: Context, file_path: str) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -> str:
     """Download a file from the Mechanical instance.
 
@@ -715,7 +727,7 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def clear_mechanical(ctx: Context) -> str:
     """Clear the Mechanical database.
 
@@ -749,7 +761,7 @@ def clear_mechanical(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def get_project_directory(ctx: Context) -> str:
     """Get the project directory of the Mechanical instance.
 
@@ -779,7 +791,7 @@ def get_project_directory(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def get_model_info(ctx: Context) -> str:
     """Get information about the current model in Mechanical.
 
@@ -868,7 +880,7 @@ json.dumps(model_info)
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def screenshot(
     ctx: Context,
     view_type: str = "model",
@@ -1218,7 +1230,7 @@ def create_custom_plot(
 # Project Management Tools
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def save_project(ctx: Context, file_path: str | None = None) -> str:
     """Save the current Mechanical project.
 
@@ -1276,7 +1288,7 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def open_project(ctx: Context, file_path: str) -> str:
     """Open an existing Mechanical project file.
 
@@ -1338,7 +1350,7 @@ json.dumps(info)
         return error_msg
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def solve_analysis(
     ctx: Context,
     analysis_index: int = 0,
@@ -1441,7 +1453,7 @@ result
         return json.dumps({"success": False, "error": error_msg})
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def export_results(
     ctx: Context,
     result_type: str = "all",

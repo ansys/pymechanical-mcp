@@ -37,3 +37,7 @@ docker/.env
 # OS
 .DS_Store
 Thumbs.db
+
+tests/test_cantilever_Mech_Files/
+*.rst
+*.mechdb

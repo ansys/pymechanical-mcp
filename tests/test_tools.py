@@ -265,7 +265,8 @@ class TestRunMultipleScripts:
 class TestConnectToMechanical:
     """Tests for connect_to_mechanical tool."""
 
-    def test_connect_default_parameters(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_default_parameters(self, mock_context_no_mechanical):
         """Test connecting to Mechanical with default parameters."""
         # Create a mock Mechanical instance
         mock_mechanical = MagicMock()
@@ -277,7 +278,7 @@ class TestConnectToMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify successful connection
             assert isinstance(result, str)
@@ -291,7 +292,8 @@ class TestConnectToMechanical:
                 == mock_mechanical
             )
 
-    def test_connect_custom_port(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_custom_port(self, mock_context_no_mechanical):
         """Test connecting to Mechanical with custom port."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R1"
@@ -308,7 +310,7 @@ class TestConnectToMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10001)
+            result = await connect_to_mechanical(mock_context_no_mechanical, port=10001)
 
             # Verify connection with custom port
             assert "Successfully connected to Mechanical" in result
@@ -321,7 +323,8 @@ class TestConnectToMechanical:
                 cleanup_on_exit=False,
             )
 
-    def test_connect_custom_ip(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_custom_ip(self, mock_context_no_mechanical):
         """Test connecting to Mechanical with custom IP address."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -338,7 +341,7 @@ class TestConnectToMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, ip="192.168.1.100")
+            result = await connect_to_mechanical(mock_context_no_mechanical, ip="192.168.1.100")
 
             # Verify connection with custom IP
             assert "Successfully connected to Mechanical" in result
@@ -351,7 +354,8 @@ class TestConnectToMechanical:
                 cleanup_on_exit=False,
             )
 
-    def test_connect_custom_ip_and_port(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_custom_ip_and_port(self, mock_context_no_mechanical):
         """Test connecting to Mechanical with both custom IP and port."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -368,7 +372,9 @@ class TestConnectToMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10099, ip="10.0.0.50")
+            result = await connect_to_mechanical(
+                mock_context_no_mechanical, port=10099, ip="10.0.0.50"
+            )
 
             # Verify connection with custom parameters
             assert "Successfully connected to Mechanical" in result
@@ -381,22 +387,26 @@ class TestConnectToMechanical:
                 cleanup_on_exit=False,
             )
 
-    def test_connect_already_connected(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_connect_already_connected(self, mock_context):
         """Test connecting when already connected."""
         # Context already has a Mechanical connection
-        result = connect_to_mechanical(mock_context)
+        result = await connect_to_mechanical(mock_context)
 
         # Verify appropriate error message
         assert "Already connected to a Mechanical instance" in result
         assert "disconnect first" in result
 
-    def test_connect_connection_error(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_connection_error(self, mock_context_no_mechanical):
         """Test handling connection errors."""
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             side_effect=Exception("Connection refused"),
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10000, ip="127.0.0.1")
+            result = await connect_to_mechanical(
+                mock_context_no_mechanical, port=10000, ip="127.0.0.1"
+            )
 
             # Verify error message is returned
             assert "Failed to connect to Mechanical" in result
@@ -405,13 +415,14 @@ class TestConnectToMechanical:
             # Verify context remains empty
             assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is None
 
-    def test_connect_network_error(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_network_error(self, mock_context_no_mechanical):
         """Test handling network errors during connection."""
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             side_effect=ConnectionError("Network unreachable"),
         ):
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical, port=10000, ip="192.168.1.999"
             )
 
@@ -419,19 +430,21 @@ class TestConnectToMechanical:
             assert "Failed to connect to Mechanical" in result
             assert "Network unreachable" in result
 
-    def test_connect_timeout_error(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_timeout_error(self, mock_context_no_mechanical):
         """Test handling timeout errors during connection."""
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             side_effect=TimeoutError("Connection timed out"),
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify timeout error is handled
             assert "Failed to connect to Mechanical" in result
             assert "Connection timed out" in result
 
-    def test_connect_stores_mechanical_in_context(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_stores_mechanical_in_context(self, mock_context_no_mechanical):
         """Test that connected Mechanical instance is properly stored in context."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -445,7 +458,7 @@ class TestConnectToMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify successful connection
             assert "Successfully connected" in result
@@ -459,7 +472,8 @@ class TestConnectToMechanical:
                 == mock_mechanical
             )
 
-    def test_connect_result_message(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_result_message(self, mock_context_no_mechanical):
         """Test that connect_to_mechanical returns informative success message."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -470,7 +484,7 @@ class TestConnectToMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             # Verify the result contains connection information
             assert isinstance(result, str)
@@ -482,12 +496,13 @@ class TestConnectToMechanical:
 class TestDisconnectFromMechanical:
     """Tests for disconnect_from_mechanical tool."""
 
-    def test_disconnect_success(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_success(self, mock_context):
         """Test disconnecting from Mechanical successfully."""
         # Store reference to check exit was called
         mechanical_ref = mock_context.request_context.lifespan_context.mechanical
 
-        result = disconnect_from_mechanical(mock_context)
+        result = await disconnect_from_mechanical(mock_context)
 
         # Verify successful disconnection
         assert isinstance(result, str)
@@ -499,14 +514,16 @@ class TestDisconnectFromMechanical:
         # Verify Mechanical was removed from context
         assert mock_context.request_context.lifespan_context.mechanical is None
 
-    def test_disconnect_no_connection(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_disconnect_no_connection(self, mock_context_no_mechanical):
         """Test disconnecting when no connection exists."""
-        result = disconnect_from_mechanical(mock_context_no_mechanical)
+        result = await disconnect_from_mechanical(mock_context_no_mechanical)
 
         # Verify appropriate message
         assert "No Mechanical connection to disconnect" in result
 
-    def test_disconnect_clears_context(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_clears_context(self, mock_context):
         """Test that disconnect properly clears the context."""
         mock_context.request_context.lifespan_context.mechanical._ip = "127.0.0.1"
         mock_context.request_context.lifespan_context.mechanical._port = 10000
@@ -514,12 +531,13 @@ class TestDisconnectFromMechanical:
         # Verify Mechanical exists before disconnect
         assert mock_context.request_context.lifespan_context.mechanical is not None
 
-        disconnect_from_mechanical(mock_context)
+        await disconnect_from_mechanical(mock_context)
 
         # Verify Mechanical is cleared after disconnect
         assert mock_context.request_context.lifespan_context.mechanical is None
 
-    def test_disconnect_error_during_exit(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_error_during_exit(self, mock_context):
         """Test handling errors during disconnection."""
         mock_context.request_context.lifespan_context.mechanical._ip = "127.0.0.1"
         mock_context.request_context.lifespan_context.mechanical._port = 10000
@@ -527,7 +545,7 @@ class TestDisconnectFromMechanical:
             "Disconnection error"
         )
 
-        result = disconnect_from_mechanical(mock_context)
+        result = await disconnect_from_mechanical(mock_context)
 
         # Verify error message is returned
         assert "Error during disconnect" in result
@@ -536,7 +554,8 @@ class TestDisconnectFromMechanical:
         # Verify context is still cleared even on error
         assert mock_context.request_context.lifespan_context.mechanical is None
 
-    def test_disconnect_connection_lost(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_connection_lost(self, mock_context):
         """Test disconnecting when connection is already lost."""
         mock_context.request_context.lifespan_context.mechanical._ip = "127.0.0.1"
         mock_context.request_context.lifespan_context.mechanical._port = 10000
@@ -544,7 +563,7 @@ class TestDisconnectFromMechanical:
             "Connection already closed"
         )
 
-        result = disconnect_from_mechanical(mock_context)
+        result = await disconnect_from_mechanical(mock_context)
 
         # Verify error is handled gracefully
         assert "Error during disconnect" in result
@@ -553,17 +572,19 @@ class TestDisconnectFromMechanical:
         # Context should still be cleared
         assert mock_context.request_context.lifespan_context.mechanical is None
 
-    def test_disconnect_return_message(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_return_message(self, mock_context):
         """Test that disconnect_from_mechanical returns informative message."""
-        result = disconnect_from_mechanical(mock_context)
+        result = await disconnect_from_mechanical(mock_context)
 
         # Verify the result contains disconnection information
         assert isinstance(result, str)
         assert "Successfully disconnected from Mechanical" in result
 
-    def test_disconnect_custom_ip_port(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_disconnect_custom_ip_port(self, mock_context):
         """Test disconnecting from Mechanical with custom IP and port."""
-        result = disconnect_from_mechanical(mock_context)
+        result = await disconnect_from_mechanical(mock_context)
 
         # Verify disconnection message
         assert "Successfully disconnected from Mechanical" in result
@@ -573,7 +594,8 @@ class TestDisconnectFromMechanical:
 class TestLaunchMechanical:
     """Tests for launch_mechanical tool."""
 
-    def test_launch_default_parameters(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_default_parameters(self, mock_context_no_mechanical):
         """Test launching Mechanical with default parameters."""
         # Create a mock Mechanical instance
         mock_mechanical = MagicMock()
@@ -590,7 +612,7 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -611,7 +633,8 @@ class TestLaunchMechanical:
                 == mock_mechanical
             )
 
-    def test_launch_with_port(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_with_port(self, mock_context_no_mechanical):
         """Test launching Mechanical with custom port."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -627,7 +650,7 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = launch_mechanical(mock_context_no_mechanical, port=10050)
+            result = await launch_mechanical(mock_context_no_mechanical, port=10050)
 
             # Verify successful launch
             assert "Successfully launched Mechanical" in result
@@ -641,7 +664,8 @@ class TestLaunchMechanical:
                 port=10050,
             )
 
-    def test_launch_with_version(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_with_version(self, mock_context_no_mechanical):
         """Test launching Mechanical with specific version."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2025 R2"
@@ -657,7 +681,7 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = launch_mechanical(mock_context_no_mechanical, version="252")
+            result = await launch_mechanical(mock_context_no_mechanical, version="252")
 
             # Verify successful launch
             assert "Successfully launched Mechanical" in result
@@ -672,7 +696,8 @@ class TestLaunchMechanical:
                 version="252",
             )
 
-    def test_launch_all_custom_parameters(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_all_custom_parameters(self, mock_context_no_mechanical):
         """Test launching Mechanical with all custom parameters."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R1"
@@ -690,7 +715,7 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = launch_mechanical(
+            result = await launch_mechanical(
                 mock_context_no_mechanical,
                 exec_file=exec_path,
                 port=10001,
@@ -713,22 +738,24 @@ class TestLaunchMechanical:
                 version="241",
             )
 
-    def test_launch_already_connected(self, mock_context):
+    @pytest.mark.asyncio
+    async def test_launch_already_connected(self, mock_context):
         """Test launching when already connected to Mechanical."""
         # Context already has a Mechanical connection
-        result = launch_mechanical(mock_context)
+        result = await launch_mechanical(mock_context)
 
         # Verify appropriate error message
         assert "Already connected to a Mechanical instance" in result
         assert "disconnect first" in result
 
-    def test_launch_error(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_error(self, mock_context_no_mechanical):
         """Test handling launch errors."""
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             side_effect=Exception("Mechanical executable not found"),
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify error message is returned
             assert "Failed to launch Mechanical" in result
@@ -737,19 +764,21 @@ class TestLaunchMechanical:
             # Verify context remains empty
             assert mock_context_no_mechanical.request_context.lifespan_context.mechanical is None
 
-    def test_launch_license_error(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_license_error(self, mock_context_no_mechanical):
         """Test handling license errors during launch."""
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             side_effect=Exception("No ANSYS license available"),
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify error message
             assert "Failed to launch Mechanical" in result
             assert "No ANSYS license available" in result
 
-    def test_launch_stores_mechanical_in_context(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_stores_mechanical_in_context(self, mock_context_no_mechanical):
         """Test that launched Mechanical instance is properly stored in context."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -762,7 +791,7 @@ class TestLaunchMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
             assert "Successfully launched Mechanical" in result
@@ -776,7 +805,8 @@ class TestLaunchMechanical:
                 == mock_mechanical
             )
 
-    def test_launch_result_message(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_result_message(self, mock_context_no_mechanical):
         """Test that launch_mechanical returns informative success message."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -786,7 +816,7 @@ class TestLaunchMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify the result contains launch information
             assert isinstance(result, str)
@@ -794,7 +824,8 @@ class TestLaunchMechanical:
             assert "Version: 2024 R2" in result
             assert "Project Directory:" in result
 
-    def test_launch_with_port_parameter(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_with_port_parameter(self, mock_context_no_mechanical):
         """Test launching Mechanical with specific port parameter."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -810,7 +841,7 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
-            result = launch_mechanical(mock_context_no_mechanical, port=10060)
+            result = await launch_mechanical(mock_context_no_mechanical, port=10060)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -825,7 +856,8 @@ class TestLaunchMechanical:
                 port=10060,
             )
 
-    def test_launch_connection_info_in_result(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_connection_info_in_result(self, mock_context_no_mechanical):
         """Test that launch result contains all connection info."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
@@ -835,7 +867,7 @@ class TestLaunchMechanical:
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify all connection details are in result
             assert "Successfully launched Mechanical" in result
@@ -847,7 +879,8 @@ class TestLaunchMechanical:
 class TestConnectionLifecycle:
     """Tests for the full connection lifecycle."""
 
-    def test_connect_use_disconnect_workflow(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_use_disconnect_workflow(self, mock_context_no_mechanical):
         """Test complete workflow: connect, use, disconnect."""
         # Create mock Mechanical
         mock_mechanical = MagicMock()
@@ -866,7 +899,7 @@ class TestConnectionLifecycle:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
             assert "Successfully connected" in result
 
         # Step 2: Use Mechanical
@@ -879,14 +912,15 @@ class TestConnectionLifecycle:
         assert "Script executed successfully" in script_result
 
         # Step 3: Disconnect
-        result = disconnect_from_mechanical(mock_context_no_mechanical)
+        result = await disconnect_from_mechanical(mock_context_no_mechanical)
         assert "Successfully disconnected" in result
 
         # Step 4: Verify connection is cleared
         status_after = check_mechanical_status(mock_context_no_mechanical)
         assert "No Mechanical connection available" in status_after
 
-    def test_reconnect_after_disconnect(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_reconnect_after_disconnect(self, mock_context_no_mechanical):
         """Test that we can reconnect after disconnecting."""
         mock_mechanical1 = MagicMock()
         mock_mechanical1.version = "2024 R2"
@@ -903,19 +937,19 @@ class TestConnectionLifecycle:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical1,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10000)
+            result = await connect_to_mechanical(mock_context_no_mechanical, port=10000)
             assert "Successfully connected" in result
             assert "10000" in result
 
         # Disconnect
-        disconnect_from_mechanical(mock_context_no_mechanical)
+        await disconnect_from_mechanical(mock_context_no_mechanical)
 
         # Second connection with different parameters
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical2,
         ):
-            result = connect_to_mechanical(mock_context_no_mechanical, port=10001)
+            result = await connect_to_mechanical(mock_context_no_mechanical, port=10001)
             assert "Successfully connected" in result
             assert "10001" in result
 
@@ -934,7 +968,8 @@ class TestConnectionLifecycle:
 class TestLaunchWorkflow:
     """Tests for launch and usage workflow."""
 
-    def test_launch_use_disconnect_workflow(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_use_disconnect_workflow(self, mock_context_no_mechanical):
         """Test complete workflow: launch, use, disconnect."""
         # Create mock Mechanical
         mock_mechanical = MagicMock()
@@ -957,7 +992,7 @@ class TestLaunchWorkflow:
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
 
         # Step 2: Use Mechanical
@@ -970,14 +1005,15 @@ class TestLaunchWorkflow:
         assert "Script executed successfully" in script_result
 
         # Step 3: Disconnect
-        result = disconnect_from_mechanical(mock_context_no_mechanical)
+        result = await disconnect_from_mechanical(mock_context_no_mechanical)
         assert "Successfully disconnected" in result
 
         # Step 4: Verify connection is cleared
         status_after = check_mechanical_status(mock_context_no_mechanical)
         assert "No Mechanical connection available" in status_after
 
-    def test_launch_after_disconnect(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_after_disconnect(self, mock_context_no_mechanical):
         """Test that we can launch after disconnecting."""
         mock_mechanical1 = MagicMock()
         mock_mechanical1.version = "2024 R2"
@@ -992,23 +1028,24 @@ class TestLaunchWorkflow:
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical1,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
             assert "2024 R2" in result
 
         # Disconnect
-        disconnect_from_mechanical(mock_context_no_mechanical)
+        await disconnect_from_mechanical(mock_context_no_mechanical)
 
         # Second launch
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical2,
         ):
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
             assert "Successfully launched Mechanical" in result
             assert "2024 R1" in result
 
-    def test_cannot_launch_when_connected(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_cannot_launch_when_connected(self, mock_context_no_mechanical):
         """Test that launching fails when already connected."""
         # First, connect to an existing instance
         mock_mechanical = MagicMock()
@@ -1020,11 +1057,11 @@ class TestLaunchWorkflow:
             "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
             return_value=mock_mechanical,
         ):
-            connect_result = connect_to_mechanical(mock_context_no_mechanical)
+            connect_result = await connect_to_mechanical(mock_context_no_mechanical)
             assert "Successfully connected" in connect_result
 
         # Now try to launch - should fail
-        launch_result = launch_mechanical(mock_context_no_mechanical)
+        launch_result = await launch_mechanical(mock_context_no_mechanical)
         assert "Already connected to a Mechanical instance" in launch_result
         assert "disconnect first" in launch_result
 
@@ -1688,3 +1725,57 @@ class TestExportResults:
         data = json.loads(result)
         assert data["success"] is False
         assert "Export error" in data["error"]
+
+
+@pytest.mark.unit
+class TestRequiresMechanicalVisibility:
+    """Tests for Mechanical-connection-aware tool visibility."""
+
+    @pytest.mark.asyncio
+    async def test_connect_enables_requires_mechanical_tools(self, mock_context_no_mechanical):
+        """Successful connect_to_mechanical should call ctx.enable_components for the tag."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical._ip = "127.0.0.1"
+        mock_mechanical._port = 10000
+
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
+            await connect_to_mechanical(mock_context_no_mechanical)
+            mock_context_no_mechanical.enable_components.assert_called_once_with(
+                tags={"requires_mechanical"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_connect_does_not_enable_on_failure(self, mock_context_no_mechanical):
+        """Failed connect_to_mechanical should not call ctx.enable_components."""
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            side_effect=Exception("Connection refused"),
+        ):
+            await connect_to_mechanical(mock_context_no_mechanical)
+            mock_context_no_mechanical.enable_components.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_launch_enables_requires_mechanical_tools(self, mock_context_no_mechanical):
+        """Successful launch_mechanical should call ctx.enable_components for the tag."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical.project_directory = "/tmp/proj"
+
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
+            await launch_mechanical(mock_context_no_mechanical)
+            mock_context_no_mechanical.enable_components.assert_called_once_with(
+                tags={"requires_mechanical"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_disconnect_disables_requires_mechanical_tools(self, mock_context):
+        """Successful disconnect_from_mechanical should call ctx.disable_components."""
+        await disconnect_from_mechanical(mock_context)
+        mock_context.disable_components.assert_called_once_with(tags={"requires_mechanical"})

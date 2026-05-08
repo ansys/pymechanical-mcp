@@ -5,31 +5,14 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_context_tools_registered():
-    """Test that all context tools are registered with the MCP server."""
+    """Test that the consolidated context tool is registered with the MCP server."""
     # Import contexts and tools to register them with the app
     from ansys.mechanical.mcp import contexts, tools  # noqa: F401
     from ansys.mechanical.mcp.server import app
 
-    tool_list = await app.list_tools()
-
-    # Expected tool names (matching actual contexts.py functions)
-    expected_tools = [
-        "get_guidelines_for_workflow_overview",
-        "get_guidelines_for_geometry_import",
-        "get_guidelines_for_materials",
-        "get_guidelines_for_meshing",
-        "get_guidelines_for_analysis_setup",
-        "get_guidelines_for_boundary_conditions",
-        "get_guidelines_for_solution",
-        "get_guidelines_for_postprocessing",
-        "get_guidelines_for_named_selections",
-        "get_guidelines_for_general_rules",
-    ]
-
-    # Check each expected tool is registered
+    tool_list = await app._local_provider._list_tools()
     tool_names = [t.name for t in tool_list]
-    for expected_name in expected_tools:
-        assert expected_name in tool_names, f"Tool {expected_name} not found"
+    assert "get_guidelines_for" in tool_names
 
 
 def test_workflow_overview_content():

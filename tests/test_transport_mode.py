@@ -249,7 +249,8 @@ class TestConnectToMechanicalTransportMode:
     transport_mode correctly to pymechanical.connect_to_mechanical."""
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_connect_auto_linux_no_certs(
+    @pytest.mark.asyncio
+    async def test_connect_auto_linux_no_certs(
         self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
     ):
         """On Linux without certs, auto-detect passes transport_mode='insecure'."""
@@ -265,7 +266,7 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical,
                 ip="host.docker.internal",
                 port=10000,
@@ -279,7 +280,8 @@ class TestConnectToMechanicalTransportMode:
             assert "certs_dir" not in call_kwargs
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_connect_auto_linux_with_certs(
+    @pytest.mark.asyncio
+    async def test_connect_auto_linux_with_certs(
         self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
     ):
         """On Linux with certs, auto-detect passes transport_mode='mtls'."""
@@ -300,7 +302,7 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical,
                 ip="host.docker.internal",
                 port=10000,
@@ -312,7 +314,8 @@ class TestConnectToMechanicalTransportMode:
             assert call_kwargs["certs_dir"] == str(Path("certs"))
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=False)
-    def test_connect_auto_windows(
+    @pytest.mark.asyncio
+    async def test_connect_auto_windows(
         self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
     ):
         """On Windows, auto-detect does not pass transport_mode (defer to pymechanical)."""
@@ -327,14 +330,15 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             assert "Successfully connected" in result
             call_kwargs = mock_connect.call_args[1]
             # transport_mode should NOT be in kwargs (let pymechanical default)
             assert "transport_mode" not in call_kwargs
 
-    def test_connect_explicit_transport_mode(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_explicit_transport_mode(self, mock_context_no_mechanical):
         """Explicit transport_mode param on the tool is honoured."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2025 R2"
@@ -345,7 +349,7 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical,
                 ip="10.0.0.1",
                 port=10000,
@@ -356,7 +360,8 @@ class TestConnectToMechanicalTransportMode:
             call_kwargs = mock_connect.call_args[1]
             assert call_kwargs["transport_mode"] == "insecure"
 
-    def test_connect_context_transport_mode_fallback(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_context_transport_mode_fallback(self, mock_context_no_mechanical):
         """When tool param is None, falls back to context's grpc_transport_mode."""
         mock_context_no_mechanical.request_context.lifespan_context.grpc_transport_mode = "insecure"
 
@@ -369,13 +374,14 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(mock_context_no_mechanical)
+            result = await connect_to_mechanical(mock_context_no_mechanical)
 
             assert "Successfully connected" in result
             call_kwargs = mock_connect.call_args[1]
             assert call_kwargs["transport_mode"] == "insecure"
 
-    def test_connect_tool_param_overrides_context(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_tool_param_overrides_context(self, mock_context_no_mechanical):
         """Tool's transport_mode param takes precedence over context config."""
         mock_context_no_mechanical.request_context.lifespan_context.grpc_transport_mode = "mtls"
 
@@ -388,7 +394,7 @@ class TestConnectToMechanicalTransportMode:
         ) as mock_connect:
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical,
                 transport_mode="insecure",
             )
@@ -397,7 +403,8 @@ class TestConnectToMechanicalTransportMode:
             call_kwargs = mock_connect.call_args[1]
             assert call_kwargs["transport_mode"] == "insecure"
 
-    def test_connect_result_includes_transport_mode(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_connect_result_includes_transport_mode(self, mock_context_no_mechanical):
         """Result message includes the resolved transport mode."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2025 R2"
@@ -408,7 +415,7 @@ class TestConnectToMechanicalTransportMode:
         ):
             from ansys.mechanical.mcp.tools import connect_to_mechanical
 
-            result = connect_to_mechanical(
+            result = await connect_to_mechanical(
                 mock_context_no_mechanical,
                 transport_mode="insecure",
             )
@@ -424,7 +431,8 @@ class TestLaunchMechanicalTransportMode:
     """Tests that launch_mechanical resolves and passes transport_mode."""
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_launch_auto_linux_no_certs(
+    @pytest.mark.asyncio
+    async def test_launch_auto_linux_no_certs(
         self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
     ):
         """On Linux, auto passes transport_mode='insecure' to launch."""
@@ -441,13 +449,14 @@ class TestLaunchMechanicalTransportMode:
         ) as mock_launch:
             from ansys.mechanical.mcp.tools import launch_mechanical
 
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             assert "Successfully launched" in result
             call_kwargs = mock_launch.call_args[1]
             assert call_kwargs["transport_mode"] == "insecure"
 
-    def test_launch_explicit_transport_mode(self, mock_context_no_mechanical):
+    @pytest.mark.asyncio
+    async def test_launch_explicit_transport_mode(self, mock_context_no_mechanical):
         """Explicit transport_mode is passed through to pymechanical."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2025 R2"
@@ -459,7 +468,7 @@ class TestLaunchMechanicalTransportMode:
         ) as mock_launch:
             from ansys.mechanical.mcp.tools import launch_mechanical
 
-            result = launch_mechanical(
+            result = await launch_mechanical(
                 mock_context_no_mechanical,
                 transport_mode="insecure",
             )
@@ -469,7 +478,8 @@ class TestLaunchMechanicalTransportMode:
             assert call_kwargs["transport_mode"] == "insecure"
 
     @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=False)
-    def test_launch_auto_windows(
+    @pytest.mark.asyncio
+    async def test_launch_auto_windows(
         self, _mock_linux, mock_context_no_mechanical, tmp_path, monkeypatch
     ):
         """On Windows auto, transport_mode is not passed (defer to pymechanical)."""
@@ -485,7 +495,7 @@ class TestLaunchMechanicalTransportMode:
         ) as mock_launch:
             from ansys.mechanical.mcp.tools import launch_mechanical
 
-            result = launch_mechanical(mock_context_no_mechanical)
+            result = await launch_mechanical(mock_context_no_mechanical)
 
             assert "Successfully launched" in result
             call_kwargs = mock_launch.call_args[1]
