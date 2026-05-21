@@ -1270,8 +1270,11 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
             if not parent.exists():
                 return f"Directory does not exist: {parent}"
 
-            # Save As: use scripting API
-            script = f'ExtAPI.DataModel.Project.SaveAs(r"{file_path}")'
+            # Save As: use scripting API. json.dumps() safely escapes the
+            # path into a Python string literal so embedded quotes,
+            # backslashes, or other special characters cannot break out of
+            # the script.
+            script = f"ExtAPI.DataModel.Project.SaveAs({json.dumps(file_path)})"
             mechanical.run_python_script(script)
             return f"Project saved to: {file_path}"
         else:
@@ -1322,7 +1325,10 @@ def open_project(ctx: Context, file_path: str) -> str:
         return f"Invalid file type. Expected .mechdb file, got: {file_path}"
 
     try:
-        script = f'ExtAPI.DataModel.Project.Open(r"{file_path}")'
+        # json.dumps() safely escapes the path into a Python string literal so
+        # embedded quotes, backslashes, or other characters cannot break out
+        # of the script body.
+        script = f"ExtAPI.DataModel.Project.Open({json.dumps(file_path)})"
         mechanical.run_python_script(script)
 
         # Get project info after opening
@@ -1507,9 +1513,9 @@ def export_results(
 import json
 import os
 
-output_dir = r"{output_dir}"
-result_type = "{result_type}"
-export_format = "{export_format}"
+output_dir = {json.dumps(output_dir)}
+result_type = {json.dumps(result_type)}
+export_format = {json.dumps(export_format)}
 
 solution = Model.Analyses[0].Solution if Model.Analyses.Count > 0 else None
 
