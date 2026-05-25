@@ -7,6 +7,21 @@ ANSYS Mechanical 2025 R2 on April 21, 2026.
 > **GUI Mode:** Launch Mechanical with `batch=false` so the GUI is visible
 > and you can see geometry, mesh, and result contour plots interactively.
 
+## Tool Visibility Model
+
+`pymechanical-mcp` uses a connection-aware visibility model so the LLM
+client sees a small, focused tool surface up front and additional tools
+unlock once a Mechanical session is connected.
+
+| Stage                       | Tools available                                                                                  |
+|-----------------------------|--------------------------------------------------------------------------------------------------|
+| Server start (no Mechanical)| `check_mechanical_installed`, `launch_mechanical`, `connect_to_mechanical`, `get_guidelines_for` |
+| After `launch_mechanical` / | + `check_mechanical_status`, `run_python_script`, `run_python_script_from_file`,                 |
+|     `connect_to_mechanical` | &nbsp;&nbsp; `screenshot`, `save_project`, `get_model_info`, `export_results`, ...               |
+
+> The single `get_guidelines_for(content="workflow"|"materials"|"meshing"|...)`
+> tool replaces the older 10 separate `get_guidelines_for_*` tools.
+
 ## 1. Check Mechanical Installation
 
 **Tool:** `check_mechanical_installed`

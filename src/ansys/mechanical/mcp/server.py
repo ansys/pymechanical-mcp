@@ -355,6 +355,14 @@ def launcher(argv: list[str] | None = None) -> None:
     # Guarantee the system prompt is delivered during the MCP initialize handshake
     app.instructions = prompts.SYSTEM_PROMPT
 
+    # Disable tools that require an active Mechanical connection until one is established.
+    # When connect_on_startup is True, Mechanical will be connected during server startup,
+    # so these tools are available immediately and should not be disabled here.
+    if not session.connect_on_startup:
+        from ansys.mechanical.mcp.tools import REQUIRES_MECHANICAL_TAG
+
+        app.disable(tags={REQUIRES_MECHANICAL_TAG})
+
     if args.transport_type == "stdio":
         asyncio.run(app.run_stdio_async())
     elif args.transport_type == "http":

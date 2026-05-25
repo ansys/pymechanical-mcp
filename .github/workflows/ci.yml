@@ -1,6 +1,7 @@
 name: CI/CD
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     tags:
@@ -15,191 +16,145 @@ concurrency:
 permissions: {}
 
 env:
+  ON_CI: "true"
   MAIN_PYTHON_VERSION: "3.12"
   PACKAGE_NAME: "ansys-mechanical-mcp"
-  # DOCUMENTATION_CNAME: "mechanical-mcp.docs.pyansys.com"
+  DOCUMENTATION_CNAME: "mechanical-mcp.docs.pyansys.com"
 
 jobs:
 
-  # ── Code style ────────────────────────────────────────────────────────────
-  code-style:
+  update-changelog:
+    name: "Update CHANGELOG (on release)"
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: ansys/actions/doc-deploy-changelog@v10
+        with:
+          token: ${{ secrets.PYANSYS_CI_BOT_TOKEN }}
+          bot-user: ${{ secrets.PYANSYS_CI_BOT_USERNAME }}
+          bot-email: ${{ secrets.PYANSYS_CI_BOT_EMAIL }}
+
+  lint:
     name: "Code style checks"
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: "Checkout code"
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@v4
 
       - name: "Configure pip for private PyPI"
         run: |
-          pip config set global.extra-index-url \
-            https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
+          pip config set global.extra-index-url https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
+
+      - name: "Cache pre-commit hooks"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-
 
       - name: "Run PyAnsys code style checks"
-        uses: ansys/actions/code-style@41f86da4c9ead510db9135e428e33df9cc6f92e1 # v10.2.3
+        uses: ansys/actions/code-style@v10
         with:
           checkout: false
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          use-python-cache: true
 
-  # ── Unit tests ────────────────────────────────────────────────────────────
-  tests:
+  test:
     name: "Test Python ${{ matrix.python-version }} on ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
-    needs: [code-style]
+    needs: [lint]
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: "Checkout code"
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@v4
 
       - name: "Set up Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
+          cache: 'pip'
 
       - name: "Configure pip for private PyPI"
         run: |
-          pip config set global.extra-index-url \
-            https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
+          pip config set global.extra-index-url https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
 
       - name: "Install dependencies"
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e .[tests]
+          pip list
 
       - name: "Run unit tests"
         run: |
-          pytest -m "not integration" \
-            --cov=ansys.mechanical.mcp \
-            --cov-report=xml \
-            --cov-report=term-missing
+          pytest -m "not integration" --cov=ansys.mechanical.mcp --cov-report=xml --cov-report=term
 
-      - name: "Upload coverage reports"
-        if: matrix.python-version == env.MAIN_PYTHON_VERSION && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+  package:
+    name: "Package library"
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Configure pip for private PyPI"
+        run: |
+          pip config set global.extra-index-url https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
+
+      - name: "Build library source and wheel artifacts"
+        uses: ansys/actions/build-library@v10
+        env:
+          UV_EXTRA_INDEX_URL: 'https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/'
         with:
-          name: coverage-reports
-          path: |
-            htmlcov/
-            coverage.xml
-          retention-days: 7
+          library-name: ${{ env.PACKAGE_NAME }}
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          checkout: false
 
-  # ── Package library (DISABLED) ─────────────────────────────────────────
-  # package:
-  #   name: "Package library"
-  #   needs: [tests]
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #   steps:
-  #     - name: "Checkout code"
-  #       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #
-  #     - name: "Configure pip for private PyPI"
-  #       run: |
-  #         pip config set global.extra-index-url \
-  #           https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
-  #
-  #     - name: "Build library source and wheel artifacts"
-  #       uses: ansys/actions/build-library@41f86da4c9ead510db9135e428e33df9cc6f92e1 # v10.2.3
-  #       env:
-  #         UV_EXTRA_INDEX_URL: "https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/"
-  #       with:
-  #         library-name: ${{ env.PACKAGE_NAME }}
-  #         python-version: ${{ env.MAIN_PYTHON_VERSION }}
-  #         checkout: false
+  release:
+    name: "Release project"
+    if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags') }}
+    needs: [package, update-changelog]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: "Download the library artifacts from build-library step"
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}-artifacts
+          path: ${{ env.PACKAGE_NAME }}-artifacts
+          pattern: ${{ env.PACKAGE_NAME }}-artifacts
 
-  # ── Docker build & push ──────────────────────────────────────────────────
-  # Publishes the **standalone** pymechanical-mcp image (no Mechanical
-  # bundled, no --connect-on-startup) to ghcr.io.
-  #
-  # Currently DISABLED — uncomment the job below when the project is ready
-  # for public image releases.  Only runs on tag pushes (v*).
-  #
-  # docker-build-and-push:
-  #   name: "Build and push Docker image"
-  #   if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags') }}
-  #   needs: [package]
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     packages: write
-  #   steps:
-  #     - name: "Checkout code"
-  #       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #
-  #     - name: "Set up Docker Buildx"
-  #       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-  #
-  #     - name: "Login to GitHub Container Registry"
-  #       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #
-  #     - name: "Extract version from tag"
-  #       id: version
-  #       run: |
-  #         VERSION=${GITHUB_REF#refs/tags/v}
-  #         echo "version=$VERSION" >> $GITHUB_OUTPUT
-  #         echo "Version: $VERSION"
-  #
-  #     - name: "Build and push multi-arch Docker image"
-  #       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-  #       with:
-  #         context: .
-  #         file: ./docker/Dockerfile
-  #         platforms: linux/amd64,linux/arm64
-  #         push: true
-  #         tags: |
-  #           ghcr.io/${{ github.repository }}:latest
-  #           ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-  #         build-args: |
-  #           PYANSYS_PYPI_INDEX_URL=https://${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}@pkgs.dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/
-  #         secrets: |
-  #           github_token=${{ secrets.PYANSYS_CI_BOT_TOKEN }}
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
+      - name: "Display structure of downloaded files"
+        run: ls -Rla
 
-  # ── Release (DISABLED) ────────────────────────────────────────────────────
-  # release:
-  #   name: "Release project"
-  #   if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags') }}
-  #   needs: [package]
-  #   runs-on: ubuntu-latest
-  #   environment: release
-  #   permissions:
-  #     id-token: write
-  #     contents: write
-  #   steps:
-  #     - name: "Download the library artifacts from build-library step"
-  #       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-  #       with:
-  #         name: ${{ env.PACKAGE_NAME }}-artifacts
-  #         path: ${{ env.PACKAGE_NAME }}-artifacts
-  #         pattern: ${{ env.PACKAGE_NAME }}-artifacts
-  #
-  #     - name: "Display structure of downloaded files"
-  #       run: ls -Rla
-  #
-  #     - name: "Release to GitHub"
-  #       uses: ansys/actions/release-github@41f86da4c9ead510db9135e428e33df9cc6f92e1 # v10.2.3
-  #       with:
-  #         library-name: ${{ env.PACKAGE_NAME }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         only-code: true
+      - name: "Release to GitHub"
+        uses: ansys/actions/release-github@v10
+        with:
+          library-name: ${{ env.PACKAGE_NAME }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          only-code: true
+          add-artifact-attestation-notes: true
+          changelog-release-notes: true
 
       - name: "Release to private PyPI"
-        uses: ansys/actions/release-pypi-private@41f86da4c9ead510db9135e428e33df9cc6f92e1 # v10.2.3
+        uses: ansys/actions/release-pypi-private@v10
         with:
           library-name: ${{ env.PACKAGE_NAME }}
           twine-username: "__token__"
