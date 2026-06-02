@@ -351,6 +351,7 @@ def launcher(argv: list[str] | None = None) -> None:
         from ansys.mechanical.mcp import contexts  # noqa: F401
     from ansys.mechanical.mcp import prompts  # noqa: F401
     from ansys.mechanical.mcp import tools  # noqa: F401
+    from ansys.mechanical.mcp import toolsets  # noqa: F401
 
     # Guarantee the system prompt is delivered during the MCP initialize handshake
     app.instructions = prompts.SYSTEM_PROMPT
