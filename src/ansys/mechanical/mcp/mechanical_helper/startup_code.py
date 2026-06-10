@@ -20,8 +20,8 @@ loaded when the persistent Python session starts.
 """
 
 import base64
-import sys
 from io import BytesIO, TextIOWrapper
+import sys
 
 # Set UTF-8 encoding for stdout and stderr to handle Unicode characters
 if sys.stdout.encoding != "utf-8":
@@ -41,8 +41,8 @@ except ImportError:
 
 # Optional: Try to import PyVista for 3D visualization
 try:
-    import pyvista as pv
     from PIL import Image
+    import pyvista as pv
 
     # Enable off-screen rendering globally
     pv.OFF_SCREEN = True

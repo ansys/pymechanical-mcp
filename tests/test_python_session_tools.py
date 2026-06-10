@@ -1,11 +1,27 @@
+# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Tests for tools that use the persistent Python session."""
 
 import base64
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from mcp.types import ImageContent, TextContent
+import pytest
 
 from ansys.mechanical.mcp.tools import create_custom_plot, run_python_code
 
@@ -21,7 +37,11 @@ def mock_python_session():
 class TestRunPythonCode:
     def test_no_python_session(self, mock_context_no_mechanical):
         # Ensure no python_session attribute or explicit None
-        setattr(mock_context_no_mechanical.request_context.lifespan_context, "python_session", None)
+        setattr(
+            mock_context_no_mechanical.request_context.lifespan_context,
+            "python_session",
+            None,
+        )
 
         result = run_python_code(mock_context_no_mechanical, code="print('hi')")
 
@@ -79,7 +99,11 @@ class TestRunPythonCode:
 
     def test_code_is_sanitized_before_execute(self, mock_context, mock_python_session):
         mock_context.request_context.lifespan_context.python_session = mock_python_session
-        mock_python_session.execute.return_value = {"success": True, "stdout": "", "stderr": ""}
+        mock_python_session.execute.return_value = {
+            "success": True,
+            "stdout": "",
+            "stderr": "",
+        }
 
         dirty = "print('bullet:\u2022 and check:\u2713 and nbsp:\u00a0')"
         run_python_code(mock_context, code=dirty)

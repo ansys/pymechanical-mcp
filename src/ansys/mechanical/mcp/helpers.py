@@ -17,9 +17,9 @@
 
 import logging
 import os
+from pathlib import Path
 import socket
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -199,13 +199,16 @@ def resolve_transport_mode(
         return "mtls", str(cert_path)
 
     logger.info(
-        "Auto-detect: Linux platform without mTLS certificates; " "using transport_mode='insecure'."
+        "Auto-detect: Linux platform without mTLS certificates; using transport_mode='insecure'."
     )
     return "insecure", None
 
 
 def list_instances(
-    instances: bool = False, long: bool = False, cmd: bool = False, location: bool = False
+    instances: bool = False,
+    long: bool = False,
+    cmd: bool = False,
+    location: bool = False,
 ) -> str:
     """
     List running Mechanical instances on the system.
