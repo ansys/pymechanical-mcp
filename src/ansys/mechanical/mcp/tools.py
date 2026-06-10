@@ -1729,19 +1729,14 @@ def get_mechanical_logs(
 
     try:
         if source == "messages":
-            return _get_mechanical_messages(
-                mechanical, safe_tail_lines, contains, safe_max_chars
-            )
+            return _get_mechanical_messages(mechanical, safe_tail_lines, contains, safe_max_chars)
         elif source == "solve_log":
-            return _get_mechanical_solve_log(
-                mechanical, safe_tail_lines, contains, safe_max_chars
-            )
+            return _get_mechanical_solve_log(mechanical, safe_tail_lines, contains, safe_max_chars)
         else:
             return json.dumps(
                 {
                     "error": (
-                        f"Unknown source: {source!r}. "
-                        "Accepted values: 'messages', 'solve_log'."
+                        f"Unknown source: {source!r}. " "Accepted values: 'messages', 'solve_log'."
                     )
                 }
             )
