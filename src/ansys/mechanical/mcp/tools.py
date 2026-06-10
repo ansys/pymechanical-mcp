@@ -1674,6 +1674,207 @@ def _sanitize_output(text: str) -> str:
     return text
 
 
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
+def get_mechanical_logs(
+    ctx: Context,
+    source: str = "messages",
+    tail_lines: int = 200,
+    contains: str | None = None,
+    max_chars: int = 40000,
+) -> str:
+    """Return recent log entries from the connected Mechanical instance.
+
+    This tool provides visibility into Mechanical session activity by reading
+    either the application message list or solver output log file.
+
+    Parameters
+    ----------
+    ctx : Context
+        The MCP context containing server session and application context.
+    source : str, optional
+        Log source to read. Options:
+
+        - ``"messages"`` (default): Application messages (errors, warnings,
+          info) from ``ExtAPI.Application.Messages``.
+        - ``"solve_log"``: Raw solver transcript from ``solve.out`` in the
+          project directory.
+
+    tail_lines : int, optional
+        Number of most recent lines to return. Default is 200.
+    contains : str, optional
+        Case-insensitive substring filter applied to each line.
+    max_chars : int, optional
+        Maximum character count for the returned log text. Default is 40000.
+
+    Returns
+    -------
+    str
+        JSON string with log metadata and selected log text.
+    """
+    mechanical = ctx.request_context.lifespan_context.mechanical
+
+    if mechanical is None:
+        return (
+            "No Mechanical connection available. "
+            "Use connect_to_mechanical tool to establish a connection."
+        )
+
+    if tail_lines <= 0:
+        return "Invalid parameter: tail_lines must be greater than 0."
+    if max_chars <= 0:
+        return "Invalid parameter: max_chars must be greater than 0."
+
+    safe_tail_lines = min(tail_lines, 5000)
+    safe_max_chars = min(max_chars, 200000)
+
+    try:
+        if source == "messages":
+            return _get_mechanical_messages(
+                mechanical, safe_tail_lines, contains, safe_max_chars
+            )
+        elif source == "solve_log":
+            return _get_mechanical_solve_log(
+                mechanical, safe_tail_lines, contains, safe_max_chars
+            )
+        else:
+            return json.dumps(
+                {
+                    "error": (
+                        f"Unknown source: {source!r}. "
+                        "Accepted values: 'messages', 'solve_log'."
+                    )
+                }
+            )
+    except Exception as e:
+        error_msg = f"Error reading Mechanical logs: {str(e)}"
+        logger.error(error_msg)
+        return json.dumps({"error": error_msg})
+
+
+def _get_mechanical_messages(
+    mechanical: Any,
+    tail_lines: int,
+    contains: str | None,
+    max_chars: int,
+) -> str:
+    """Read application messages from Mechanical via ExtAPI."""
+    script = """
+import json
+msgs = ExtAPI.Application.Messages
+entries = []
+for i in range(msgs.Count):
+    m = msgs[i]
+    entries.append({
+        "severity": str(m.Severity),
+        "source": str(m.Source) if hasattr(m, 'Source') else "",
+        "summary": str(m.Summary) if hasattr(m, 'Summary') else str(m),
+    })
+json.dumps(entries)
+"""
+    raw = mechanical.run_python_script(script)
+
+    try:
+        entries = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        # Fallback: treat raw output as line-delimited text
+        entries = None
+
+    if entries is not None:
+        lines = [
+            f"[{e.get('severity', '?')}] {e.get('source', '')}: {e.get('summary', '')}"
+            for e in entries
+        ]
+    else:
+        lines = (raw or "").splitlines()
+
+    # Filter
+    if contains:
+        token = contains.lower()
+        lines = [ln for ln in lines if token in ln.lower()]
+
+    total = len(lines)
+    selected = lines[-tail_lines:]
+    text = "\n".join(selected)
+
+    truncated = False
+    if len(text) > max_chars:
+        text = text[-max_chars:]
+        truncated = True
+
+    return json.dumps(
+        {
+            "source": "messages",
+            "total_messages": total,
+            "returned_lines": len(selected),
+            "tail_lines_requested": tail_lines,
+            "contains": contains,
+            "truncated": truncated,
+            "logs": text,
+        },
+        indent=2,
+    )
+
+
+def _get_mechanical_solve_log(
+    mechanical: Any,
+    tail_lines: int,
+    contains: str | None,
+    max_chars: int,
+) -> str:
+    """Read the solve.out log file from the Mechanical project directory."""
+    project_dir = str(mechanical.project_directory)
+    solve_log = Path(project_dir) / "solve.out"
+
+    if not solve_log.exists():
+        # Try looking one level up or in common locations
+        candidates = list(Path(project_dir).rglob("solve.out"))
+        if candidates:
+            solve_log = candidates[0]
+        else:
+            return json.dumps(
+                {
+                    "source": "solve_log",
+                    "error": (
+                        f"solve.out not found in {project_dir}. "
+                        "Run a solve first to generate solver output."
+                    ),
+                }
+            )
+
+    with open(solve_log, "r", encoding="utf-8", errors="replace") as f:
+        all_lines = f.readlines()
+
+    filtered = all_lines
+    if contains:
+        token = contains.lower()
+        filtered = [ln for ln in all_lines if token in ln.lower()]
+
+    total = len(all_lines)
+    matched = len(filtered)
+    selected = filtered[-tail_lines:]
+    text = "".join(selected)
+
+    truncated = False
+    if len(text) > max_chars:
+        text = text[-max_chars:]
+        truncated = True
+
+    return json.dumps(
+        {
+            "source": "solve_log",
+            "log_file": str(solve_log),
+            "total_lines": total,
+            "matched_lines": matched,
+            "returned_lines": len(selected),
+            "tail_lines_requested": tail_lines,
+            "contains": contains,
+            "truncated": truncated,
+            "logs": text,
+        },
+        indent=2,
+    )
+
+
 # Conditionally disable tools based on session configuration
 if session.on_aali:
     app.disable(tags={"aali"})
