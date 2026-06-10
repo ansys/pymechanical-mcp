@@ -16,4 +16,3 @@ Or install from source:
    git clone https://github.com/ansys/pymechanical-mcp
    cd pymechanical-mcp
    pip install -e .
-
