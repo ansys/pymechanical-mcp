@@ -113,17 +113,20 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
     },
     "inspection": {
         "description": (
-            "Tools for inspecting the active Mechanical model and capturing " "screenshots."
+            "Tools for inspecting the active Mechanical model, capturing "
+            "screenshots, and reading session logs."
         ),
         "skill": (
             "Use get_model_info to retrieve a structured summary of the "
             "active model (geometry, mesh, materials, analyses, BCs, "
             "results). Use screenshot to capture the current 3D view as a "
-            "PNG for the user."
+            "PNG for the user. Use get_mechanical_logs to read application "
+            "messages or solver output for diagnostics."
         ),
         "tools": [
             "get_model_info",
             "screenshot",
+            "get_mechanical_logs",
         ],
     },
     "results": {
