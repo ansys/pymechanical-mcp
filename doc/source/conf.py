@@ -17,8 +17,8 @@
 """Sphinx documentation configuration file."""
 
 from datetime import datetime
-from pathlib import Path
 import os
+from pathlib import Path
 import re
 import sys
 

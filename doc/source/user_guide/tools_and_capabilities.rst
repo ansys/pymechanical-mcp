@@ -138,7 +138,7 @@ Modal analysis
 #. ``solve_analysis``
 #. ``create_custom_plot`` for mode-shape reporting
 
-Postprocessing checks
+Checks after solving
 ~~~~~~~~~~~~~~~~~~~~~
 
 #. ``get_model_info`` to verify solved state
