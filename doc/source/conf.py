@@ -117,7 +117,7 @@ numpydoc_xref_param_type = True
 autosectionlabel_prefix_document = True
 
 numpydoc_validate = False
-numpydoc_validation_checks = set()
+numpydoc_validation_checks: set[str] = set()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

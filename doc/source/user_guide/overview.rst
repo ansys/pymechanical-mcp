@@ -26,7 +26,7 @@ PyMechanical-MCP runs a FastMCP server and exposes a set of tools that map
 to Mechanical operations. A client (VS Code, Claude Code, Claude Desktop,
 or a custom MCP client) invokes tools over STDIO or HTTP transport.
 
-The server maintains a persistent application context that stores connection
+The server maintains a persistent app context that stores connection
 state and execution session data across tool calls.
 
 Connection-aware tool visibility
@@ -38,7 +38,7 @@ current state.
 
 - Before connection: lifecycle and utility tools are available
 - After connection: model/script/result tools are enabled
-- After disconnect: connection-dependent tools are disabled again
+- After disconnect: connection-dependent tools are turned off again
 
 If ``--connect-on-startup`` is used, connection-dependent tools are available
 immediately and ``launch_mechanical`` / ``connect_to_mechanical`` /
@@ -51,7 +51,7 @@ PyMechanical supports multiple gRPC transport modes for connecting to
 Mechanical:
 
 - ``auto`` (default): resolve best mode by environment
-- ``insecure``: plaintext gRPC
+- ``insecure``: plain text gRPC
 - ``mtls``: mutual TLS
 - ``wnua``: Windows Named User Authentication
 

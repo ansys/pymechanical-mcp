@@ -34,7 +34,7 @@ Model setup quality
 -------------------
 
 - Set units explicitly before defining loads/material parameters.
-- Verify named selection scopes before applying BCs.
+- Verify named selection scopes before applying boundary conditions.
 - Check mesh quality and element sizing before solve.
 - Confirm material assignment for every relevant body.
 

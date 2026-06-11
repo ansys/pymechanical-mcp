@@ -74,7 +74,7 @@ Available after connection
    * - ``get_model_info``
      - Structured model summary (geometry, mesh, analyses, results).
    * - ``screenshot``
-     - Capture current Mechanical viewport.
+     - Capture current Mechanical view.
    * - ``get_mechanical_logs``
      - Retrieve Mechanical logs for diagnostics.
    * - ``export_results``
@@ -98,8 +98,8 @@ Guideline topics
 - ``named_selections``
 - ``general``
 
-Toolset discovery resource
---------------------------
+Tool set discovery resource
+---------------------------
 
 PyMechanical-MCP exposes ``toolsets://definition`` for service-side discovery.
 The payload groups tools into:
@@ -125,7 +125,7 @@ Static structural run
 #. ``launch_mechanical`` or ``connect_to_mechanical``
 #. ``upload_file`` (geometry)
 #. ``run_python_script`` (import geometry, assign material, mesh)
-#. ``run_python_script`` (apply BCs and loads)
+#. ``run_python_script`` (apply boundary conditions and loads)
 #. ``solve_analysis``
 #. ``export_results`` and ``screenshot``
 
@@ -138,8 +138,8 @@ Modal analysis
 #. ``solve_analysis``
 #. ``create_custom_plot`` for mode-shape reporting
 
-Postprocessing diagnostics
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Postprocessing checks
+~~~~~~~~~~~~~~~~~~~~~
 
 #. ``get_model_info`` to verify solved state
 #. ``get_mechanical_logs`` for warnings/errors

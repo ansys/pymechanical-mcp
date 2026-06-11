@@ -67,7 +67,7 @@ Transport security mode
 Select gRPC transport behavior with ``--transport-mode``:
 
 - ``auto``: Detect based on platform/certificates.
-- ``insecure``: Plaintext gRPC.
+- ``insecure``: plain text gRPC.
 - ``mtls``: Mutual TLS (requires certificates).
 - ``wnua``: Windows Named User Authentication.
 

@@ -38,8 +38,8 @@ Context guidelines
    :undoc-members:
    :show-inheritance:
 
-Toolsets resource
------------------
+Tool sets resource
+------------------
 
 .. automodule:: ansys.mechanical.mcp.toolsets
    :members:
