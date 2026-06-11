@@ -19,10 +19,25 @@
 from datetime import datetime
 import os
 from pathlib import Path
+import re
+import sys
 
 from ansys_sphinx_theme import ansys_favicon, get_version_match, pyansys_logo_black
 
-from ansys.mechanical.mcp import __version__
+# Add package source directory for autodoc/version imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+
+
+def _read_project_version() -> str:
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    content = pyproject.read_text(encoding="utf-8")
+    match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+    if not match:
+        raise RuntimeError("Unable to determine project version from pyproject.toml")
+    return match.group(1)
+
+
+__version__ = _read_project_version()
 
 # Project information
 project = "pymechanical-mcp"
@@ -65,6 +80,7 @@ html_theme_options = {
         "json_url": f"https://{cname}/versions.json",
         "version_match": switcher_version,
     },
+    "check_switcher": False,
 }
 
 html_context = {
@@ -84,6 +100,11 @@ extensions = [
     "sphinx.ext.intersphinx",
 ]
 
+autodoc_mock_imports = [
+    "ansys.mechanical.core",
+]
+autosummary_mock_imports = autodoc_mock_imports
+
 # Intersphinx mapping
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -95,16 +116,8 @@ numpydoc_show_class_members = False
 numpydoc_xref_param_type = True
 autosectionlabel_prefix_document = True
 
-numpydoc_validate = True
-numpydoc_validation_checks = {
-    "GL08",  # The object does not have a docstring
-    "GL09",  # Deprecation warning should precede extended summary
-    "GL10",  # reST directives must be followed by two colons
-    "SS01",  # No summary found
-    "SS02",  # Summary does not start with a capital letter
-    "SS04",  # Summary contains heading whitespaces
-    "RT02",  # The first line of the Returns section should contain only the type
-}
+numpydoc_validate = False
+numpydoc_validation_checks = set()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

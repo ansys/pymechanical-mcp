@@ -8,3 +8,5 @@ Getting started
    :maxdepth: 2
 
    installation
+   ide_configuration
+   contribution
