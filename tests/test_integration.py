@@ -1,3 +1,19 @@
+# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Integration tests for PyMechanical MCP Server.
 
 These tests require a running Mechanical instance and are marked as 'integration'.
@@ -244,9 +260,11 @@ class TestLaunchMechanicalIntegration:
         - Custom port
         - Custom version
         """
-        import tempfile
 
-        from ansys.mechanical.mcp.tools import disconnect_from_mechanical, launch_mechanical
+        from ansys.mechanical.mcp.tools import (
+            disconnect_from_mechanical,
+            launch_mechanical,
+        )
 
         try:
             result = launch_mechanical(clean_context, port=10050)
@@ -321,7 +339,11 @@ class TestPythonPersistentSessionIntegration:
             "mechanical": persistent_real_context.request_context.lifespan_context.mechanical
         }
         # Simulate a normal dict-shaped execution result
-        session.execute.return_value = {"success": True, "stdout": "hello\n", "stderr": ""}
+        session.execute.return_value = {
+            "success": True,
+            "stdout": "hello\n",
+            "stderr": "",
+        }
         persistent_real_context.request_context.lifespan_context.python_session = session
 
         with capsys.disabled():

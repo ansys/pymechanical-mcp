@@ -1,0 +1,147 @@
+.. _ref_tools_and_capabilities:
+
+Tools and capabilities
+======================
+
+Tool availability model
+-----------------------
+
+PyMechanical-MCP uses connection-aware visibility.
+
+- Tools requiring a live Mechanical session are tagged with
+  ``REQUIRES_MECHANICAL_TAG``.
+- These tools are hidden until a successful ``launch_mechanical`` or
+  ``connect_to_mechanical``.
+- If ``--connect-on-startup`` is used, they are available immediately.
+
+Always available (before connection)
+------------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Tool
+     - Description
+   * - ``check_mechanical_installed``
+     - Verify that Mechanical is installed and discoverable.
+   * - ``check_mechanical_status``
+     - Inspect current MCP connection state.
+   * - ``list_mechanical_instances``
+     - List running Mechanical processes.
+   * - ``launch_mechanical``
+     - Start a new Mechanical session.
+   * - ``connect_to_mechanical``
+     - Attach to an existing Mechanical instance.
+   * - ``get_guidelines_for``
+     - Return workflow guidance by topic.
+
+Available after connection
+--------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Tool
+     - Description
+   * - ``disconnect_from_mechanical``
+     - Gracefully detach from Mechanical.
+   * - ``clear_mechanical``
+     - Clear context and release session resources.
+   * - ``run_python_code``
+     - Execute Python snippets in the persistent session.
+   * - ``run_python_script``
+     - Execute a Mechanical script string.
+   * - ``run_python_script_from_file``
+     - Execute a script file from working directory.
+   * - ``run_multiple_scripts``
+     - Execute multiple scripts sequentially.
+   * - ``save_project``
+     - Save active project.
+   * - ``open_project``
+     - Open an existing ``.mechdb`` project.
+   * - ``get_project_directory``
+     - Return active project working directory.
+   * - ``upload_file``
+     - Upload local file to Mechanical working directory.
+   * - ``download_file``
+     - Download file from Mechanical working directory.
+   * - ``list_files``
+     - List files in working directory.
+   * - ``solve_analysis``
+     - Solve active analysis system.
+   * - ``get_model_info``
+     - Structured model summary (geometry, mesh, analyses, results).
+   * - ``screenshot``
+     - Capture current Mechanical view.
+   * - ``get_mechanical_logs``
+     - Retrieve Mechanical logs for diagnostics.
+   * - ``export_results``
+     - Export result objects/artifacts.
+   * - ``create_custom_plot``
+     - Produce custom plots from analysis data.
+
+Guideline topics
+----------------
+
+``get_guidelines_for`` supports these topic values:
+
+- ``workflow``
+- ``geometry``
+- ``materials``
+- ``meshing``
+- ``analysis_setup``
+- ``boundary_conditions``
+- ``solution``
+- ``postprocessing``
+- ``named_selections``
+- ``general``
+
+Tool set discovery resource
+---------------------------
+
+PyMechanical-MCP exposes ``toolsets://definition`` for service-side discovery.
+The payload groups tools into:
+
+- lifecycle
+- scripting
+- project-management
+- file-management
+- simulation
+- inspection
+- results
+- guidelines
+
+This resource is read-only metadata. It does not modify runtime behavior.
+
+Example workflows
+-----------------
+
+Static structural run
+~~~~~~~~~~~~~~~~~~~~~
+
+#. ``check_mechanical_status``
+#. ``launch_mechanical`` or ``connect_to_mechanical``
+#. ``upload_file`` (geometry)
+#. ``run_python_script`` (import geometry, assign material, mesh)
+#. ``run_python_script`` (apply boundary conditions and loads)
+#. ``solve_analysis``
+#. ``export_results`` and ``screenshot``
+
+Modal analysis
+~~~~~~~~~~~~~~
+
+#. Connect to Mechanical
+#. Import model and define fixed supports
+#. Create modal analysis settings with script tools
+#. ``solve_analysis``
+#. ``create_custom_plot`` for mode-shape reporting
+
+Checks after solving
+~~~~~~~~~~~~~~~~~~~~~
+
+#. ``get_model_info`` to verify solved state
+#. ``get_mechanical_logs`` for warnings/errors
+#. ``run_python_code`` for custom data extraction
+#. ``export_results`` for report artifacts

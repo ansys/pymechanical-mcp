@@ -1,9 +1,24 @@
+# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Lifespan and CLI entry for the MCP server with startup options."""
 
 import argparse
+from dataclasses import dataclass
 import os
 import sys
-from dataclasses import dataclass
 from typing import Any, Optional
 
 from ansys.common.mcp import (
@@ -349,9 +364,11 @@ def launcher(argv: list[str] | None = None) -> None:
     # import tools, contexts, and prompts to register them
     if not session.on_aali:
         from ansys.mechanical.mcp import contexts  # noqa: F401
-    from ansys.mechanical.mcp import prompts  # noqa: F401
-    from ansys.mechanical.mcp import tools  # noqa: F401
-    from ansys.mechanical.mcp import toolsets  # noqa: F401
+    from ansys.mechanical.mcp import (
+        prompts,  # noqa: F401
+        tools,  # noqa: F401
+        toolsets,  # noqa: F401
+    )
 
     # Guarantee the system prompt is delivered during the MCP initialize handshake
     app.instructions = prompts.SYSTEM_PROMPT

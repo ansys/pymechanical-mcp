@@ -7,7 +7,7 @@ name = "ansys-mechanical-mcp"
 version = "0.1.0"
 description = "Model Context Protocol (MCP) server for Ansys Mechanical through PyMechanical"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<4"
 license = { file = "LICENSE" }
 authors = [
     { name = "ANSYS, Inc.", email = "pyansys.core@ansys.com" }
@@ -31,7 +31,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -61,25 +61,22 @@ doc = [
     "ansys-sphinx-theme[changelog]==1.6.4",
     "numpydoc==1.10.0",
     "sphinx-autodoc-typehints==3.1.0",
+    "sphinx-design>=0.5.0",
     "sphinx-notfound-page==1.1.0",
     "sphinx==8.2.3",
-    "sphinxcontrib-video==0.4.2",
 ]
 
 dev = [
     "ansys-mechanical-mcp[tests,doc]",
     "pre-commit>=3.5.0",
-    "black>=25.0",
-    "isort>=7.0",
+    "ruff>=0.11.0",
     "mypy>=1.8.0",
-    "flake8>=7.0",
-    "pydocstyle>=6.3.0",
     "bandit[toml]>=1.8.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/ansys/pymechanical-mcp"
-Documentation = "https://github.com/ansys/pymechanical-mcp#readme"
+Documentation = "https://mechanical-mcp.docs.pyansys.com"
 Repository = "https://github.com/ansys/pymechanical-mcp"
 Issues = "https://github.com/ansys/pymechanical-mcp/issues"
 
@@ -89,14 +86,30 @@ ansys-mechanical-mcp = "ansys.mechanical.mcp.__main__:launcher"
 [tool.flit.module]
 name = "ansys.mechanical.mcp"
 
-[tool.black]
+[tool.ruff]
 line-length = 100
-target-version = ["py310", "py311", "py312", "py313"]
-
-[tool.isort]
-profile = "black"
-line_length = 100
-src_paths = ["src", "tests"]
+fix = true
+format.indent-style = "space"
+format.quote-style = "double"
+lint.select = [
+  "D",   # pydocstyle
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # isort
+  "N",   # pep8-naming
+]
+lint.ignore = [
+  "D100", # Missing docstring in public module
+  "D104", # Missing docstring in public package
+  "D401", # First line of docstring should be in imperative mood
+]
+lint.per-file-ignores."!src/**.py" = [ "D" ]
+lint.per-file-ignores."__init__.py" = [ "F401" ]
+lint.per-file-ignores."tests/**.py" = [ "D", "E501", "N806" ]
+lint.isort.combine-as-imports = true
+lint.isort.force-sort-within-sections = true
+lint.isort.known-first-party = [ "ansys.mechanical.mcp" ]
+lint.pydocstyle.convention = "numpy"
 
 [tool.mypy]
 python_version = "3.10"
@@ -136,21 +149,6 @@ markers = [
 exclude_dirs = ["tests", ".venv", "venv"]
 skips = ["B101"]  # Skip assert_used in tests
 
-[tool.pydocstyle]
-convention = "numpy"
-add_ignore = ["D100", "D104"]  # Missing docstring in public module/package
-
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E203", "W503"]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-]
 
 [tool.uv]
 # Ensure dependencies are resolved from PyPI first, not internal indexes

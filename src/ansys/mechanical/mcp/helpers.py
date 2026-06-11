@@ -1,10 +1,25 @@
+# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Helper functions for PyMechanical-MCP."""
 
 import logging
 import os
+from pathlib import Path
 import socket
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -184,13 +199,16 @@ def resolve_transport_mode(
         return "mtls", str(cert_path)
 
     logger.info(
-        "Auto-detect: Linux platform without mTLS certificates; " "using transport_mode='insecure'."
+        "Auto-detect: Linux platform without mTLS certificates; using transport_mode='insecure'."
     )
     return "insecure", None
 
 
 def list_instances(
-    instances: bool = False, long: bool = False, cmd: bool = False, location: bool = False
+    instances: bool = False,
+    long: bool = False,
+    cmd: bool = False,
+    location: bool = False,
 ) -> str:
     """
     List running Mechanical instances on the system.
