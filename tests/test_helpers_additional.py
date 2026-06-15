@@ -6,10 +6,9 @@
 import json
 import runpy
 import sys
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 from unittest.mock import MagicMock
 
-import pytest
 import psutil
 
 from ansys.mechanical.mcp import helpers
