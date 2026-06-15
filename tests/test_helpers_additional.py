@@ -132,6 +132,20 @@ def test_get_info_error_paths():
     assert "error" in info["model"]
 
 
+def test_sanitize_output_replacements():
+    from ansys.mechanical.mcp import tools
+
+    text = "\u2713 ok \u2717 bad \u2022 bullet \u00a0space \u2588block"
+
+    result = tools._sanitize_output(text)
+
+    assert "[OK]" in result
+    assert "[X]" in result
+    assert "*" in result
+    assert "space" in result
+    assert "#" in result
+
+
 def test_startup_code_error_paths(monkeypatch):
     from ansys.mechanical.mcp.mechanical_helper import startup_code
 
@@ -140,6 +154,54 @@ def test_startup_code_error_paths(monkeypatch):
 
     monkeypatch.setattr(startup_code, "PYVISTA_AVAILABLE", False)
     assert startup_code.save_plot(MagicMock()) == "Error: PyVista is not available"
+
+
+def test_startup_code_save_matplotlib_plot_success(monkeypatch):
+    from ansys.mechanical.mcp.mechanical_helper import startup_code
+
+    buffer = MagicMock()
+    buffer.read.return_value = b"png-bytes"
+    fake_plot = MagicMock()
+    fake_plot.savefig.return_value = None
+    fake_plt = MagicMock()
+    fake_plt.savefig.side_effect = fake_plot.savefig
+    fake_plt.close.return_value = None
+
+    monkeypatch.setattr(startup_code, "MATPLOTLIB_AVAILABLE", True)
+    monkeypatch.setattr(startup_code, "plt", fake_plt)
+    monkeypatch.setattr(startup_code, "BytesIO", lambda: buffer)
+
+    result = startup_code.save_matplotlib_plot(dpi=200)
+
+    assert result.startswith("data:image/png;base64,")
+    fake_plt.savefig.assert_called_once_with(buffer, format="png", dpi=200, bbox_inches="tight")
+    fake_plt.close.assert_called_once()
+
+
+def test_startup_code_save_plot_success(monkeypatch):
+    from ansys.mechanical.mcp.mechanical_helper import startup_code
+
+    image = MagicMock()
+    image.save.return_value = None
+    buffer = MagicMock()
+    buffer.read.return_value = b"plot-bytes"
+    fake_image_module = MagicMock()
+    fake_image_module.fromarray.return_value = image
+    fake_plotter = MagicMock()
+    fake_plotter.screenshot.return_value = [1, 2, 3]
+    fake_plotter.close.return_value = None
+
+    monkeypatch.setattr(startup_code, "PYVISTA_AVAILABLE", True)
+    monkeypatch.setattr(startup_code, "Image", fake_image_module)
+    monkeypatch.setattr(startup_code, "BytesIO", lambda: buffer)
+    monkeypatch.setattr(startup_code.base64, "b64encode", lambda data: b"encoded")
+
+    result = startup_code.save_plot(fake_plotter)
+
+    assert result == "data:image/png;base64,encoded"
+    fake_plotter.screenshot.assert_called_once_with(return_img=True, transparent_background=False)
+    image.save.assert_called_once_with(buffer, format="PNG")
+    fake_plotter.close.assert_called_once()
 
 
 def test_module_entrypoint_invokes_launcher(monkeypatch):
