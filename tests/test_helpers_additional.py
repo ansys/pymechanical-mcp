@@ -15,7 +15,9 @@ from ansys.mechanical.mcp import helpers
 
 
 class _Proc:
-    def __init__(self, name, status, pid, cmdline, cwd="C:/work", children_count=0, cwd_raises=False):
+    def __init__(
+        self, name, status, pid, cmdline, cwd="C:/work", children_count=0, cwd_raises=False
+    ):
         self._name = name
         self._status = status
         self.pid = pid
