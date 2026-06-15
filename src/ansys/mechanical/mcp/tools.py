@@ -973,7 +973,7 @@ r"{temp_path}"
             return [TextContent(type="text", text=f"Screenshot file not created: {temp_path}")]
 
         # Read image data
-        with open(image_path, "rb") as f:
+        with image_path.open("rb") as f:
             image_data = f.read()
 
         # Encode to base64
@@ -986,7 +986,7 @@ r"{temp_path}"
 
         # Clean up temp file
         try:
-            os.unlink(temp_path)
+            Path(temp_path).unlink()
         except OSError:
             pass
 
@@ -1859,7 +1859,7 @@ def _get_mechanical_solve_log(
                 }
             )
 
-    with open(solve_log, "r", encoding="utf-8", errors="replace") as f:
+    with solve_log.open("r", encoding="utf-8", errors="replace") as f:
         all_lines = f.readlines()
 
     filtered = all_lines
