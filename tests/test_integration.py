@@ -23,7 +23,7 @@ To skip integration tests, run: pytest -m "not integration"
 """
 
 import os
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -190,17 +190,18 @@ class TestLaunchMechanicalIntegration:
     @pytest.fixture
     def clean_context(self):
         """Create a clean context with no Mechanical connection."""
-        from unittest.mock import MagicMock
-
         from ansys.mechanical.mcp.server import PyMechanicalAppContext
 
         context = MagicMock()
+        context.enable_components = AsyncMock(return_value=None)
+        context.disable_components = AsyncMock(return_value=None)
         context.request_context = MagicMock()
         context.request_context.lifespan_context = PyMechanicalAppContext(mechanical=None)
 
         return context
 
-    def test_launch_mechanical_basic_workflow(self, clean_context):
+    @pytest.mark.asyncio
+    async def test_launch_mechanical_basic_workflow(self, clean_context):
         """Test launching Mechanical with default parameters and executing scripts.
 
         This test combines multiple scenarios:
@@ -218,7 +219,7 @@ class TestLaunchMechanicalIntegration:
 
         try:
             # Launch Mechanical
-            result = launch_mechanical(clean_context)
+            result = await launch_mechanical(clean_context)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -245,15 +246,16 @@ class TestLaunchMechanicalIntegration:
             assert "version" in status_data["connection"]
 
             # Test launching when already connected
-            result2 = launch_mechanical(clean_context)
+            result2 = await launch_mechanical(clean_context)
             assert "Already connected to a Mechanical instance" in result2
             assert "disconnect first" in result2
 
         finally:
             # Clean up
-            disconnect_from_mechanical(clean_context)
+            await disconnect_from_mechanical(clean_context)
 
-    def test_launch_mechanical_custom_parameters(self, clean_context):
+    @pytest.mark.asyncio
+    async def test_launch_mechanical_custom_parameters(self, clean_context):
         """Test launching Mechanical with custom parameters.
 
         This test combines:
@@ -267,7 +269,7 @@ class TestLaunchMechanicalIntegration:
         )
 
         try:
-            result = launch_mechanical(clean_context, port=10050)
+            result = await launch_mechanical(clean_context, port=10050)
 
             # Verify successful launch
             assert isinstance(result, str)
@@ -280,7 +282,7 @@ class TestLaunchMechanicalIntegration:
 
         finally:
             # Disconnect Mechanical
-            disconnect_from_mechanical(clean_context)
+            await disconnect_from_mechanical(clean_context)
 
 
 @pytest.mark.integration
