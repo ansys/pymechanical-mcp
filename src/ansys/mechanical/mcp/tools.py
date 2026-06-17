@@ -45,7 +45,7 @@ REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 # Access type-safe lifespan context in tools
 @app.tool(
     tags={REQUIRES_MECHANICAL_TAG}
-)  # TODO: I would have expected the tag ``lifecycle`` to be added here and not only in toolset
+)  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
 def check_mechanical_status(ctx: Context) -> str:
     """Check the status of Mechanical initialization.
 
