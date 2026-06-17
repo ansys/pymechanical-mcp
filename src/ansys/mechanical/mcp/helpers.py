@@ -118,13 +118,12 @@ def resolve_transport_mode(
        parameter) supplies a concrete mode (``insecure``, ``mtls``, or
        ``wnua``), honour it unconditionally.
     2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):
-       - On **Windows** → return ``None`` so that PyMechanical applies its
-         own platform default (``wnua``).
-       - On **Linux / Docker** →
-         - If mTLS certificate files are found → ``"mtls"`` + the
-           resolved certificate directory.
-         - Otherwise → ``"insecure"`` (the only mode that can succeed
-           without certs; WNUA is Windows-only).
+         - On **Windows** → return ``None`` so that PyMechanical applies its
+           own platform default (``wnua``).
+         - On **Linux / Docker**, return ``"mtls"`` plus the resolved
+           certificate directory when mTLS certificate files are found;
+           otherwise, return ``"insecure"`` (the only mode that can
+           succeed without certs; WNUA is Windows-only).
 
     Parameters
     ----------

@@ -154,6 +154,7 @@ exclude_patterns = [
 ]
 
 suppress_warnings = [
+    "autoapi.python_import_resolution",  # Needed due to autoapi limitations
     "toc.not_included",
     "toc.not_readable",
     "design.fa-build",
