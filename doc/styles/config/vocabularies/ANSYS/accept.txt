@@ -34,5 +34,3 @@ PR
 Mechanical
 PyMechanical
 FEA
-MAPDL
-PyMAPDL

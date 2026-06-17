@@ -43,7 +43,9 @@ REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
 
 # Access type-safe lifespan context in tools
-@app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@app.tool(
+    tags={REQUIRES_MECHANICAL_TAG}
+)  # TODO: I would have expected the tag ``lifecycle`` to be added here and not only in toolset
 def check_mechanical_status(ctx: Context) -> str:
     """Check the status of Mechanical initialization.
 
@@ -133,14 +135,14 @@ def check_mechanical_installed(ctx: Context) -> str:
         probe = _probe_grpc_endpoint(ip, port)
         if probe["reachable"]:
             return (
-                f"Running inside a Docker container — local installation "
+                f"Running inside a Docker container: local installation "
                 f"check is not available.\n"
                 f"However, a Mechanical gRPC server is reachable at "
                 f"{ip}:{port}.\n"
                 f"Use 'connect_to_mechanical' to establish a session."
             )
         return (
-            f"Running inside a Docker container — local installation "
+            f"Running inside a Docker container: local installation "
             f"check is not available.\n"
             f"No Mechanical gRPC server detected at {ip}:{port} "
             f"(error: {probe['error']}).\n"
@@ -355,7 +357,7 @@ async def launch_mechanical(
             target_port = int(os.environ.get("PYMECHANICAL_PORT", "10000"))
             return (
                 "Launching Mechanical from inside a Docker container is not "
-                "supported — the MCP server cannot start host processes.\n"
+                "supported: the MCP server cannot start host processes.\n"
                 f"Please start Mechanical on the host machine with gRPC "
                 f"enabled on port {target_port}, then use "
                 f"'connect_to_mechanical' to establish a session."
@@ -602,13 +604,13 @@ def list_mechanical_instances() -> str:
         probe = _probe_grpc_endpoint(ip, port)
         if probe["reachable"]:
             return (
-                f"Running inside a Docker container — host process "
+                f"Running inside a Docker container: host process "
                 f"scanning is not available.\n"
                 f"Mechanical gRPC endpoint at {ip}:{port} is REACHABLE.\n"
                 f"Use 'connect_to_mechanical' to establish a session."
             )
         return (
-            f"Running inside a Docker container — host process "
+            f"Running inside a Docker container: host process "
             f"scanning is not available.\n"
             f"Mechanical gRPC endpoint at {ip}:{port} is "
             f"NOT REACHABLE (error: {probe['error']}).\n"

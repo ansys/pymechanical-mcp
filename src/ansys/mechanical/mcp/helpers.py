@@ -114,7 +114,7 @@ def resolve_transport_mode(
 
     The resolution strategy is:
 
-    1. **Explicit override** — if the caller (CLI flag, env-var, or tool
+    1. **Explicit override**: if the caller (CLI flag, env-var, or tool
        parameter) supplies a concrete mode (``insecure``, ``mtls``, or
        ``wnua``), honour it unconditionally.
     2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):

@@ -29,7 +29,7 @@ if sys.stdout.encoding != "utf-8":
 if sys.stderr.encoding != "utf-8":
     sys.stderr = TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-# Matplotlib is optional — needed only for create_custom_plot
+# Matplotlib is optional; needed only for create_custom_plot
 try:
     import matplotlib
     import matplotlib.pyplot as plt
@@ -131,7 +131,7 @@ def save_matplotlib_plot(dpi=150):
 if MATPLOTLIB_AVAILABLE:
     print("Matplotlib configured with non-interactive backend (Agg)")
 else:
-    print("Matplotlib not available (optional — install for custom plots)")
+    print("Matplotlib not available (optional: install for custom plots)")
 if PYVISTA_AVAILABLE:
     print("PyVista configured for off-screen rendering")
 else:

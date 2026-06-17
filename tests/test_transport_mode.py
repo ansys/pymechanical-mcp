@@ -255,7 +255,7 @@ class TestResolveTransportMode:
 
 
 # ---------------------------------------------------------------------------
-# connect_to_mechanical tool — transport_mode pass-through
+# connect_to_mechanical tool - transport_mode pass-through
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestConnectToMechanicalTransportMode:
@@ -438,7 +438,7 @@ class TestConnectToMechanicalTransportMode:
 
 
 # ---------------------------------------------------------------------------
-# launch_mechanical tool — transport_mode pass-through
+# launch_mechanical tool - transport_mode pass-through
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestLaunchMechanicalTransportMode:
@@ -607,7 +607,7 @@ class TestCLITransportModeArgs:
 
 
 # ---------------------------------------------------------------------------
-# product_startup — transport_mode
+# product_startup - transport_mode
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestProductStartupTransportMode:

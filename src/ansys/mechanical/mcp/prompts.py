@@ -55,26 +55,26 @@ Mechanical script.** Call multiple guidelines for multi-step workflows.
 
 ## Core Scripting Concepts
 
-**Execution model** — All automation uses `run_python_script` (or the other
+**Execution model**: All automation uses `run_python_script` (or the other
 script execution tools). Scripts run *inside* Mechanical and access these
 built-in entry points directly (no imports needed):
-- `ExtAPI` — root API entry point
-- `DataModel` — CAD, mesh entities, and Outline objects
-- `Model` — the Model object from the Outline
-- `Tree` — the Outline tree
-- `Graphics` — 3D graphics engine
+- `ExtAPI`: root API entry point
+- `DataModel`: CAD, mesh entities, and Outline objects
+- `Model`: the Model object from the Outline
+- `Tree`: the Outline tree
+- `Graphics`: 3D graphics engine
 
-**Units** — Always use `Quantity("value [unit]")` with square brackets:
+**Units**: Always use `Quantity("value [unit]")` with square brackets:
 `Quantity("1000 [N]")`, `Quantity("5 [mm]")`, `Quantity("100 [C]")`
 
-**Performance** — Wrap bulk modifications in `with Transaction(): …`
+**Performance**: Wrap bulk modifications in `with Transaction(): …`
 
-**Scoping** — Always prefer Named Selections over direct geometry picks for
+**Scoping**: Always prefer Named Selections over direct geometry picks for
 boundary conditions, loads, and results.
 
 ## Workflow
 
-1. Verify connection — call `check_mechanical_status` first.
+1. Verify connection: call `check_mechanical_status` first.
 2. Import geometry → assign materials → mesh → set up analysis →
    apply BCs/loads → solve → add & evaluate result objects → export.
 3. After adding any result object, call `EvaluateAllResults()` before reading

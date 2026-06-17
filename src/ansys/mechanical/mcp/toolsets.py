@@ -10,7 +10,7 @@ MCP family:
 
 ``{"name": str, "description": str, "skill": str, "tools": list[str]}``
 
-The catalogue is a pure discovery aid — it does not affect tool visibility,
+The catalogue is a pure discovery aid; it does not affect tool visibility,
 gating, or runtime behavior. Visibility is still controlled by the existing
 ``REQUIRES_MECHANICAL_TAG`` / ``aali`` / ``locked_connection`` tags applied
 in :mod:`ansys.mechanical.mcp.tools`.
