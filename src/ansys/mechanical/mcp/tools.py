@@ -31,6 +31,7 @@ from fastmcp.server.server import get_logger
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
 from ansys.mechanical.mcp import app
 from ansys.mechanical.mcp.server import session
+from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint, list_instances, get_info, resolve_transport_mode
 from mcp.types import ImageContent, TextContent
 
 logger = get_logger(__name__)
@@ -75,8 +76,6 @@ def check_mechanical_status(ctx: Context) -> str:
         )
 
     try:
-        from ansys.mechanical.mcp.helpers import get_info
-
         # Check if Mechanical has exited
         if hasattr(mechanical, "exited") and mechanical.exited:
             return "Mechanical instance has exited. Please reconnect or launch a new instance."
@@ -111,8 +110,6 @@ def check_mechanical_installed(ctx: Context) -> str:
     str
         Status message indicating whether Mechanical is installed or reachable.
     """
-    from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint
-
     logger.info("Checking if Mechanical is installed...")
 
     # Inside Docker we can't inspect the host filesystem, but we can probe
@@ -351,8 +348,6 @@ async def launch_mechanical(
     logger.info("Launching new Mechanical instance...")
 
     try:
-        from ansys.mechanical.mcp.helpers import _is_docker
-
         if _is_docker():
             target_port = int(os.environ.get("PYMECHANICAL_PORT", "10000"))
             return (
@@ -369,8 +364,6 @@ async def launch_mechanical(
                 "Already connected to a Mechanical instance. "
                 "Please disconnect first using disconnect_from_mechanical tool."
             )
-
-        from ansys.mechanical.mcp.helpers import resolve_transport_mode
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
@@ -464,7 +457,6 @@ async def connect_to_mechanical(
     # When running in Docker the function parameter defaults (127.0.0.1 /
     # 10000) point at the container itself, not the host.  Prefer the
     # environment variables which are pre-configured in the Dockerfile.
-    from ansys.mechanical.mcp.helpers import _is_docker
 
     if _is_docker():
         if ip == "127.0.0.1":
@@ -481,8 +473,6 @@ async def connect_to_mechanical(
                 "Already connected to a Mechanical instance. "
                 "Please disconnect first using disconnect_from_mechanical tool."
             )
-
-        from ansys.mechanical.mcp.helpers import resolve_transport_mode
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
@@ -593,8 +583,6 @@ def list_mechanical_instances() -> str:
         Formatted table of Mechanical instances, or reachability status
         when running in Docker.
     """
-    from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint
-
     logger.info("Searching for Mechanical instances...")
 
     if _is_docker():
@@ -617,8 +605,6 @@ def list_mechanical_instances() -> str:
             f"Please start Mechanical on the host machine with gRPC "
             f"enabled on port {port}, then retry."
         )
-
-    from ansys.mechanical.mcp.helpers import list_instances
 
     return list_instances(long=True, instances=True)
 
