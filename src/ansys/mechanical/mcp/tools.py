@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """List of tools in PyMechanical-MCP."""
 
 import base64
@@ -30,8 +31,14 @@ from fastmcp.server.server import get_logger
 # The import happens during server startup, before STDIO transport is active
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
 from ansys.mechanical.mcp import app
+from ansys.mechanical.mcp.helpers import (
+    _is_docker,
+    _probe_grpc_endpoint,
+    get_info,
+    list_instances,
+    resolve_transport_mode,
+)
 from ansys.mechanical.mcp.server import session
-from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint, list_instances, get_info, resolve_transport_mode
 from mcp.types import ImageContent, TextContent
 
 logger = get_logger(__name__)
