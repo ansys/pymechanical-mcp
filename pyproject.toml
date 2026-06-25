@@ -158,7 +158,6 @@ markers = [
 exclude_dirs = ["tests", ".venv", "venv"]
 skips = ["B101"]  # Skip assert_used in tests
 
-
 [tool.uv]
 # Ensure dependencies are resolved from PyPI first, not internal indexes
 # This prevents version conflicts when users have internal PyPI indexes configured
