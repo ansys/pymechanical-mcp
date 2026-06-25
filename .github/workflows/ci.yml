@@ -126,7 +126,7 @@ jobs:
           operating-system: ${{ matrix.os }}
           python-version: ${{ matrix.python-version }}
 
-  test:
+  tests:
     name: "Test Python ${{ matrix.python-version }} on ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     needs: [smoke-tests]
@@ -160,7 +160,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [test, build-docs]
+    needs: [tests, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
@@ -231,7 +231,7 @@ jobs:
           name: ${{ env.PACKAGE_NAME }}-artifacts
           path: ${{ env.PACKAGE_NAME }}-artifacts
 
-      - name: "Upload artifacts to PyPI using trusted publisher"
+      - name: "Release to PyPI"
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           repository-url: "https://upload.pypi.org/legacy/"
