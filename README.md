@@ -26,7 +26,7 @@ This MCP server bridges the gap between AI assistants and Ansys Mechanical, allo
 
 ## Prerequisites
 
-- Python 3.10 or higher (up to 3.13)
+- Python 3.11 or higher (up to 3.13)
 - Ansys Mechanical installation (optional - can connect to remote instances)
 - PyMechanical library (ansys-mechanical-core >= 0.12.0)
 - FastMCP library (fastmcp >= 0.1.0)

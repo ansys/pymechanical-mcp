@@ -3,13 +3,13 @@
 Installation
 ============
 
-PyMechanical-MCP supports Python 3.10 through 3.13.
+PyMechanical-MCP supports Python 3.11 through 3.13.
 
 Prerequisites
 -------------
 
 - Ansys Mechanical installation (local or remote) with an available gRPC endpoint
-- Python 3.10+
+- Python 3.11+
 - Network access between MCP server and Mechanical server
 
 Install from PyPI
