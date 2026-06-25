@@ -3,7 +3,7 @@
 Installation
 ============
 
-PyMechanical-MCP supports Python 3.11 through 3.13.
+PyMechanical-MCP supports Python 3.11 through 3.14.
 
 Prerequisites
 -------------

@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.13
 
 # Add labels for metadata
 LABEL org.opencontainers.image.title="PyMechanical MCP Server"
