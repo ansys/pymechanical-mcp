@@ -321,7 +321,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -352,7 +352,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -383,7 +383,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -623,7 +623,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -661,7 +661,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -692,7 +692,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -726,7 +726,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -852,7 +852,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
