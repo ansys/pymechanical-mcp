@@ -248,7 +248,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [test, integration-local, integration-remote, build-docs]
+    needs: [tests, integration-local, integration-remote, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
