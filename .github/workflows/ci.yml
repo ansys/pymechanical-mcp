@@ -147,7 +147,7 @@ jobs:
 
   integration-local:
     name: "Integration Tests (local Mechanical)"
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     needs: [smoke-tests]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
@@ -179,7 +179,7 @@ jobs:
 
   integration-remote:
     name: "Integration Tests (remote Mechanical)"
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     needs: [smoke-tests]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
