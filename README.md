@@ -760,14 +760,13 @@ pytest -m integration
 
 ### Integration tests in CI
 
-The main CI matrix runs only unit tests (`-m "not integration"`).
+The main CI matrix job runs only unit tests (`-m "not integration"`).
 
-Integration tests run as part of the main CI workflow in two dedicated jobs:
+Integration tests run as part of the main CI workflow, but in a dedicated job:
 
-- `integration-local`: runs tests inside a Mechanical-enabled CI container
-- `integration-remote`: starts a Mechanical container and connects to it over gRPC
+- `integration-tests`: starts a Mechanical container and connects to it over gRPC
 
-Both jobs run `pytest -m integration`.
+Run `pytest -m integration`.
 
 Session startup behavior follows official PyMechanical guidance:
 

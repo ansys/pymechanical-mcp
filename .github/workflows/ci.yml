@@ -145,44 +145,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           pytest-markers: '-m "not integration"'
 
-  integration-local:
-    name: "Integration Tests (local Mechanical)"
-    runs-on: public-ubuntu-latest-16-cores
-    needs: [smoke-tests]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: read # Needed to checkout the code
-      packages: read # Needed to pull the Mechanical container image
-    container:
-      image: ghcr.io/ansys/mechanical:25.2.0 # zizmor: ignore[unpinned-images]
-      options: -u=0:0 --oom-kill-disable --memory=6656MB --memory-swap=16896MB --shm-size=1gb --entrypoint /bin/bash
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    env:
-      ON_LOCAL: "true"
-      ON_CI: "true"
-      PYMECHANICAL_TRANSPORT_MODE: "insecure"
-    steps:
-      - name: "Install integration prerequisites"
-        shell: bash
-        run: |
-          apt-get update && apt-get -y install gcc mono-mcs g++ libgl1 libglx-mesa0 xvfb libgomp1 graphviz curl git && apt-get clean
-
-      - name: "Run integration tests"
-        run: |
-          python3 --version
-
-          python3 -m venv .venv
-          source .venv/bin/activate
-
-          pip install -U pip
-          pip install -e .[tests]
-
-          pytest -m "integration
-
-
-  integration-remote:
+  integration-tests:
     name: "Integration Tests (remote Mechanical)"
     runs-on: public-ubuntu-latest-16-cores
     needs: [smoke-tests]
@@ -253,7 +216,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [tests, integration-local, integration-remote, build-docs]
+    needs: [tests, integration-tests, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
