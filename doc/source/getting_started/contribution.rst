@@ -29,7 +29,16 @@ Run tests:
 
 .. code-block:: bash
 
-   pytest -q
+   # Fast unit tests (default CI matrix path)
+   pytest -m "not integration"
+
+   # Integration tests (requires Mechanical)
+   pytest -m integration
+
+In CI, integration tests are executed in two dedicated jobs:
+
+- ``Integration Tests (local Mechanical)``
+- ``Integration Tests (remote Mechanical)``
 
 Run linters:
 

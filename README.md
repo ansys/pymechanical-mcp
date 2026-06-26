@@ -762,16 +762,19 @@ pytest -m integration
 
 The main CI matrix runs only unit tests (`-m "not integration"`).
 
-Integration tests are executed by the dedicated workflow
-`Integration Tests` in [.github/workflows/integration.yml](.github/workflows/integration.yml).
-That workflow expects:
+Integration tests run as part of the main CI workflow in two dedicated jobs:
 
-- Repository variable: `MECHANICAL_DOCKER_IMAGE` (container image that starts Mechanical gRPC on port 10000)
-- Repository secret: `ANSYSLMD_LICENSE_FILE` (license server string)
-- Optional repository variable: `PYMECHANICAL_TRANSPORT_MODE` (`auto`, `insecure`, or `mtls`)
+- `integration-local`: runs tests inside a Mechanical-enabled CI container
+- `integration-remote`: starts a Mechanical container and connects to it over gRPC
 
-When these are configured, the workflow starts a Mechanical container, waits for
-gRPC readiness on `127.0.0.1:10000`, and runs `pytest -m integration`.
+Both jobs run `pytest -m integration`.
+
+Session startup behavior follows official PyMechanical guidance:
+
+- Launch/connect basics: https://mechanical.docs.pyansys.com/version/stable/getting_started/running_mechanical.html
+- Docker remote session (including explicit `--transport-mode insecure` startup):
+  https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
+
 
 ### Test Commands Reference
 
