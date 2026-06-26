@@ -145,38 +145,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           pytest-markers: '-m "not integration"'
 
-  integration-local:
-    name: "Integration Tests (local Mechanical)"
-    runs-on: ubuntu-22.04
-    needs: [smoke-tests]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: read # Needed to checkout the code
-      packages: read # Needed to pull the Mechanical container image
-    container:
-      image: ghcr.io/ansys/mechanical:25.2.0 # zizmor: ignore[unpinned-images]
-      options: -u=0:0 --oom-kill-disable --memory=6656MB --memory-swap=16896MB --shm-size=1gb --entrypoint /bin/bash
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    env:
-      ON_LOCAL: "true"
-      ON_CI: "true"
-      PYMECHANICAL_TRANSPORT_MODE: "insecure"
-    steps:
-      - name: "Install integration prerequisites"
-        shell: bash
-        run: |
-          apt-get update && apt-get -y install gcc mono-mcs g++ libgl1 libglx-mesa0 xvfb libgomp1 graphviz curl git && apt-get clean
-
-      - name: "Run integration tests"
-        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
-          pytest-markers: '-m "integration"'
-        env:
-          ANSYSLMD_LICENSE_FILE: "1055@${{ secrets.LICENSE_SERVER }}"
-
   integration-remote:
     name: "Integration Tests (remote Mechanical)"
     runs-on: ubuntu-latest
@@ -193,6 +161,18 @@ jobs:
       PYMECHANICAL_START_INSTANCE: "false"
       PYMECHANICAL_TRANSPORT_MODE: "insecure"
     steps:
+      - name: "Free disk space for Mechanical image"
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
+
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee #v4.2.0
         with:
@@ -251,7 +231,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [test, integration-local, integration-remote, build-docs]
+    needs: [test, integration-remote, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
