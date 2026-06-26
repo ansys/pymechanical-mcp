@@ -1,0 +1,64 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  integration:
+    name: "Integration tests (Mechanical gRPC)"
+    if: ${{ github.event_name == 'workflow_dispatch' || (secrets.ANSYSLMD_LICENSE_FILE != '' && vars.MECHANICAL_DOCKER_IMAGE != '') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ON_CI: "true"
+      ON_LOCAL: "false"
+      PYMECHANICAL_START_INSTANCE: "false"
+      PYMECHANICAL_IP: "127.0.0.1"
+      PYMECHANICAL_PORT: "10000"
+      PYMECHANICAL_TRANSPORT_MODE: ${{ vars.PYMECHANICAL_TRANSPORT_MODE || 'auto' }}
+      MECHANICAL_DOCKER_IMAGE: ${{ vars.MECHANICAL_DOCKER_IMAGE }}
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: "Start Mechanical container"
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d \
+            --name mechanical-ci \
+            -e ANSYSLMD_LICENSE_FILE="${ANSYSLMD_LICENSE_FILE}" \
+            -p 10000:10000 \
+            "${MECHANICAL_DOCKER_IMAGE}"
+        env:
+          ANSYSLMD_LICENSE_FILE: ${{ secrets.ANSYSLMD_LICENSE_FILE }}
+
+      - name: "Wait for Mechanical gRPC port"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 240 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) >/dev/null 2>&1; do sleep 2; done'
+
+      - name: "Run integration tests"
+        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 # v10.3.2
+        with:
+          python-version: "3.13"
+          pytest-markers: '-m integration'
+
+      - name: "Container logs on failure"
+        if: failure()
+        shell: bash
+        run: docker logs mechanical-ci || true
+
+      - name: "Stop Mechanical container"
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f mechanical-ci || true
