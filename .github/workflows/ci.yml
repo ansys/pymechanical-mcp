@@ -170,12 +170,17 @@ jobs:
           apt-get update && apt-get -y install gcc mono-mcs g++ libgl1 libglx-mesa0 xvfb libgomp1 graphviz curl git && apt-get clean
 
       - name: "Run integration tests"
-        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
-        with:
-          python-version: "3.9"
-          pytest-markers: '-m "integration"'
-        env:
-          ANSYSLMD_LICENSE_FILE: "1055@${{ secrets.LICENSE_SERVER }}"
+        run: |
+          python3 --version
+
+          python3 -m venv .venv
+          source .venv/bin/activate
+
+          pip install -U pip
+          pip install -e .[tests]
+
+          pytest -m "integration
+
 
   integration-remote:
     name: "Integration Tests (remote Mechanical)"
