@@ -758,6 +758,21 @@ Run integration tests (requires Mechanical on localhost:10000):
 pytest -m integration
 ```
 
+### Integration tests in CI
+
+The main CI matrix runs only unit tests (`-m "not integration"`).
+
+Integration tests are executed by the dedicated workflow
+`Integration Tests` in [.github/workflows/integration.yml](.github/workflows/integration.yml).
+That workflow expects:
+
+- Repository variable: `MECHANICAL_DOCKER_IMAGE` (container image that starts Mechanical gRPC on port 10000)
+- Repository secret: `ANSYSLMD_LICENSE_FILE` (license server string)
+- Optional repository variable: `PYMECHANICAL_TRANSPORT_MODE` (`auto`, `insecure`, or `mtls`)
+
+When these are configured, the workflow starts a Mechanical container, waits for
+gRPC readiness on `127.0.0.1:10000`, and runs `pytest -m integration`.
+
 ### Test Commands Reference
 
 ```bash
