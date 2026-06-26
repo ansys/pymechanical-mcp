@@ -35,10 +35,10 @@ Run tests:
    # Integration tests (requires Mechanical)
    pytest -m integration
 
-In CI, integration tests are executed in a dedicated self-hosted
-sequential job:
+In CI, integration tests are executed in two dedicated jobs:
 
-- ``Integration Tests (local then remote Mechanical)``
+- ``Integration Tests (local Mechanical)``
+- ``Integration Tests (remote Mechanical)``
 
 Run linters:
 

@@ -145,8 +145,40 @@ jobs:
           python-version: ${{ matrix.python-version }}
           pytest-markers: '-m "not integration"'
 
-  integration-sequential:
-    name: "Integration Tests (local then remote Mechanical)"
+  integration-local:
+    name: "Integration Tests (local Mechanical)"
+    runs-on: [self-hosted, linux]
+    needs: [smoke-tests]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read # Needed to checkout the code
+      packages: read # Needed to pull the Mechanical container image
+    container:
+      image: ghcr.io/ansys/mechanical:25.2.0 # zizmor: ignore[unpinned-images]
+      options: -u=0:0 --oom-kill-disable --memory=6656MB --memory-swap=16896MB --shm-size=1gb --entrypoint /bin/bash
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      ON_LOCAL: "true"
+      ON_CI: "true"
+      PYMECHANICAL_TRANSPORT_MODE: "insecure"
+    steps:
+      - name: "Install integration prerequisites"
+        shell: bash
+        run: |
+          apt-get update && apt-get -y install gcc mono-mcs g++ libgl1 libglx-mesa0 xvfb libgomp1 graphviz curl git && apt-get clean
+
+      - name: "Run integration tests"
+        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          pytest-markers: '-m "integration"'
+        env:
+          ANSYSLMD_LICENSE_FILE: "1055@${{ secrets.LICENSE_SERVER }}"
+
+  integration-remote:
+    name: "Integration Tests (remote Mechanical)"
     runs-on: [self-hosted, linux]
     needs: [smoke-tests]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -154,31 +186,18 @@ jobs:
       contents: read # Needed to checkout the code
       packages: read # Needed to pull the Mechanical container image
     env:
+      ON_LOCAL: "false"
       ON_CI: "true"
+      PYMECHANICAL_IP: "127.0.0.1"
+      PYMECHANICAL_PORT: "10000"
+      PYMECHANICAL_START_INSTANCE: "false"
       PYMECHANICAL_TRANSPORT_MODE: "insecure"
     steps:
-      - name: "Free disk space before local integration"
+      - name: "Free disk space before remote integration"
         shell: bash
         run: |
           set -euo pipefail
           df -h
-          docker system prune -af || true
-          df -h
-
-      - name: "Run local integration tests"
-        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
-          pytest-markers: '-m "integration"'
-        env:
-          ON_LOCAL: "true"
-          ANSYSLMD_LICENSE_FILE: "1055@${{ secrets.LICENSE_SERVER }}"
-
-      - name: "Cleanup between local and remote integration"
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
           docker rm -f mechanical-remote || true
           docker system prune -af || true
           df -h
@@ -194,9 +213,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # PyMechanical Docker docs recommend explicit insecure mode when the
-          # client connects with transport_mode="insecure".
-          # Ref: https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
           docker run -d \
             --name mechanical-remote \
             -e ANSYSLMD_LICENSE_FILE="1055@${LICENSE_SERVER}" \
@@ -207,22 +223,13 @@ jobs:
             -dsapplet -b -grpc ${PYMECHANICAL_PORT} --grpc-host 0.0.0.0 --transport-mode insecure
           timeout 240 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) >/dev/null 2>&1; do sleep 2; done'
         env:
-          ON_LOCAL: "false"
-          PYMECHANICAL_IP: "127.0.0.1"
-          PYMECHANICAL_PORT: "10000"
-          PYMECHANICAL_START_INSTANCE: "false"
           LICENSE_SERVER: ${{ secrets.LICENSE_SERVER }}
 
-      - name: "Run remote integration tests"
+      - name: "Run integration tests"
         uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
           pytest-markers: '-m "integration"'
-        env:
-          ON_LOCAL: "false"
-          PYMECHANICAL_IP: "127.0.0.1"
-          PYMECHANICAL_PORT: "10000"
-          PYMECHANICAL_START_INSTANCE: "false"
 
       - name: "Container logs on failure"
         if: failure()
@@ -250,7 +257,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [test, integration-sequential, build-docs]
+    needs: [test, integration-local, integration-remote, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
