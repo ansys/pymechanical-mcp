@@ -767,8 +767,7 @@ Integration tests run as part of the main CI workflow in two dedicated jobs:
 - `integration-local`: runs tests inside a Mechanical-enabled CI container
 - `integration-remote`: starts a Mechanical container and connects to it over gRPC
 
-Both jobs run `pytest -m integration` and are aligned with the same CI pattern
-used in `pymapdl-mcp`.
+Both jobs run `pytest -m integration`.
 
 Session startup behavior follows official PyMechanical guidance:
 
