@@ -34,7 +34,6 @@ from ansys.mechanical.mcp.tools import (
     run_python_script,
 )
 
-ON_LOCAL = os.getenv("ON_LOCAL", "true") == "true"
 ON_CI = os.getenv("ON_CI", "false").lower() == "true"
 ON_LOCAL = os.getenv("ON_LOCAL", "false" if ON_CI else "true").lower() == "true"
 
@@ -54,7 +53,11 @@ def _get_real_mechanical_connection():
 
     if start_instance:
         # Local launch mode (developer machine with Mechanical installed)
-        return launch_mechanical(cleanup_on_exit=False, loglevel="ERROR"), False
+        launch_kwargs = {"cleanup_on_exit": False, "loglevel": "ERROR"}
+        transport_mode = os.getenv("PYMECHANICAL_TRANSPORT_MODE")
+        if transport_mode:
+            launch_kwargs["transport_mode"] = transport_mode
+        return launch_mechanical(**launch_kwargs), False
 
     # CI/remote mode: connect to an already running gRPC server
     ip = os.getenv("PYMECHANICAL_IP", "127.0.0.1")

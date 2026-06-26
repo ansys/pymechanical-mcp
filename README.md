@@ -770,6 +770,12 @@ Integration tests run as part of the main CI workflow in two dedicated jobs:
 Both jobs run `pytest -m integration` and are aligned with the same CI pattern
 used in `pymapdl-mcp`.
 
+Session startup behavior follows official PyMechanical guidance:
+
+- Launch/connect basics: https://mechanical.docs.pyansys.com/version/stable/getting_started/running_mechanical.html
+- Docker remote session (including explicit `--transport-mode insecure` startup):
+  https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
+
 ### Test Commands Reference
 
 ```bash

@@ -204,11 +204,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # PyMechanical Docker docs recommend explicit insecure mode when the
+          # client connects with transport_mode="insecure".
+          # Ref: https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
           docker run -d \
             --name mechanical-remote \
             -e ANSYSLMD_LICENSE_FILE="1055@${LICENSE_SERVER}" \
             -p ${PYMECHANICAL_PORT}:${PYMECHANICAL_PORT} \
-            ghcr.io/ansys/mechanical:v25.2-ubuntu-cicd
+            --entrypoint=tini \
+            ghcr.io/ansys/mechanical:v25.2-ubuntu-cicd \
+            -- xvfb-run /install/ansys_inc/v252/aisol/.workbench \
+            -dsapplet -b -grpc ${PYMECHANICAL_PORT} --grpc-host 0.0.0.0 --transport-mode insecure
           timeout 240 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) >/dev/null 2>&1; do sleep 2; done'
         env:
           LICENSE_SERVER: ${{ secrets.LICENSE_SERVER }}
