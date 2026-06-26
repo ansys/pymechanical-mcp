@@ -145,31 +145,41 @@ jobs:
           python-version: ${{ matrix.python-version }}
           pytest-markers: '-m "not integration"'
 
-  integration-remote:
-    name: "Integration Tests (remote Mechanical)"
-    runs-on: ubuntu-latest
+  integration-sequential:
+    name: "Integration Tests (local then remote Mechanical)"
+    runs-on: [self-hosted, linux]
     needs: [smoke-tests]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read # Needed to checkout the code
       packages: read # Needed to pull the Mechanical container image
     env:
-      ON_LOCAL: "false"
       ON_CI: "true"
-      PYMECHANICAL_IP: "127.0.0.1"
-      PYMECHANICAL_PORT: "10000"
-      PYMECHANICAL_START_INSTANCE: "false"
       PYMECHANICAL_TRANSPORT_MODE: "insecure"
     steps:
-      - name: "Free disk space for Mechanical image"
+      - name: "Free disk space before local integration"
         shell: bash
         run: |
           set -euo pipefail
           df -h
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
+
+      - name: "Run local integration tests"
+        uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          pytest-markers: '-m "integration"'
+        env:
+          ON_LOCAL: "true"
+          ANSYSLMD_LICENSE_FILE: "1055@${{ secrets.LICENSE_SERVER }}"
+
+      - name: "Cleanup between local and remote integration"
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker rm -f mechanical-remote || true
           docker system prune -af || true
           df -h
 
@@ -197,13 +207,22 @@ jobs:
             -dsapplet -b -grpc ${PYMECHANICAL_PORT} --grpc-host 0.0.0.0 --transport-mode insecure
           timeout 240 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) >/dev/null 2>&1; do sleep 2; done'
         env:
+          ON_LOCAL: "false"
+          PYMECHANICAL_IP: "127.0.0.1"
+          PYMECHANICAL_PORT: "10000"
+          PYMECHANICAL_START_INSTANCE: "false"
           LICENSE_SERVER: ${{ secrets.LICENSE_SERVER }}
 
-      - name: "Run integration tests"
+      - name: "Run remote integration tests"
         uses: ansys/actions/tests-pytest@d946b24b9a765f4169bcc94afdb27bd1a0533741 #v10.3.2
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
           pytest-markers: '-m "integration"'
+        env:
+          ON_LOCAL: "false"
+          PYMECHANICAL_IP: "127.0.0.1"
+          PYMECHANICAL_PORT: "10000"
+          PYMECHANICAL_START_INSTANCE: "false"
 
       - name: "Container logs on failure"
         if: failure()
@@ -231,7 +250,7 @@ jobs:
 
   package:
     name: "Package library"
-    needs: [test, integration-remote, build-docs]
+    needs: [test, integration-sequential, build-docs]
     runs-on: ubuntu-latest
     permissions:
       attestations: write # Required to upload provenance attestations
