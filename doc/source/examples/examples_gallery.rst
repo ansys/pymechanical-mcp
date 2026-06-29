@@ -22,7 +22,7 @@ Cantilever Beam
    :align: center
    :width: 70%
 
-   Placeholder — static structural deformation result will be shown here.
+   Placeholder— static structural deformation result will be shown here.
 
 Plate with Hole
 ^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ Plate with Hole
    :align: center
    :width: 70%
 
-   Placeholder — stress concentration visualization will be added.
+   Placeholder— stress concentration visualization will be added.
 
 Bracket Modal Analysis
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ Bracket Modal Analysis
    :align: center
    :width: 70%
 
-   Placeholder — mode shape visualization will be added.
+   Placeholder— mode shape visualization will be added.
 
 Video Gallery
 -------------
