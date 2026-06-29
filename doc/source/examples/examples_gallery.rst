@@ -1,6 +1,6 @@
 .. _ref_examples_gallery:
 
-Examples Gallery
+Examples gallery
 ================
 
 This gallery showcases visual outputs from the PyMechanical-MCP example
@@ -11,61 +11,49 @@ post-processing.
    Replace placeholder media with actual images/videos once available.
    Store assets under ``_static/examples/`` for consistency.
 
-Image Gallery
+Image gallery
 -------------
 
-Cantilever Beam
+Cantilever beam
 ^^^^^^^^^^^^^^^^
 
-.. figure:: ../_static/examples/placeholder.png
-   :alt: Cantilever beam deformation placeholder
-   :align: center
-   :width: 70%
+.. note::
+   Image to be added here (cantilever beam deformation).
 
-   Placeholder— static structural deformation result will be shown here.
-
-Plate with Hole
+Plate with hole
 ^^^^^^^^^^^^^^^^
 
-.. figure:: ../_static/examples/placeholder.png
-   :alt: Plate with hole stress placeholder
-   :align: center
-   :width: 70%
+.. note::
+   Image to be added here (plate with hole stress concentration).
 
-   Placeholder— stress concentration visualization will be added.
-
-Bracket Modal Analysis
+Bracket modal analysis
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. figure:: ../_static/examples/placeholder.png
-   :alt: Modal analysis placeholder
-   :align: center
-   :width: 70%
+.. note::
+   Image to be added here (bracket modal analysis).
 
-   Placeholder— mode shape visualization will be added.
-
-Video Gallery
+Video gallery
 -------------
 
-Cantilever Beam Simulation
+Cantilever beam simulation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-   Video will be embedded here once available.
+   Video to be embedded here once available.
 
-Plate with Hole Animation
+Plate with hole animation
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-   Video will be embedded here once available.
+   Video to be embedded here once available.
 
-Bracket Modal Animation
+Bracket modal animation
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-   Video will be embedded here once available.
+   Video to be embedded here once available.
 
-Tips for Adding Media
+Tips for adding media
 ---------------------
 
 - Place images/videos in ``source/_static/examples/`` for proper Sphinx integration.
