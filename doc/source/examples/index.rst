@@ -6,6 +6,8 @@ Examples
 .. toctree::
    :maxdepth: 2
 
+   examples_gallery
+
 This repository includes ready-to-run demo workflows under the
 ``examples/`` directory.
 
