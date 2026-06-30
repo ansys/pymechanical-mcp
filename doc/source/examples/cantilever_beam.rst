@@ -1,4 +1,4 @@
-Cantiliver beam
+Cantilever beam
 ===============
 
 
