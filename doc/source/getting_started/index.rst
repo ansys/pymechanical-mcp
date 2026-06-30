@@ -7,13 +7,13 @@ Getting started
 Learn how to install and configure PyMechanical-MCP, and how to contribute to the project.
 
 .. grid:: 2 2 3 3
+    :gutter: 1 2 3 3
+    :padding: 1 2 3 3
 
     .. grid-item-card::
        .. card:: :fa:`download`  Installation
           :link: installation
           :link-type: doc
-          :class-card: sd-text-black
-          :img-alt: Installation
 
           A step-by-step guide to installing PyMechanical-MCP.
 
@@ -21,8 +21,6 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
        .. card:: :fa:`cogs`  IDE configuration
           :link: ide_configuration
           :link-type: doc
-          :class-card: sd-text-black
-          :img-alt: IDE configuration
 
           Setting up your IDE for PyMechanical-MCP development.
 
@@ -30,7 +28,13 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
        .. card:: :fa:`users`  Contribution
           :link: contribution
           :link-type: doc
-          :class-card: sd-text-black
-          :img-alt: Contribution
 
           Guidelines for contributing to the PyMechanical-MCP project.
+
+
+.. toctree::
+   :hidden:
+
+   installation
+   ide_configuration
+   contribution

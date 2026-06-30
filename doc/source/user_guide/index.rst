@@ -22,15 +22,16 @@ Learn how to use PyMechanical-MCP effectively.
 
         Reference for every tool the server exposes.
 
-    .. grid-item-card:: :fa:`check-double` Best practices
-        :link: best_practices
-        :link-type: doc
-
-        Tips and best practices for using PyMechanical-MCP effectively and
-        avoiding common pitfalls.
-
     .. grid-item-card:: :fa:`docker` Docker deployment
         :link: docker
         :link-type: doc
 
         Guide to deploying PyMechanical-MCP in a containerized environment.
+
+
+.. toctree::
+   :hidden:
+
+   overview
+   tools_and_capabilities
+   docker
