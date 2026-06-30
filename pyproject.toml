@@ -8,7 +8,8 @@ version = "0.1.dev0"
 description = "Model Context Protocol (MCP) server for Ansys Mechanical through PyMechanical"
 readme = "README.md"
 requires-python = ">=3.11,<4"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "ANSYS, Inc.", email = "pyansys.core@ansys.com" }
 ]
@@ -103,14 +104,11 @@ lint.select = [
   "F",   # pyflakes
   "I",   # isort
   "N",   # pep8-naming
-    "PTH", # flake8-use-pathlib
-    "TD",  # flake8-todos
+  "PTH", # flake8-use-pathlib
+  "TD",  # flake8-todos
 ]
 lint.ignore = [
-  "D100", # Missing docstring in public module
-  "D104", # Missing docstring in public package
-  "D401", # First line of docstring should be in imperative mood
-    "TD002", # Missing author in TODO comments
+  "TD002", # Missing author in TODO comments
 ]
 lint.per-file-ignores."!src/**.py" = [ "D" ]
 lint.per-file-ignores."__init__.py" = [ "F401" ]
@@ -153,10 +151,6 @@ markers = [
     "integration: Integration tests that require Mechanical connection",
     "slow: Tests that take a long time to run",
 ]
-
-[tool.bandit]
-exclude_dirs = ["tests", ".venv", "venv"]
-skips = ["B101"]  # Skip assert_used in tests
 
 [tool.uv]
 # Ensure dependencies are resolved from PyPI first, not internal indexes
