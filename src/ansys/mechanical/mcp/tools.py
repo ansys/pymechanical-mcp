@@ -51,9 +51,7 @@ REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
 
 # Access type-safe lifespan context in tools
-@app.tool(
-    tags={REQUIRES_MECHANICAL_TAG}
-)  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
+@app.tool()  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
 def check_mechanical_status(ctx: Context) -> str:
     """Check the status of Mechanical initialization.
 
@@ -1001,7 +999,7 @@ r"{temp_path}"
 # Tools that use the PersistentPythonSession
 
 
-@app.tool()
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def run_python_code(
     ctx: Context,
     code: str,
@@ -1115,7 +1113,7 @@ def run_python_code(
         return json.dumps(error_dict, ensure_ascii=False)
 
 
-@app.tool(tags={"aali"})
+@app.tool(tags={"aali", REQUIRES_MECHANICAL_TAG})
 def create_custom_plot(
     ctx: Context,
     plot_code: str,
