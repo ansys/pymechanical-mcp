@@ -1,10 +1,10 @@
 Configuration
 =============
 
-PyMechanical-MCP can be configured through CLI startup flags and selected
+PyMechanical-MCP can be configured through command-line tool startup flags and selected
 environment variables.
 
-CLI startup flags
+Command-line tool startup flags
 -----------------
 
 .. list-table::
