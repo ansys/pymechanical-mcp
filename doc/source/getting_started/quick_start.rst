@@ -10,7 +10,7 @@ Start the MCP server with the default STDIO transport:
 
    ansys-mechanical-mcp
 
-To run the server over streamable HTTP:
+To run the server over streaming HTTP:
 
 .. code-block:: bash
 
