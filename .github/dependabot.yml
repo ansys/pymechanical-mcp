@@ -6,29 +6,26 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+      include:
+        - "*"  # Include all dependencies in cooldown
     labels:
       - "maintenance"
       - "dependencies"
     commit-message:
       prefix: "build(pip)"
-    groups:
-      pip-deps:
-        patterns:
-          - "*"
 
   - package-ecosystem: "github-actions"
+    cooldown:
+      default-days: 10 # Fallback cooldown if no specific rule applies
+      include:
+        - "*"  # Include all dependencies in cooldown
+      exclude:
+        - "ansys/actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    cooldown:
-      default-days: 7
-      exclude:
-        - "ansys/actions/*"
     labels:
       - "maintenance"
+      - "dependencies"
     commit-message:
       prefix: "build(actions)"
-    groups:
-      actions:
-        patterns:
-          - "*"

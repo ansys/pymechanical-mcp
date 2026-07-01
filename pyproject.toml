@@ -4,11 +4,12 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "ansys-mechanical-mcp"
-version = "0.1.0"
+version = "0.1.dev0"
 description = "Model Context Protocol (MCP) server for Ansys Mechanical through PyMechanical"
 readme = "README.md"
-requires-python = ">=3.10,<4"
-license = { file = "LICENSE" }
+requires-python = ">=3.11,<4"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "ANSYS, Inc.", email = "pyansys.core@ansys.com" }
 ]
@@ -31,39 +32,44 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 dependencies = [
     "ansys-mechanical-core>=0.12.0",
-    "fastmcp>=3.2.0,<4.0",
     "ansys-common-mcp>=0.3.0",
-    "matplotlib>=3.5.0",
-    "tabulate>=0.9.0",
+    "matplotlib==3.11.0",
+    "tabulate==0.10.0",
 ]
 
 [project.optional-dependencies]
 tests = [
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "pytest-cov>=7.0.0",
-    "pytest-mock>=3.15.1",
+    "ansys-common-mcp==0.3.2",
+    "ansys-mechanical-core==0.12.10",
+    "matplotlib==3.11.0",
+    "pytest==9.1.0",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
+    "pytest-mock==3.15.1",
+    "tabulate==0.10.0",
 ]
 
 doc = [
-    "ansys-sphinx-theme[changelog]==1.8.2",
+    "ansys-common-mcp==0.3.2",
+    "ansys-mechanical-core==0.12.10",
+    "ansys-sphinx-theme[autoapi,changelog]==1.8.2",
+    "matplotlib==3.11.0",
     "numpydoc==1.10.0",
     "sphinx-autodoc-typehints==3.1.0",
-    "sphinx-design>=0.5.0",
+    "sphinx-design==0.7.0",
     "sphinx-notfound-page==1.1.0",
-    "sphinx==8.2.3",
+    "tabulate==0.10.0",
 ]
 
 dev = [
@@ -97,14 +103,11 @@ lint.select = [
   "F",   # pyflakes
   "I",   # isort
   "N",   # pep8-naming
-    "PTH", # flake8-use-pathlib
-    "TD",  # flake8-todos
+  "PTH", # flake8-use-pathlib
+  "TD",  # flake8-todos
 ]
 lint.ignore = [
-  "D100", # Missing docstring in public module
-  "D104", # Missing docstring in public package
-  "D401", # First line of docstring should be in imperative mood
-    "TD002", # Missing author in TODO comments
+  "TD002", # Missing author in TODO comments
 ]
 lint.per-file-ignores."!src/**.py" = [ "D" ]
 lint.per-file-ignores."__init__.py" = [ "F401" ]
@@ -115,7 +118,7 @@ lint.isort.known-first-party = [ "ansys.mechanical.mcp" ]
 lint.pydocstyle.convention = "numpy"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.14"
 strict = false
 warn_return_any = true
 warn_unused_configs = true
@@ -148,11 +151,6 @@ markers = [
     "slow: Tests that take a long time to run",
 ]
 
-[tool.bandit]
-exclude_dirs = ["tests", ".venv", "venv"]
-skips = ["B101"]  # Skip assert_used in tests
-
-
 [tool.uv]
 # Ensure dependencies are resolved from PyPI first, not internal indexes
 # This prevents version conflicts when users have internal PyPI indexes configured
@@ -162,3 +160,57 @@ index-strategy = "unsafe-best-match"
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+[tool.towncrier]
+package = "ansys.mechanical.mcp"
+directory = "doc/changelog.d"
+filename = "doc/source/changelog.rst"
+template = "doc/changelog.d/changelog_template.jinja"
+start_string = ".. towncrier release notes start\n"
+title_format = "`{version} <https://github.com/ansys/pymechanical-mcp/releases/tag/v{version}>`_ - {project_date}"
+issue_format = "`#{issue} <https://github.com/ansys/pymechanical-mcp/pull/{issue}>`_"
+
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Breaking"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "documentation"
+name = "Documentation"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "dependencies"
+name = "Dependencies"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "maintenance"
+name = "Maintenance"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "miscellaneous"
+name = "Miscellaneous"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "test"
+name = "Test"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true

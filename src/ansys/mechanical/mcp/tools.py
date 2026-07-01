@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """List of tools in PyMechanical-MCP."""
 
 import base64
@@ -30,6 +31,13 @@ from fastmcp.server.server import get_logger
 # The import happens during server startup, before STDIO transport is active
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
 from ansys.mechanical.mcp import app
+from ansys.mechanical.mcp.helpers import (
+    _is_docker,
+    _probe_grpc_endpoint,
+    get_info,
+    list_instances,
+    resolve_transport_mode,
+)
 from ansys.mechanical.mcp.server import session
 from mcp.types import ImageContent, TextContent
 
@@ -43,7 +51,9 @@ REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
 
 # Access type-safe lifespan context in tools
-@app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@app.tool(
+    tags={REQUIRES_MECHANICAL_TAG}
+)  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
 def check_mechanical_status(ctx: Context) -> str:
     """Check the status of Mechanical initialization.
 
@@ -73,8 +83,6 @@ def check_mechanical_status(ctx: Context) -> str:
         )
 
     try:
-        from ansys.mechanical.mcp.helpers import get_info
-
         # Check if Mechanical has exited
         if hasattr(mechanical, "exited") and mechanical.exited:
             return "Mechanical instance has exited. Please reconnect or launch a new instance."
@@ -109,8 +117,6 @@ def check_mechanical_installed(ctx: Context) -> str:
     str
         Status message indicating whether Mechanical is installed or reachable.
     """
-    from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint
-
     logger.info("Checking if Mechanical is installed...")
 
     # Inside Docker we can't inspect the host filesystem, but we can probe
@@ -133,14 +139,14 @@ def check_mechanical_installed(ctx: Context) -> str:
         probe = _probe_grpc_endpoint(ip, port)
         if probe["reachable"]:
             return (
-                f"Running inside a Docker container — local installation "
+                f"Running inside a Docker container: local installation "
                 f"check is not available.\n"
                 f"However, a Mechanical gRPC server is reachable at "
                 f"{ip}:{port}.\n"
                 f"Use 'connect_to_mechanical' to establish a session."
             )
         return (
-            f"Running inside a Docker container — local installation "
+            f"Running inside a Docker container: local installation "
             f"check is not available.\n"
             f"No Mechanical gRPC server detected at {ip}:{port} "
             f"(error: {probe['error']}).\n"
@@ -349,13 +355,11 @@ async def launch_mechanical(
     logger.info("Launching new Mechanical instance...")
 
     try:
-        from ansys.mechanical.mcp.helpers import _is_docker
-
         if _is_docker():
             target_port = int(os.environ.get("PYMECHANICAL_PORT", "10000"))
             return (
                 "Launching Mechanical from inside a Docker container is not "
-                "supported — the MCP server cannot start host processes.\n"
+                "supported: the MCP server cannot start host processes.\n"
                 f"Please start Mechanical on the host machine with gRPC "
                 f"enabled on port {target_port}, then use "
                 f"'connect_to_mechanical' to establish a session."
@@ -367,8 +371,6 @@ async def launch_mechanical(
                 "Already connected to a Mechanical instance. "
                 "Please disconnect first using disconnect_from_mechanical tool."
             )
-
-        from ansys.mechanical.mcp.helpers import resolve_transport_mode
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
@@ -462,7 +464,6 @@ async def connect_to_mechanical(
     # When running in Docker the function parameter defaults (127.0.0.1 /
     # 10000) point at the container itself, not the host.  Prefer the
     # environment variables which are pre-configured in the Dockerfile.
-    from ansys.mechanical.mcp.helpers import _is_docker
 
     if _is_docker():
         if ip == "127.0.0.1":
@@ -479,8 +480,6 @@ async def connect_to_mechanical(
                 "Already connected to a Mechanical instance. "
                 "Please disconnect first using disconnect_from_mechanical tool."
             )
-
-        from ansys.mechanical.mcp.helpers import resolve_transport_mode
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
@@ -591,8 +590,6 @@ def list_mechanical_instances() -> str:
         Formatted table of Mechanical instances, or reachability status
         when running in Docker.
     """
-    from ansys.mechanical.mcp.helpers import _is_docker, _probe_grpc_endpoint
-
     logger.info("Searching for Mechanical instances...")
 
     if _is_docker():
@@ -602,21 +599,19 @@ def list_mechanical_instances() -> str:
         probe = _probe_grpc_endpoint(ip, port)
         if probe["reachable"]:
             return (
-                f"Running inside a Docker container — host process "
+                f"Running inside a Docker container: host process "
                 f"scanning is not available.\n"
                 f"Mechanical gRPC endpoint at {ip}:{port} is REACHABLE.\n"
                 f"Use 'connect_to_mechanical' to establish a session."
             )
         return (
-            f"Running inside a Docker container — host process "
+            f"Running inside a Docker container: host process "
             f"scanning is not available.\n"
             f"Mechanical gRPC endpoint at {ip}:{port} is "
             f"NOT REACHABLE (error: {probe['error']}).\n"
             f"Please start Mechanical on the host machine with gRPC "
             f"enabled on port {port}, then retry."
         )
-
-    from ansys.mechanical.mcp.helpers import list_instances
 
     return list_instances(long=True, instances=True)
 

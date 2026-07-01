@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Helper functions for PyMechanical-MCP."""
 
 import logging
@@ -114,17 +115,16 @@ def resolve_transport_mode(
 
     The resolution strategy is:
 
-    1. **Explicit override** — if the caller (CLI flag, env-var, or tool
+    1. **Explicit override**: if the caller (CLI flag, env-var, or tool
        parameter) supplies a concrete mode (``insecure``, ``mtls``, or
        ``wnua``), honour it unconditionally.
     2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):
-       - On **Windows** → return ``None`` so that PyMechanical applies its
-         own platform default (``wnua``).
-       - On **Linux / Docker** →
-         - If mTLS certificate files are found → ``"mtls"`` + the
-           resolved certificate directory.
-         - Otherwise → ``"insecure"`` (the only mode that can succeed
-           without certs; WNUA is Windows-only).
+         - On **Windows** → return ``None`` so that PyMechanical applies its
+           own platform default (``wnua``).
+         - On **Linux / Docker**, return ``"mtls"`` plus the resolved
+           certificate directory when mTLS certificate files are found;
+           otherwise, return ``"insecure"`` (the only mode that can
+           succeed without certs; WNUA is Windows-only).
 
     Parameters
     ----------

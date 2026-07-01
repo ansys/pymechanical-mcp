@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Context tools for PyMechanical MCP Server.
 
 This module defines MCP tools that provide context and guidance for
@@ -678,10 +679,10 @@ mechanical.run_python_script(script)
 
 ## Important Notes
 
-1. **Component values are read-only properties** — set values via:
+1. **Component values are read-only properties**: set values via:
    `force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]`
 2. **Always scope BCs to Named Selections** for reliability and reproducibility
-3. **Ensure BCs prevent rigid-body motion** — at least 6 DOF must be constrained
+3. **Ensure BCs prevent rigid-body motion**: at least 6 DOF must be constrained
 4. **Use square brackets in Quantity units**: `Quantity("5 [mm]")` not `Quantity("5 mm")`
 """
 
@@ -763,14 +764,14 @@ mechanical.run_python_script(script)
 ## Convergence Issues
 
 If the solution doesn't converge:
-1. **Check mesh quality** — skewness > 0.95 or aspect ratio > 50 causes issues
-2. **Verify boundary conditions** — model must be fully constrained (no rigid body motion)
-3. **Review load magnitudes** — start with smaller loads and ramp up
-4. **Enable Large Deflection** — `settings.LargeDeflection = True` for strains > 5%
-5. **Increase substeps** — `settings.InitialSubsteps = 20` for nonlinear problems
-6. **Use Direct solver** — `settings.SolverType = SolverType.Direct` for difficult convergence
-7. **Check contact** — ensure initial penetration is zero, use Augmented Lagrange
-8. **Review solve.out** — download and inspect for warnings/errors
+1. **Check mesh quality**: skewness > 0.95 or aspect ratio > 50 causes issues
+2. **Verify boundary conditions**: model must be fully constrained (no rigid body motion)
+3. **Review load magnitudes**: start with smaller loads and ramp up
+4. **Enable Large Deflection**: `settings.LargeDeflection = True` for strains > 5%
+5. **Increase substeps**: `settings.InitialSubsteps = 20` for nonlinear problems
+6. **Use Direct solver**: `settings.SolverType = SolverType.Direct` for difficult convergence
+7. **Check contact**: ensure initial penetration is zero, use Augmented Lagrange
+8. **Review solve.out**: download and inspect for warnings/errors
 
 ## Solver Selection Guide
 
@@ -997,17 +998,17 @@ mechanical.run_python_script(script)
 
 ### Available Criterion Types
 
-- `SelectionCriterionType.LocationX/Y/Z` — filter by coordinate
-- `SelectionCriterionType.Size` — filter by area/volume
-- `SelectionCriterionType.Type` — filter by entity type
-- `SelectionCriterionType.Name` — filter by CAD body name
+- `SelectionCriterionType.LocationX/Y/Z`: filter by coordinate
+- `SelectionCriterionType.Size`: filter by area/volume
+- `SelectionCriterionType.Type`: filter by entity type
+- `SelectionCriterionType.Name`: filter by CAD body name
 
 ### Available Entity Types
 
-- `SelectionType.GeoFace` — faces
-- `SelectionType.GeoEdge` — edges
-- `SelectionType.GeoVertex` — vertices
-- `SelectionType.GeoBody` — bodies
+- `SelectionType.GeoFace`: faces
+- `SelectionType.GeoEdge`: edges
+- `SelectionType.GeoVertex`: vertices
+- `SelectionType.GeoBody`: bodies
 
 ### Accessing Existing Named Selections
 
@@ -1146,10 +1147,10 @@ mechanical.run_python_script(script)
 ## IronPython Compatibility (Mechanical 2025 R2 and earlier)
 
 Mechanical versions before 2026 R1 use **IronPython 2.7**. Do NOT use:
-- f-strings (`f"value: {x}"`) — use `.format()` instead
+- f-strings (`f"value: {x}"`): use `.format()` instead
 - walrus operator (`:=`)
 - Type hints in scripts
-- `pathlib.Path` — use `os.path` instead
+- `pathlib.Path`: use `os.path` instead
 
 ```python
 # WRONG (f-string):
@@ -1204,10 +1205,10 @@ mechanical.download_project(target_dir="./project_backup")
 2. **Missing mesh generation** before solving
 3. **No boundary conditions** causing rigid body motion
 4. **Forgetting to evaluate results** after adding result objects
-5. **Path issues** — use raw strings (r"path") or double backslashes
-6. **Using f-strings** — Mechanical 2025 R2 uses IronPython 2.7 (no f-strings)
-7. **Wrong Quantity format** — use `Quantity("5 [mm]")` with square brackets
-8. **Setting component values directly** — use `.Output.DiscreteValues = [...]`
+5. **Path issues**: use raw strings (r"path") or double backslashes
+6. **Using f-strings**: Mechanical 2025 R2 uses IronPython 2.7 (no f-strings)
+7. **Wrong Quantity format**: use `Quantity("5 [mm]")` with square brackets
+8. **Setting component values directly**: use `.Output.DiscreteValues = [...]`
 
 ## Verification Steps
 

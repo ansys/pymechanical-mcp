@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -321,7 +321,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -352,7 +352,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -383,7 +383,7 @@ class TestConnectToMechanical:
                 return_value=mock_mechanical,
             ) as mock_connect,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -623,7 +623,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -661,7 +661,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -692,7 +692,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -726,7 +726,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -852,7 +852,7 @@ class TestLaunchMechanical:
                 return_value=mock_mechanical,
             ) as mock_launch,
             patch(
-                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
         ):
@@ -1802,7 +1802,7 @@ class TestRequiresMechanicalVisibility:
         """Every tool must be in the always-available allowlist or carry
         the ``requires_mechanical`` gating tag.
 
-        This test prevents accidental "tool surface drift" — i.e. someone
+        This test prevents accidental "tool surface drift", i.e. someone
         adding a new tool that needs a Mechanical connection but
         forgetting to tag it ``requires_mechanical``. Without the tag,
         the tool would be exposed to clients before any Mechanical
@@ -1820,7 +1820,7 @@ class TestRequiresMechanicalVisibility:
         from ansys.mechanical.mcp.server import app
 
         # Tools that are intentionally reachable before any Mechanical
-        # session. Keep this list minimal — anything that touches a
+        # session. Keep this list minimal; anything that touches a
         # connected Mechanical instance must NOT be here.
         ALWAYS_AVAILABLE_TOOLS = {
             "check_mechanical_installed",
@@ -1849,7 +1849,7 @@ class TestRequiresMechanicalVisibility:
             "tag and are not in the ALWAYS_AVAILABLE_TOOLS allowlist:\n  - "
             + "\n  - ".join(sorted(offenders))
             + "\n\nEither tag the tool with REQUIRES_MECHANICAL_TAG (the "
-            "common case) or — if the tool genuinely does not need a "
-            "Mechanical session — add it to ALWAYS_AVAILABLE_TOOLS in "
+            "common case) or, if the tool genuinely does not need a "
+            "Mechanical session, add it to ALWAYS_AVAILABLE_TOOLS in "
             "this test."
         )

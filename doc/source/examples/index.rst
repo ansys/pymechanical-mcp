@@ -1,23 +1,34 @@
 .. _ref_examples:
 
+========
 Examples
 ========
 
-.. toctree::
-   :maxdepth: 2
 
-This repository includes ready-to-run demo workflows under the
-``examples/`` directory.
+.. grid:: 2 2 3 3
+    :gutter: 1 2 3 3
+    :padding: 1 2 3 3
 
-Recommended demos
------------------
+    .. grid-item-card:: Cantilever beam
+        :link: cantilever_beam
+        :link-type: doc
 
-- ``examples/cantilever_beam``: Static structural beam workflow
-- ``examples/plate_with_hole``: Stress concentration study
-- ``examples/bracket_modal``: Modal analysis with mode-shape visualization
+        Static structural beam workflow
 
-Typical execution pattern
--------------------------
+    .. grid-item-card:: Plate with hole
+        :link: plate_with_hole
+        :link-type: doc
+
+        Stress concentration study
+
+    .. grid-item-card:: Bracket modal analysis
+        :link: bracket_modal
+        :link-type: doc
+
+        Modal analysis with mode-shape visualization
+
+
+Typical execution pattern:
 
 1. Start PyMechanical-MCP and connect/launch Mechanical.
 2. Upload STEP geometry with ``upload_file``.
@@ -27,3 +38,10 @@ Typical execution pattern
 
 These examples are designed for live MCP demos and can be adapted into
 customer-specific automation prompts.
+
+.. toctree::
+   :hidden:
+
+   cantilever_beam
+   plate_with_hole
+   bracket_modal

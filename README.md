@@ -26,7 +26,7 @@ This MCP server bridges the gap between AI assistants and Ansys Mechanical, allo
 
 ## Prerequisites
 
-- Python 3.10 or higher (up to 3.13)
+- Python 3.11 or higher (up to 3.14)
 - Ansys Mechanical installation (optional - can connect to remote instances)
 - PyMechanical library (ansys-mechanical-core >= 0.12.0)
 - FastMCP library (fastmcp >= 0.1.0)
@@ -758,6 +758,23 @@ Run integration tests (requires Mechanical on localhost:10000):
 pytest -m integration
 ```
 
+### Integration tests in CI
+
+The main CI matrix job runs only unit tests (`-m "not integration"`).
+
+Integration tests run as part of the main CI workflow, but in a dedicated job:
+
+- `integration-tests`: starts a Mechanical container and connects to it over gRPC
+
+Run `pytest -m integration`.
+
+Session startup behavior follows official PyMechanical guidance:
+
+- Launch/connect basics: https://mechanical.docs.pyansys.com/version/stable/getting_started/running_mechanical.html
+- Docker remote session (including explicit `--transport-mode insecure` startup):
+  https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
+
+
 ### Test Commands Reference
 
 ```bash
@@ -800,7 +817,7 @@ live Mechanical session are hidden until `launch_mechanical` or
 
 When you add a new `@app.tool(...)` to `src/ansys/mechanical/mcp/tools.py`:
 
-- **Default case — the tool needs a Mechanical connection.** Tag it with
+- **Default case: the tool needs a Mechanical connection.** Tag it with
   `REQUIRES_MECHANICAL_TAG` (defined at the top of `tools.py`):
 
   ```python
@@ -812,13 +829,13 @@ When you add a new `@app.tool(...)` to `src/ansys/mechanical/mcp/tools.py`:
   The server disables it until a session exists, then unlocks it via
   `enable_components(tags={REQUIRES_MECHANICAL_TAG})`.
 
-- **Special case — the tool is genuinely usable BEFORE any Mechanical
+- **Special case: the tool is genuinely usable BEFORE any Mechanical
   session** (e.g. an installation check). Do NOT add the tag, and add the
   tool's name to the `ALWAYS_AVAILABLE_TOOLS` allowlist in
   `tests/test_tools.py::TestRequiresMechanicalVisibility::test_no_tool_surface_drift`.
 
 The `test_no_tool_surface_drift` test will fail if a new tool is neither
-tagged nor on the allowlist. This is intentional — it forces every
+tagged nor on the allowlist. This is intentional: it forces every
 contributor to make an explicit decision about pre-connection visibility.
 
 
@@ -1050,7 +1067,7 @@ docker build `
 
 By default, the container starts **without** an active Mechanical connection. Use the `connect_to_mechanical` tool from your MCP client to connect dynamically.
 
-**Basic (auto-detect transport mode — recommended):**
+**Basic (auto-detect transport mode, recommended):**
 ```bash
 # The server auto-detects: no certs mounted → insecure gRPC
 docker run -p 8080:8080 -e PYMECHANICAL_IP=host.docker.internal pymechanical-mcp

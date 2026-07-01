@@ -1,4 +1,4 @@
-# Copyright (C) 2025 - 2026 ANSYS, Inc. and/or its affiliates.
+# Copyright (C) 2026 Synopsys, Inc. and ANSYS, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -34,7 +34,41 @@ from ansys.mechanical.mcp.tools import (
     run_python_script,
 )
 
-ON_LOCAL = os.getenv("ON_LOCAL", "true") == "true"
+ON_CI = os.getenv("ON_CI", "false").lower() == "true"
+ON_LOCAL = os.getenv("ON_LOCAL", "false" if ON_CI else "true").lower() == "true"
+
+
+def _get_real_mechanical_connection():
+    """Create a real Mechanical connection for integration tests.
+
+    Returns
+    -------
+    tuple
+        (mechanical, externally_managed) where externally_managed is True when
+        connected to a pre-started gRPC server and False when launched locally.
+    """
+    from ansys.mechanical.core import connect_to_mechanical, launch_mechanical
+
+    start_instance = os.getenv("PYMECHANICAL_START_INSTANCE", "true").lower() == "true"
+
+    if start_instance:
+        # Local launch mode (developer machine with Mechanical installed)
+        launch_kwargs = {"cleanup_on_exit": False, "loglevel": "ERROR"}
+        transport_mode = os.getenv("PYMECHANICAL_TRANSPORT_MODE")
+        if transport_mode:
+            launch_kwargs["transport_mode"] = transport_mode
+        return launch_mechanical(**launch_kwargs), False
+
+    # CI/remote mode: connect to an already running gRPC server
+    ip = os.getenv("PYMECHANICAL_IP", "127.0.0.1")
+    port = int(os.getenv("PYMECHANICAL_PORT", "10000"))
+    transport_mode = os.getenv("PYMECHANICAL_TRANSPORT_MODE")
+
+    kwargs = {"ip": ip, "port": port, "cleanup_on_exit": False}
+    if transport_mode:
+        kwargs["transport_mode"] = transport_mode
+
+    return connect_to_mechanical(**kwargs), True
 
 
 @pytest.fixture
@@ -69,19 +103,17 @@ class TestMechanicalIntegration:
         Skip these tests if Mechanical is not available.
         """
         try:
-            from ansys.mechanical.core import launch_mechanical
-
-            mechanical = launch_mechanical(cleanup_on_exit=False, loglevel="ERROR")
+            mechanical, externally_managed = _get_real_mechanical_connection()
 
             yield mechanical
 
-            # Cleanup after tests
-            # Don't exit since Mechanical is running externally
-            mechanical.exit()
+            # Only terminate when this test launched the process locally.
+            if not externally_managed:
+                mechanical.exit()
 
         except Exception as e:
-            # Not allow to skip if running on CICD
-            if os.getenv("ON_CI", False):
+            # Fail hard in CI, skip locally when Mechanical is unavailable.
+            if ON_CI:
                 raise e
             else:
                 pytest.skip(f"Mechanical not available: {e}")
@@ -299,19 +331,15 @@ class TestPythonPersistentSessionIntegration:
         Skip these tests if Mechanical is not available.
         """
         try:
-            from ansys.mechanical.core import launch_mechanical
-
-            mechanical = launch_mechanical(cleanup_on_exit=False, loglevel="ERROR")
+            mechanical, externally_managed = _get_real_mechanical_connection()
 
             yield mechanical
 
-            # Cleanup after tests
-            # Don't exit since Mechanical is running externally
-            mechanical.exit()
+            if not externally_managed:
+                mechanical.exit()
 
         except Exception as e:
-            # Not allow to skip if running on CICD
-            if os.getenv("ON_CI", False):
+            if ON_CI:
                 raise e
             else:
                 pytest.skip(f"Mechanical not available: {e}")

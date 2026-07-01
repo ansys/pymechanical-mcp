@@ -81,6 +81,9 @@ html_theme_options = {
         "version_match": switcher_version,
     },
     "check_switcher": False,
+    "ansys_sphinx_theme_autoapi": {
+        "project": project,
+    },
 }
 
 html_context = {
@@ -93,6 +96,7 @@ html_context = {
 
 # Sphinx extensions
 extensions = [
+    "ansys_sphinx_theme.extension.autoapi",
     "numpydoc",
     "sphinx_design",
     "sphinx.ext.autodoc",
@@ -128,6 +132,20 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
+
+def prepare_jinja_env(jinja_env) -> None:
+    """Customize the jinja env.
+
+    Notes
+    -----
+    See https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.Environment
+
+    """
+    jinja_env.globals["project_name"] = project
+
+
+autoapi_prepare_jinja_env = prepare_jinja_env
+
 language = "en"
 
 exclude_patterns = [
@@ -136,6 +154,7 @@ exclude_patterns = [
 ]
 
 suppress_warnings = [
+    "autoapi.python_import_resolution",  # Needed due to autoapi limitations
     "toc.not_included",
     "toc.not_readable",
     "design.fa-build",

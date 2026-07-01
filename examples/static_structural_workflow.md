@@ -198,7 +198,7 @@ Response: Named Selections created: FixedEnd, ForceEnd
 **Tool:** `run_python_script`
 
 > **Force components:** Use `force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]`
-> because `YComponent` is a read-only property — you must set its values via the output table.
+> because `YComponent` is a read-only property; you must set its values via the output table.
 
 ```python
 analysis = Model.Analyses[0]
@@ -311,7 +311,7 @@ Response: Successfully disconnected from Mechanical
 
 1. **GUI Mode:** Always use `batch=false` in `launch_mechanical` to see results
    interactively. The default is `batch=true` (headless/batch mode).
-2. **Use `.format()` instead of f-strings** — Mechanical 2025 R2 uses IronPython 2.7
+2. **Use `.format()` instead of f-strings**: Mechanical 2025 R2 uses IronPython 2.7
    which does not support f-string syntax.
 3. **Script return values:** The last expression in a `run_python_script` call is
    returned as the result. Do NOT assign to `result =`; instead end with a bare

@@ -14,11 +14,11 @@ repos:
 
   # Add copyright statement to files
   - repo: https://github.com/ansys/pre-commit-hooks
-    rev: v0.7.2
+    rev: v0.8.0
     hooks:
     - id: add-license-headers
       args:
-      - --start_year=2025
+      - --start_year=2026
       - --custom_license=Apache-2.0
 
   # General file checks
@@ -55,3 +55,11 @@ repos:
         args: ['-c', 'pyproject.toml']
         additional_dependencies: ['bandit[toml]']
         exclude: ^tests/
+
+  # Spell checking with typos
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.46.0
+    hooks:
+      - id: typos
+        args: ["--config", "doc/styles/typos.toml"]
+        exclude: "(^doc/styles/config/vocabularies)|(^.github/labels.yml$)"
