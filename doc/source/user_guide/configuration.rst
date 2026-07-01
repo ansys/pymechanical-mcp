@@ -5,7 +5,7 @@ PyMechanical-MCP can be configured through command-line tool startup flags and s
 environment variables.
 
 Command-line tool startup flags
------------------
+-------------------------------
 
 .. list-table::
    :header-rows: 1
