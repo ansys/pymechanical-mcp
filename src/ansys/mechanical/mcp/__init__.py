@@ -22,6 +22,7 @@ It leverages the Mechanical scripting API to perform structural analysis,
 preprocessing, solving, and postprocessing tasks.
 
 """
+
 import importlib.metadata as importlib_metadata
 
 from ansys.mechanical.mcp.server import (
