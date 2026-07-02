@@ -91,11 +91,6 @@ extensions = [
     "sphinx.ext.intersphinx",
 ]
 
-autodoc_mock_imports = [
-    "ansys.mechanical.core",
-]
-autosummary_mock_imports = autodoc_mock_imports
-
 # Intersphinx mapping
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
