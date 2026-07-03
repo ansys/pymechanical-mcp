@@ -40,5 +40,5 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
 
    installation
    ide_configuration
-      quick_start
+   quick_start
    contribution

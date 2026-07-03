@@ -40,5 +40,5 @@ Learn how to use PyMechanical-MCP effectively.
 
    overview
    tools_and_capabilities
-    configuration
+   configuration
    docker
