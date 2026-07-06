@@ -34,3 +34,5 @@ PR
 Mechanical
 PyMechanical
 FEA
+[Ss]treamable
+plaintext
