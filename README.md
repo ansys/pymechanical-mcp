@@ -64,7 +64,7 @@ Make sure you enable access to MCPs in your VS Code settings as shown:
 
 ![Visual Studio Code](doc/source/_static/enable-mcp.png)
 
-### Claude Desktop  
+### Claude Desktop
 
 Edit the `~/Library/Application Support/Claude/claude_desktop_config.json` file:
 
@@ -355,7 +355,7 @@ Connect to an existing Mechanical instance.
 
 **Parameters**:
 - `ip` (string, default: "127.0.0.1"): IP address where Mechanical is running.
-- `port` (int, default: 10000): gRPC port where Mechanical is listening. 
+- `port` (int, default: 10000): gRPC port where Mechanical is listening.
 
 **Returns**: Connection status with Mechanical version information.
 
