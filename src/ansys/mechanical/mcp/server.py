@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Lifespan and CLI entry for the MCP server with startup options."""
+"""Lifespan and CLI entry for PyMechanical-MCP server with startup options."""
 
 import argparse
 from dataclasses import dataclass
@@ -41,13 +41,13 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     mechanical : Optional[Any]
         Mechanical instance connection.
     transport_type : str
-        Transport type for MCP server ('stdio' or 'http').
+        Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
     mechanical_ip : Optional[str]
         IP address or hostname for Mechanical connection.
     mechanical_port : Optional[int]
         Port number for Mechanical connection.
     connect_on_startup : bool
-        Whether to attempt Mechanical connection on MCP startup.
+        Whether to attempt Mechanical connection on PyMechanical-MCP startup.
     http_host : str
         Host address for HTTP transport.
     http_port : int
@@ -55,13 +55,13 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     cors_origins : Optional[list[str]]
         List of allowed CORS origins for HTTP transport.
     grpc_transport_mode : Optional[str]
-        gRPC transport mode for Mechanical connections ('auto', 'insecure',
-        'mtls', or 'wnua'). When set to 'auto' (default), the mode is
+        gRPC transport mode for Mechanical connections. Options are ``'auto'``, ``'insecure'``,
+        ``'mtls'``, and ``'wnua'``. When set to ``'auto'`` (default), the mode is
         determined automatically based on the platform and certificate
         availability.
     certs_dir : Optional[str]
         Path to directory containing mTLS certificate files (ca.crt,
-        client.crt, client.key). Used when grpc_transport_mode is 'mtls'.
+        client.crt, and client.key). Used when ``grpc_transport_mode`` is ``'mtls'``.
     """
 
     mechanical: Any | None = None
@@ -82,7 +82,7 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         Returns
         -------
         Optional[Any]
-            The Mechanical instance, or None if not connected.
+            Mechanical instance or ``None`` if not connected.
         """
         return self.mechanical
 
@@ -105,7 +105,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
         Returns
         -------
         PyMechanicalAppContext
-            The application context for managing Mechanical instances.
+            Application context for managing Mechanical instances.
         """
         startup_code = "from ansys.mechanical.mcp.mechanical_helper.startup_code import *"
         python_session = PersistentPythonSession(
@@ -142,7 +142,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
 
     def product_startup(self):
         """Allow PyMechanical-MCP specific startup actions."""
-        logger.info("PyMechanical MCP server starting up...")
+        logger.info("PyMechanical-MCP starting up...")
 
         context = self.context
 
@@ -198,7 +198,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
 
 
 # Pass lifespan to server
-app = PyMechanicalMCP(name="PyMechanical MCP Server")
+app = PyMechanicalMCP(name="PyMechanical-MCP")
 
 
 @dataclass
@@ -219,17 +219,17 @@ session = SessionContext()
 
 def _validate_port(port: int) -> int:
     if port < 1 or port > 65535:
-        raise argparse.ArgumentTypeError("Port must be in range 1-65535")
+        raise argparse.ArgumentTypeError("Port must be in range 1 to 65535.")
     return port
 
 
 def launcher(argv: list[str] | None = None) -> None:
-    """Entry point for the MCP server.
+    """Launch PyMechanical-MCP.
 
     Parameters
     ----------
     argv : list[str] | None
-        Optional list of arguments for testing. Defaults to `sys.argv[1:]`.
+        Optional list of arguments for testing. If ``None``, ``sys.argv[1:]`` is used.
     """
     if argv is None:
         argv = sys.argv[1:]
@@ -284,7 +284,7 @@ def launcher(argv: list[str] | None = None) -> None:
         "--on-aali",
         dest="on_aali",
         action="store_true",
-        help="To specify whether the MCP server is running on an AALI environment.",
+        help="To specify whether PyMechanical-MCP server is running in an AALI environment.",
     )
     parser.add_argument(
         "--transport-mode",
@@ -375,7 +375,7 @@ def launcher(argv: list[str] | None = None) -> None:
     app.instructions = prompts.SYSTEM_PROMPT
 
     # Disable tools that require an active Mechanical connection until one is established.
-    # When connect_on_startup is True, Mechanical will be connected during server startup,
+    # When connect_on_startup is True, Mechanical is connected during PyMechanical-MCP startup,
     # so these tools are available immediately and should not be disabled here.
     if not session.connect_on_startup:
         from ansys.mechanical.mcp.tools import REQUIRES_MECHANICAL_TAG

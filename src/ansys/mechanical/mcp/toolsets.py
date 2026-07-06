@@ -18,14 +18,14 @@
 
 Exposes the ``toolsets://definition`` MCP resource that groups every tool
 registered on the PyMechanical MCP server into logical, user-facing
-categories. Each toolset entry follows the schema agreed across the Ansys
+categories. Each toolset entry follows the schema agreed to across the Ansys
 MCP family:
 
 ``{"name": str, "description": str, "skill": str, "tools": list[str]}``
 
-The catalogue is a pure discovery aid; it does not affect tool visibility,
+The catalog is a pure discovery aid. It does not affect tool visibility,
 gating, or runtime behavior. Visibility is still controlled by the existing
-``REQUIRES_MECHANICAL_TAG`` / ``aali`` / ``locked_connection`` tags applied
+``REQUIRES_MECHANICAL_TAG``, ``aali``, and ``locked_connection`` tags applied
 in :mod:`ansys.mechanical.mcp.tools`.
 """
 
