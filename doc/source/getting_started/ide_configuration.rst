@@ -49,7 +49,7 @@ Add this to ``.vscode/mcp.json``:
      }
    }
 
-Local development install:
+For a local development install, use:
 
 .. code-block:: json
 
@@ -68,7 +68,7 @@ Local development install:
 
 Use ``.venv/bin/python`` on Linux/macOS.
 
-HTTP transport configuration:
+For HTTP transport, use:
 
 .. code-block:: json
 
@@ -81,7 +81,7 @@ HTTP transport configuration:
      }
    }
 
-Start the server separately for HTTP mode:
+Start PyMechanical-MCP separately for HTTP mode:
 
 .. code-block:: bash
 
@@ -90,7 +90,7 @@ Start the server separately for HTTP mode:
 Claude Desktop
 --------------
 
-Edit ``claude_desktop_config.json``:
+Edit the ``claude_desktop_config.json`` file:
 
 .. code-block:: json
 
@@ -110,7 +110,7 @@ Edit ``claude_desktop_config.json``:
 Advanced startup options
 ------------------------
 
-Auto-connect on startup:
+To auto-connect on startup, use:
 
 .. code-block:: json
 

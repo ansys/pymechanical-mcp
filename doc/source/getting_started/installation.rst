@@ -10,12 +10,12 @@ Prerequisites
 
 - Ansys Mechanical installation (local or remote) with an available gRPC endpoint
 - Python 3.11 through 3.14
-- Network access between MCP server and Mechanical server
+- Network access between PyMechanical-MCP and the Mechanical server
 
 Install from PyPI
 -----------------
 
-Install ``ansys-mechanical-mcp`` using ``pip``:
+Install PyMechanical-MCP using ``pip``:
 
 .. code-block:: bash
 
@@ -35,13 +35,13 @@ Clone and install in editable mode:
 Run the server
 --------------
 
-STDIO transport (default, for MCP clients such as VS Code and Claude Code):
+Use STDIO transport (the default) for MCP clients such as VS Code and Claude Code:
 
 .. code-block:: bash
 
    ansys-mechanical-mcp
 
-HTTP transport (for remote/server-style deployments):
+Use Streamable HTTP transport for remote or server-style deployments:
 
 .. code-block:: bash
 
@@ -57,19 +57,19 @@ To auto-connect to a running Mechanical instance at startup:
    ansys-mechanical-mcp --connect-on-startup --ip 127.0.0.1 --port 10000
 
 .. warning::
-   When ``--connect-on-startup`` is used, the connection is locked and
-   ``launch_mechanical``, ``connect_to_mechanical``, and
-   ``disconnect_from_mechanical`` are disabled.
+   When you use ``--connect-on-startup``, PyMechanical-MCP locks the connection and
+   disables the ``launch_mechanical``, ``connect_to_mechanical``, and
+   ``disconnect_from_mechanical`` tools.
 
 Transport security mode
 -----------------------
 
 Select gRPC transport behavior with ``--transport-mode``:
 
-- ``auto``: Detect based on platform/certificates.
-- ``insecure``: plain text gRPC.
-- ``mtls``: Mutual TLS (requires certificates).
-- ``wnua``: Windows Named User Authentication.
+- ``auto``: Automatically detects the mode based on the platform and certificates.
+- ``insecure``: Uses plaintext gRPC.
+- ``mtls``: Uses mutual TLS (requires certificates).
+- ``wnua``: Uses Windows Named User Authentication.
 
 Example:
 
@@ -77,7 +77,7 @@ Example:
 
    ansys-mechanical-mcp --transport-mode mtls --certs-dir /path/to/certs
 
-The same values can be supplied with environment variables:
+You can supply the same values with environment variables:
 
 - ``PYMECHANICAL_TRANSPORT_MODE``
 - ``ANSYS_GRPC_CERTIFICATES``

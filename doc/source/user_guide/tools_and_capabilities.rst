@@ -9,10 +9,10 @@ Tool availability model
 PyMechanical-MCP uses connection-aware visibility.
 
 - **Offline-capable tools** are available before any Mechanical session.
-- **Live-session tools** are tagged with ``REQUIRES_MECHANICAL_TAG`` and are
-  hidden until a successful ``launch_mechanical`` or ``connect_to_mechanical``.
-- If ``--connect-on-startup`` is used, live-session tools are available
-  immediately and connection lifecycle tools are intentionally locked.
+- **Live-session tools** use ``REQUIRES_MECHANICAL_TAG`` and remain hidden
+  until you successfully call ``launch_mechanical`` or ``connect_to_mechanical``.
+- If you use ``--connect-on-startup``, live-session tools are available
+  immediately, and PyMechanical-MCP locks the connection lifecycle tools.
 
 Always available (before connection)
 ------------------------------------
@@ -74,18 +74,18 @@ Available after connection
    * - ``solve_analysis``
      - Solve active analysis system.
    * - ``get_model_info``
-     - Structured model summary (geometry, mesh, analyses, results).
+     - Return a structured model summary (geometry, mesh, analyses, results).
    * - ``screenshot``
      - Capture current Mechanical view.
    * - ``get_mechanical_logs``
      - Retrieve Mechanical logs for diagnostics.
    * - ``export_results``
-     - Export result objects/artifacts.
+     - Export result objects and artifacts.
 
 .. note::
-  When running with ``--connect-on-startup``, ``launch_mechanical``,
-  ``connect_to_mechanical``, and ``disconnect_from_mechanical`` are disabled
-  by design.
+  When you run with ``--connect-on-startup``, PyMechanical-MCP disables
+  ``launch_mechanical``, ``connect_to_mechanical``, and
+  ``disconnect_from_mechanical`` by design.
 
 Guideline topics
 ----------------
@@ -137,16 +137,16 @@ Static structural run
 Modal analysis
 ~~~~~~~~~~~~~~
 
-#. Connect to Mechanical
-#. Import model and define fixed supports
-#. Create modal analysis settings with script tools
-#. ``solve_analysis``
-#. ``create_custom_plot`` for mode-shape reporting
+#. Connect to Mechanical.
+#. Import the model and define fixed supports.
+#. Create modal analysis settings with script tools.
+#. Run ``solve_analysis``.
+#. Use ``create_custom_plot`` for mode-shape reporting.
 
 Checks after solving
 ~~~~~~~~~~~~~~~~~~~~~
 
-#. ``get_model_info`` to verify solved state
-#. ``get_mechanical_logs`` for warnings/errors
+#. ``get_model_info`` for verifying solved state
+#. ``get_mechanical_logs`` for warnings and errors
 #. ``run_python_code`` for custom data extraction
 #. ``export_results`` for report artifacts

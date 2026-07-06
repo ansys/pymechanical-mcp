@@ -30,14 +30,13 @@ Examples
 
 Typical execution pattern:
 
-1. Start PyMechanical-MCP and connect/launch Mechanical.
+1. Start PyMechanical-MCP and connect to or launch Mechanical.
 2. Upload STEP geometry with ``upload_file``.
 3. Use scripting tools to set up materials, mesh, and loads.
 4. Solve with ``solve_analysis``.
 5. Capture outputs using ``export_results`` and ``screenshot``.
 
-These examples are designed for live MCP demos and can be adapted into
-customer-specific automation prompts.
+You can adapt these examples for live PyMechanical-MCP demos or customize them as customer-specific automation prompts.
 
 .. toctree::
    :hidden:

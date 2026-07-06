@@ -10,7 +10,8 @@ You can contribute to PyMechanical-MCP in several ways:
 - Report defects or request features on the `GitHub Issues page <https://github.com/ansys/pymechanical-mcp/issues>`_
 - Submit pull requests with bug fixes, new features, or documentation updates
 
-Before contributing, review the PyAnsys developer guidance:
+Before contributing, review the `PyAnsys developer's guide <https://dev.docs.pyansys.com/>`_, paying particular
+attention to the guidance on these pages:
 
 - `Contributing <https://dev.docs.pyansys.com/how-to/contributing.html>`_
 - `Coding style <https://dev.docs.pyansys.com/coding-style/index.html>`_
@@ -35,7 +36,7 @@ Run tests:
    # Integration tests (requires Mechanical)
    pytest -m integration
 
-In CI, integration tests are executed in a dedicated job:
+The CI pipeline runs integration tests in a dedicated job:
 
 - ``Integration Tests (remote Mechanical)``
 
@@ -45,14 +46,14 @@ Run linters:
 
    pre-commit run --all-files
 
-Build docs:
+Build documentation:
 
 .. code-block:: bash
 
    python -m sphinx -W -b html doc/source doc/_build/html
 
-Adding a new tool
-=================
+Add a new tool
+==============
 
 When adding ``@app.tool(...)`` entries in ``src/ansys/mechanical/mcp/tools.py``:
 

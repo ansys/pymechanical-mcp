@@ -64,11 +64,11 @@ Ansys Mechanical through PyAnsys.
 
         Explore practical Mechanical workflows that can be adapted for MCP-assisted analysis.
 
-    .. grid-item-card:: :fa:`external-link-alt` Open official PyMechanical docs
+    .. grid-item-card:: :fa:`external-link-alt` Access PyMechanical documentation
         :link: https://mechanical.docs.pyansys.com/
         :link-type: url
 
-        Access the official PyMechanical API and user documentation for product-level details.
+        Access the PyMechanical documentation for product-level details.
 
     .. grid-item-card:: :fa:`question` Find help or report issues
         :link: https://github.com/ansys/pymechanical-mcp/discussions
@@ -80,4 +80,4 @@ Ansys Mechanical through PyAnsys.
         :link: getting_started/contribution
         :link-type: doc
 
-        Learn how to contribute code, docs, and examples to PyMechanical-MCP.
+        Learn how to contribute code, documentation, and examples to PyMechanical-MCP.

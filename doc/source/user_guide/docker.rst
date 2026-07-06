@@ -28,9 +28,9 @@ Quick start with Docker Compose
 
       docker compose up -d --build
 
-4. The MCP server is available at ``http://localhost:8080`` by default.
+   The MCP server is available at ``http://localhost:8080`` by default.
 
-5. Follow logs:
+4. Follow logs:
 
    .. code-block:: bash
 
@@ -48,7 +48,7 @@ Important environment variables
      - Description
    * - ``PYMECHANICAL_IP``
      - ``mechanical``
-     - Mechanical host/IP for gRPC connection.
+     - Mechanical hostname or IP address for the gRPC connection.
    * - ``PYMECHANICAL_PORT``
      - ``10000``
      - Mechanical gRPC port.
@@ -60,7 +60,7 @@ Important environment variables
      - MCP HTTP port.
    * - ``CONNECT_ON_STARTUP``
      - ``false``
-     - Auto-connect to Mechanical when MCP starts.
+     - Whether PyMechanical-MCP is to connect to Mechanical on startup.
    * - ``PYMECHANICAL_TRANSPORT_MODE``
      - ``auto``
      - gRPC mode: ``auto``, ``insecure``, ``mtls``, ``wnua``.
@@ -71,7 +71,7 @@ Important environment variables
 Local Mechanical connectivity notes
 -----------------------------------
 
-- On Windows/macOS Docker Desktop, use ``host.docker.internal`` for a host
+- On Windows, macOS, or Docker Desktop, use ``host.docker.internal`` for a host
   Mechanical instance.
 - On Linux, prefer host networking or explicit host IP routing.
 

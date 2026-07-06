@@ -10,29 +10,29 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
     :gutter: 1 2 3 3
     :padding: 1 2 3 3
 
-    .. grid-item-card:: :fa:`download`  Installation
+    .. grid-item-card:: :fa:`download` Installation
           :link: installation
           :link-type: doc
 
-          A step-by-step guide to installing PyMechanical-MCP.
+          Install PyMechanical-MCP.
 
-    .. grid-item-card:: :fa:`cogs`  IDE configuration
+    .. grid-item-card:: :fa:`cogs` IDE and client configuration
           :link: ide_configuration
           :link-type: doc
 
-          Setting up your IDE for PyMechanical-MCP development.
+          Configure your IDE and client to use PyMechanical-MCP.
 
-    .. grid-item-card:: :fa:`rocket`  Quick start
+    .. grid-item-card:: :fa:`rocket` Quick start
           :link: quick_start
           :link-type: doc
 
-          Launch the server and follow a practical first workflow.
+          Launch PyMechanical-MCP and follow a practical first workflow.
 
-    .. grid-item-card:: :fa:`users`  Contribution
+    .. grid-item-card:: :fa:`users` Contributing
           :link: contribution
           :link-type: doc
 
-          Guidelines for contributing to the PyMechanical-MCP project.
+          Learn how to contribute code, documentation, and examples.
 
 
 .. toctree::

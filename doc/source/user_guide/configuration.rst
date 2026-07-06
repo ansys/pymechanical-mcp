@@ -1,8 +1,7 @@
 Configuration
 =============
 
-PyMechanical-MCP can be configured through command-line tool startup flags and selected
-environment variables.
+You can configure PyMechanical-MCP through command-line flags and environment variables.
 
 Command-line tool startup flags
 -------------------------------
@@ -16,12 +15,11 @@ Command-line tool startup flags
    * - ``--transport stdio|http``
      - MCP transport (default ``stdio``).
    * - ``--http-host`` / ``--http-port``
-     - HTTP bind address and port when ``--transport http`` is used.
+     - HTTP bind address and port for ``--transport http``.
    * - ``--ip`` / ``--port``
-     - Mechanical endpoint used by ``connect_to_mechanical`` or
-       ``--connect-on-startup``.
+     - Mechanical endpoint for ``connect_to_mechanical`` and ``--connect-on-startup``.
    * - ``--connect-on-startup``
-     - Attempts to connect during MCP startup and locks lifecycle tools.
+     - Connection to Mechanical on startup. Locks lifecycle tools.
    * - ``--transport-mode``
      - gRPC mode: ``auto``, ``insecure``, ``mtls``, or ``wnua``.
    * - ``--certs-dir``
@@ -30,7 +28,7 @@ Command-line tool startup flags
    * - ``--cors-origins``
      - Comma-separated allowed origins for HTTP transport.
    * - ``--on-aali``
-     - Enables AALI-specific runtime behavior.
+     - AALI-specific runtime behavior.
 
 Environment variables
 ---------------------
@@ -48,13 +46,13 @@ Environment variables
    * - ``PYMECHANICAL_IP`` / ``PYMECHANICAL_PORT``
      - Preferred endpoint values in containerized deployments.
    * - ``FASTMCP_LOG_LEVEL``
-     - Controls MCP server logging verbosity.
+     - MCP server log verbosity.
 
 Connection-lock behavior
 ------------------------
 
-When ``--connect-on-startup`` is enabled, the server attempts to connect to
-Mechanical during startup and then disables:
+When you use ``--connect-on-startup``, the server connects to Mechanical
+during startup and then disables:
 
 - ``launch_mechanical``
 - ``connect_to_mechanical``

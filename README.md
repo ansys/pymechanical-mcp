@@ -64,7 +64,7 @@ Make sure you enable access to MCPs in your VS Code settings as shown:
 
 ![Visual Studio Code](doc/source/_static/enable-mcp.png)
 
-### Claude Desktop  
+### Claude Desktop
 
 Edit the `~/Library/Application Support/Claude/claude_desktop_config.json` file:
 
@@ -229,7 +229,7 @@ The gRPC transport mode determines how PyMechanical-MCP authenticates with the M
 | `auto` | Auto-detect based on platform and certificate availability (default) | All | No |
 | `insecure` | Plain text gRPC without encryption | All | No |
 | `mtls` | Mutual TLS with certificate-based authentication | All | Yes |
-| `wnua` | Windows named-user authentication | Windows only | No |
+| `wnua` | Windows Named User Authentication | Windows only | No |
 
 **Auto-detection behavior** (when `--transport-mode` is not specified):
 - **Windows**: Defers to PyMechanical's default (`wnua`).
@@ -355,7 +355,7 @@ Connect to an existing Mechanical instance.
 
 **Parameters**:
 - `ip` (string, default: "127.0.0.1"): IP address where Mechanical is running.
-- `port` (int, default: 10000): gRPC port where Mechanical is listening. 
+- `port` (int, default: 10000): gRPC port where Mechanical is listening.
 
 **Returns**: Connection status with Mechanical version information.
 

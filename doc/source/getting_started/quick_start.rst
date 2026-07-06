@@ -4,13 +4,13 @@ Quick start
 Launch PyMechanical-MCP
 -----------------------
 
-Start the MCP server with the default STDIO transport:
+Launch PyMechanical-MCP with the default STDIO transport:
 
 .. code-block:: bash
 
    ansys-mechanical-mcp
 
-To run the server over streaming HTTP:
+To run the server over streamable HTTP:
 
 .. code-block:: bash
 
@@ -49,12 +49,12 @@ Use ``--connect-on-startup`` when launching the MCP server.
    ansys-mechanical-mcp --connect-on-startup --ip 127.0.0.1 --port 10000
 
 .. warning::
-   When ``--connect-on-startup`` is used, the connection is locked and
-   ``launch_mechanical``, ``connect_to_mechanical``, and
-   ``disconnect_from_mechanical`` are disabled.
+   When you use ``--connect-on-startup``, PyMechanical-MCP locks the connection and
+   disables ``launch_mechanical``, ``connect_to_mechanical``, and
+   ``disconnect_from_mechanical``.
 
-Offline/online tool model
--------------------------
+Tool availability before and after connecting
+---------------------------------------------
 
 Before connection, use offline-capable tools such as:
 
@@ -63,7 +63,7 @@ Before connection, use offline-capable tools such as:
 - ``list_mechanical_instances``
 - ``get_guidelines_for``
 
-After connection, session-dependent tools become available for scripting,
+After you connect, session-dependent tools become available for scripting,
 file transfer, solving, and result export.
 
 First workflow checklist
@@ -71,10 +71,10 @@ First workflow checklist
 
 1. ``check_mechanical_status``
 2. ``launch_mechanical`` or ``connect_to_mechanical``
-3. ``upload_file`` (geometry/script as needed)
+3. ``upload_file`` (geometry or script, as needed)
 4. ``run_python_script`` (model setup)
 5. ``solve_analysis``
-6. ``get_model_info`` / ``export_results`` / ``screenshot``
+6. ``get_model_info``, ``export_results``, or ``screenshot``
 
 Next steps
 ----------

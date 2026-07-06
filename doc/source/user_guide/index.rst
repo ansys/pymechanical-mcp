@@ -20,7 +20,7 @@ Learn how to use PyMechanical-MCP effectively.
         :link: tools_and_capabilities
         :link-type: doc
 
-        Reference for every tool the server exposes.
+        Reference for every tool PyMechanical-MCP exposes.
 
     .. grid-item-card:: :fa:`sliders` Configuration
         :link: configuration
