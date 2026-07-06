@@ -1,40 +1,40 @@
-# PyMechanical MCP Server
+# PyMechanical-MCP
 
-A Model Context Protocol (MCP) server that provides AI assistants with the ability to interact with Ansys Mechanical through PyMechanical. This server enables natural language interaction with Mechanical for structural, thermal, and multiphysics simulations.
+PyMechanical-MCP is a Model Context Protocol (MCP) server that lets your AI assistant interact with Ansys Mechanical through PyMechanical. You can use natural language to run structural, thermal, and multiphysics simulations.
 
 ## Overview
 
-This MCP server bridges the gap between AI assistants and Ansys Mechanical, allowing you to:
+PyMechanical-MCP connects your AI assistant to Ansys Mechanical so you can:
 
-- **Manage Mechanical instances**: Get detailed status information and manage connections
-- **Dynamic connection management**: Launch new Mechanical instances, connect to existing ones, or disconnect as needed
-- **Execute Mechanical scripts**: Run Python scripts using the Mechanical scripting API
-- **Custom Python execution**: Run arbitrary Python and PyMechanical code in a persistent session
-- **Advanced visualization**: Create custom matplotlib plots for simulation results
-- **Workflow guidance**: Access comprehensive context and best practices for all phases of Mechanical simulations
-- **Flexible deployment**: Works with Mechanical running locally, remotely, or in Docker containers
+- **Manage Mechanical instances**: Check instance status and manage connections.
+- **Manage connections dynamically**: Launch a new instance, connect to an existing instance, or disconnect when needed.
+- **Run Mechanical scripts**: Use the Mechanical scripting API to run Python scripts.
+- **Run custom Python code**: Run Python and PyMechanical code in a persistent session.
+- **Create advanced visualizations**: Create custom Matplotlib plots for simulation results.
+- **Get workflow guidance**: Use context and best practices for each phase of a Mechanical simulation.
+- **Deploy flexibly**: Work with Mechanical running locally, remotely, or in Docker containers.
 
 ## Features
 
-- **Dynamic Connection Management**: Connect to and disconnect from Mechanical instances on demand, or launch new instances programmatically
-- **Flexible Deployment**: Supports Mechanical running locally, remotely, or in Docker containers
-- **Type-Safe Context**: Strongly typed application context for reliable operations
-- **Comprehensive Tools**: Specialized tools for Mechanical interaction, including enhanced error handling
-- **Python Session Support**: Execute custom Python code and create advanced visualizations using a persistent Python session
-- **Workflow Guidance**: Built-in context tools provide comprehensive guidelines and best practices for Mechanical workflows
-- **Automatic Initialization**: The server automatically provides necessary context for Mechanical/PyMechanical queries on first interaction
+- **Dynamic connection management**: Connect to and disconnect from Mechanical instances on demand, or launch new instances programmatically.
+- **Flexible deployment**: Run Mechanical locally, remotely, or in Docker containers.
+- **Type-safe context**: Use strongly typed application context for reliable operations.
+- **Comprehensive tools**: Use specialized Mechanical tools with enhanced error handling.
+- **Python session support**: Execute custom Python code and create advanced visualizations in a persistent Python session.
+- **Workflow guidance**: Get guidelines and best practices for Mechanical workflows from built-in context tools.
+- **Automatic initialization**: Receive required context for Mechanical and PyMechanical queries on first interaction.
 
 ## Prerequisites
 
 - Python 3.11 or higher (up to 3.14)
-- Ansys Mechanical installation (optional - can connect to remote instances)
-- PyMechanical library (ansys-mechanical-core >= 0.12.0)
-- FastMCP library (fastmcp >= 0.1.0)
-- Ansys Common MCP library (ansys-common-mcp >= 0.1.0)
+- Ansys Mechanical installation (optional as PyMechanical-MCP can connect to remote instances)
+- PyMechanical library (ansys-mechanical-core 0.12.0 or later)
+- FastMCP library (fastmcp 0.1.0 or later)
+- Ansys Common MCP library (ansys-common-mcp 0.1.0 or later)
 
-## Quick Start
+## Quick start
 
-The quickest way to run the MCP server is to use [`uv`](https://docs.astral.sh/uv/) in your desired software:
+To run PyMechanical-MCP quickly, use [`uv`](https://docs.astral.sh/uv/) with your client:
 
 ### VS Code integration
 
@@ -55,16 +55,18 @@ You should add the following to your `.vscode/mcp.json` file in your project dir
 }
 ```
 
-> **Note**: The `--index-strategy unsafe-best-match` flag ensures proper dependency resolution when you have internal PyPI indexes configured.
+> [!NOTE]
+> The `--index-strategy unsafe-best-match` flag ensures proper dependency resolution when you have internal PyPI indexes configured.
 
-For more information visit [Use MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/customization/mcp-servers). In this page, you can find information about adding an MCP server globally to the user.
+For more information, see [Add and manage MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) in the Visual Studio Code documentation. The page explains how you add an MCP server for your user account.
 
-Make sure you enabled the access to MCPs in your VS Code settings as presented here:
-![VS Code settings](enable_mcp.png)
+Make sure you enable access to MCPs in your VS Code settings as shown:
 
-### Claude Desktop
+![Visual Studio Code](doc/source/_static/enable-mcp.png)
 
-Edit the file `~/Library/Application Support/Claude/claude_desktop_config.json`:
+### Claude Desktop  
+
+Edit the `~/Library/Application Support/Claude/claude_desktop_config.json` file:
 
 ```json
 {
@@ -80,48 +82,48 @@ Edit the file `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-For more information, visit [Testing your server with Claude for Desktop](https://modelcontextprotocol.io/docs/develop/build-server#testing-your-server-with-claude-for-desktop).
+For more information, see [Testing your server with Claude for Desktop](https://modelcontextprotocol.io/docs/develop/build-server#testing-your-server-with-claude-for-desktop).
 
 ### Claude Code
 
-You can add PyMechanical-MCP server to the project in a specific directory with the following commands:
+You can add PyMechanical-MCP to the project in a specific directory with these commands:
 
 ```bash
 cd my-project
 claude mcp add --transport stdio pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
-If you want to add the MCP-server globally on your user, use the following command:
+If you want to add PyMechanical-MCP globally for your user account, use this command:
 
 ```bash
 claude mcp add --transport stdio --scope user pymechanical -- uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
-For more information, visit [Claude Code Docs-Installing MCP servers](https://code.claude.com/docs/en/mcp#installing-mcp-servers)
+For more information, see [Installing MCP servers](https://code.claude.com/docs/en/mcp#installing-mcp-servers) in the Claude Code documentation.
 
-### As a standalone Application
+### As a standalone application
 
-You can start the PyMechanical MCP server as a standalone Python application using `uvx`:
+You can start PyMechanical-MCP as a standalone Python application using `uvx`:
 
 ```console
 uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
 ```
 
-You can also use your python virtual environment if you have pip installed PyMechanical MCP server:
+You can also use your Python virtual environment if you have used pip to install PyMechanical-MCP:
 
 ```console
 ./.venv/bin/python -m ansys.mechanical.mcp
 ```
 
-## Transport Options
+## Transport options
 
-PyMechanical MCP server supports two transport protocols:
+PyMechanical-MCP supports two transport protocols: STDIO and Streamable HTTP.
 
-### STDIO Transport (Default)
+### STDIO transport (default)
 
-STDIO transport is the default and recommended for local MCP client integration. It communicates via standard input/output streams.
+STDIO transport is the default and recommended for local MCP client integration. It communicates via standard input and output streams.
 
-**VS Code Configuration** (`.vscode/mcp.json`):
+**VS Code configuration** (`.vscode/mcp.json`):
 ```json
 {
   "servers": {
@@ -137,19 +139,19 @@ STDIO transport is the default and recommended for local MCP client integration.
 }
 ```
 
-**Command Line**:
+**Command line**:
 ```console
 python -m ansys.mechanical.mcp --transport stdio
 ```
 
-### HTTP Transport (Streamable HTTP with SSE)
+### Streamable HTTP transport (with SSE)
 
-HTTP transport enables remote access to the MCP server over HTTP with Server-Sent Events (SSE), allowing web-based clients and remote integrations.
+Streamable HTTP transport enables remote access to the MCP server over HTTP with Server-Sent Events (SSE), allowing web-based clients and remote integrations.
 
 > [!NOTE]
-> **Note**: When using HTTP transport, you must start the MCP server separately before configuring your client. Unlike STDIO transport (which auto-starts the server), HTTP transport requires the server to be running independently.
+> When you use Streamable HTTP transport, start the MCP server separately before you configure your client. Unlike STDIO transport (which auto-starts the server), Streamable HTTP transport requires the server to run independently.
 
-**VS Code Configuration** (`.vscode/mcp.json`):
+**VS Code configuration** (`.vscode/mcp.json`):
 ```json
 {
   "servers": {
@@ -161,9 +163,9 @@ HTTP transport enables remote access to the MCP server over HTTP with Server-Sen
 }
 ```
 
-**Starting the Server**:
+**Start the server**:
 
-First, start the MCP server in a separate terminal:
+First, start PyMechanical-MCP in a separate terminal:
 
 ```console
 # Basic HTTP server (localhost:8080)
@@ -176,82 +178,81 @@ python -m ansys.mechanical.mcp --transport http --http-host 0.0.0.0 --http-port 
 python -m ansys.mechanical.mcp --transport http --cors-origins "http://localhost:3000,https://example.com"
 ```
 
-**Command Line Options**:
+**Command line options**:
 - `--http-host`: HTTP server host address (default: `127.0.0.1`)
 - `--http-port`: HTTP server port (default: `8080`, range: 1-65535)
 - `--cors-origins`: Comma-separated list of allowed CORS origins (optional)
 
-After starting the server, configure your MCP client to connect to the specified URL (e.g., `http://127.0.0.1:8080`).
+After starting PyMechanical-MCP, configure your MCP client to connect to the specified URL (for example, `http://127.0.0.1:8080`).
 
-### Command Line Arguments
+### Command-line arguments
 
-#### Transport Options
+#### Transport options
 
 - `--transport {stdio,http}`: Transport type. Default: `stdio`
 
-#### Mechanical Connection Options (Works with Both Transports)
+#### Mechanical connection arguments
 
-The following Mechanical connection arguments work with both STDIO and HTTP transports:
+The following Mechanical connection arguments work with both STDIO and Streamable HTTP transports:
 
 ```console
 # Connect to Mechanical on startup
 python -m ansys.mechanical.mcp --connect-on-startup --ip 192.168.1.100 --port 10000
 
-# With HTTP transport
+# With Streamable HTTP transport
 python -m ansys.mechanical.mcp --transport http --connect-on-startup --ip 192.168.1.100 --port 10000
 ```
 
 **Options**:
 - `--ip`: Mechanical IP address or hostname (default: `127.0.0.1`)
 - `--port`: Mechanical gRPC port (default: `10000`, range: 1-65535)
-- `--connect-on-startup`: Automatically connect to Mechanical when the server starts
+- `--connect-on-startup`: Automatically connect to Mechanical when PyMechanical-MCP starts
 
 > [!WARNING]
 > When `--connect-on-startup` is used, the connection is locked and the following tools are disabled: `launch_mechanical`, `connect_to_mechanical`, and `disconnect_from_mechanical`.
 
-#### HTTP Transport Options
+#### Streamable HTTP transport options
 
 - `--http-host`: HTTP server host address (default: `127.0.0.1`)
 - `--http-port`: HTTP server port (default: `8080`, range: 1-65535)
 - `--cors-origins`: Comma-separated list of allowed CORS origins (optional)
 
-#### gRPC Transport Mode Options
+#### gRPC transport mode options
 
 - `--transport-mode {auto,insecure,mtls,wnua}`: gRPC transport mode for Mechanical connections. Default: auto-detect.
-- `--certs-dir`: Path to directory containing mTLS certificate files (`ca.crt`, `client.crt`, `client.key`)
+- `--certs-dir`: Path to directory containing mTLS certificate files (`ca.crt`, `client.crt`, and `client.key`)
 
-The gRPC transport mode determines how the MCP server authenticates with the Mechanical gRPC server:
+The gRPC transport mode determines how PyMechanical-MCP authenticates with the Mechanical gRPC server:
 
-| Mode | Description | Platform | Requires Certs? |
+| Mode | Description | Platform | Requires certificates? |
 |------|-------------|----------|----------------|
 | `auto` | Auto-detect based on platform and certificate availability (default) | All | No |
-| `insecure` | Plaintext gRPC without encryption | All | No |
+| `insecure` | Plain text gRPC without encryption | All | No |
 | `mtls` | Mutual TLS with certificate-based authentication | All | Yes |
-| `wnua` | Windows Named User Authentication | Windows only | No |
+| `wnua` | Windows named-user authentication | Windows only | No |
 
 **Auto-detection behavior** (when `--transport-mode` is not specified):
-- **Windows**: Defers to PyMechanical's default (`wnua`)
-- **Linux/Docker**: Uses `mtls` if certificate files are found; otherwise uses `insecure`
+- **Windows**: Defers to PyMechanical's default (`wnua`).
+- **Linux/Docker**: Uses `mtls` if certificate files are found; otherwise uses `insecure`.
 
-The transport mode can also be set via the `PYMECHANICAL_TRANSPORT_MODE` environment variable.
-The certificate directory can also be set via the `ANSYS_GRPC_CERTIFICATES` environment variable.
+You can also set the transport using the `PYMECHANICAL_TRANSPORT_MODE` environment variable and the certificate directory using the `ANSYS_GRPC_CERTIFICATES` environment variable.
 
 > [!IMPORTANT]
 > The client transport mode **must match** the mode the Mechanical server was started with. There is no auto-negotiation.
 
-#### Special Environment Options
+#### Special environment options
 
-- `--on-aali`: Specify that the MCP server is running on an AALI environment. This disables certain tools that are not compatible with AALI
+- `--on-aali`: Specify that PyMechanical-MCP is running in an AALI environment. This disables certain tools that are not compatible with AALI.
 
 ## Usage
 
-### Starting a Mechanical Instance
+### Start a Mechanical instance
 
 You have several options to start and connect to Mechanical:
 
-#### Option 1: Launch Mechanical through MCP (Recommended for new instances)
+#### Option 1: Launch Mechanical through PyMechanical-MCP (recommended for new instances)
 
-Use the `launch_mechanical` tool to start a new Mechanical instance that will be automatically connected:
+Use the `launch_mechanical` tool to start a new Mechanical instance that is automatically connected:
 
 Through your AI assistant:
 
@@ -261,10 +262,10 @@ or with specific options:
 
 > "Launch Mechanical with batch mode enabled"
 
-This flexible approach allows you to:
-- Start new Mechanical instances on-demand
-- Specify custom settings (batch mode, version, etc.)
-- Automatically establish connection to the launched instance
+This flexible approach lets you:
+- Start new Mechanical instances on demand.
+- Specify custom settings, such as batch mode or version.
+- Automatically connect to the launched instance.
 
 #### Option 2: Connect to an existing Mechanical instance
 
@@ -278,97 +279,97 @@ or
 
 > "Connect to Mechanical on 192.168.1.100 port 10001"
 
-This flexible approach allows you to:
+This flexible approach lets you:
 
-- Connect to different Mechanical instances during a session
-- Work with multiple Mechanical servers without restarting the MCP server
+- Connect to different Mechanical instances during a session.
+- Work with multiple Mechanical servers without restarting PyMechanical-MCP.
 
 #### Option 3: Auto-connect on MCP startup
 
-Use the `--connect-on-startup` flag to automatically connect when the MCP server starts:
+Use the `--connect-on-startup` flag to automatically connect when PyMechanical-MCP starts:
 
 ```console
 python -m ansys.mechanical.mcp --connect-on-startup --ip 127.0.0.1 --port 10000
 ```
 
 > [!WARNING]
-> When using `--connect-on-startup`, the connection is locked and you cannot use `launch_mechanical`, `connect_to_mechanical`, or `disconnect_from_mechanical` tools.
+> When using the `--connect-on-startup` flag, the connection is locked. You cannot use the `launch_mechanical`, `connect_to_mechanical`, or `disconnect_from_mechanical` tools.
 
-By default, the server connects to Mechanical on `localhost:10000` when using Option 2 or 3.
+By default, options 1 and 2 connect PyMechanical-MCP to Mechanical at `localhost:10000`.
 
-### Run Mechanical Scripts
+### Run Mechanical scripts
 
-Use `run_python_script` tool to run Mechanical Python scripts. For instance:
+Use the `run_python_script` tool to run Mechanical Python scripts. For instance:
 
 > Run a script to get the current model's geometry information.
 
-For running multiple scripts efficiently, use `run_multiple_scripts` tool:
+For running multiple scripts efficiently, use the `run_multiple_scripts` tool:
 
 > Run these scripts to set up a structural analysis with material properties and boundary conditions.
 
 This tool runs scripts sequentially, which is useful for multi-step workflows.
 
-### Custom Python Code Execution
+### Custom Python code execution
 
-Use `run_python_code` tool to execute custom Python and PyMechanical code:
+Use the `run_python_code` tool to execute custom Python and PyMechanical code:
 
 > Execute this Python code: model = ExtAPI.DataModel.Project.Model; print(f"Model has {model.Geometry.Children.Count} geometry objects")
 
-This is useful for:
-- Custom data processing and analysis
-- Advanced visualizations
-- NumPy/Pandas data manipulation
-- Complex computations not available through direct Mechanical scripting
+Use this tool when you need to:
+- Process custom data.
+- Create advanced visualizations.
+- Manipulate data with NumPy or Pandas.
+- Run complex computations that are not available through direct Mechanical scripting.
 
-### Creating Custom Plots
+### Creating custom plots
 
-Use `create_custom_plot` tool to create custom matplotlib plots:
+Use the `create_custom_plot` tool to create custom Matplotlib plots:
 
-> Create a matplotlib plot showing stress distribution from the analysis results
+> Create a Matplotlib plot showing stress distribution from the analysis results
 
-This tool is specifically for custom plots using Python visualization libraries.
+Use this tool to create custom plots with Python visualization libraries.
 
 
-## Available Tools
+## Available tools
 
-### Mechanical Connection and Instance Management
+### Mechanical connection and instance management
 
 #### `launch_mechanical`
 
 Launch a new Mechanical instance and automatically connect to it.
 
 **Parameters**:
-- `exec_file` (string, optional): Path to the Mechanical executable. If None, PyMechanical will find it automatically
-- `port` (int, optional): gRPC port for Mechanical to listen on. If None, defaults to 10000
-- `batch` (bool, optional): Whether to launch in batch mode. Default: True
-- `version` (string, optional): Mechanical version to run (e.g., "252" for 2025 R2). If None, uses latest installed
+- `exec_file` (string, default: None): Path to the Mechanical executable. If `None`, PyMechanical automatically finds the path.
+- `port` (int, default: None): gRPC port for Mechanical to listen on. If `None`, `10000` is used.
+- `batch` (bool, default: True): Whether to launch in batch mode.
+- `version` (string, default: None): Mechanical version to run (such as `252` for 2025 R2). If `None`, the latest installed version is used.
 
-**Returns**: Launch status message with Mechanical version and connection information
+**Returns**: Launch status message with Mechanical version and connection information.
 
 > [!NOTE]
-> This tool is disabled when `--connect-on-startup` is used or when running on AALI environments.
+> This tool is disabled when `--connect-on-startup` is used or when running in AALI environments.
 
 #### `connect_to_mechanical`
 
 Connect to an existing Mechanical instance.
 
 **Parameters**:
-- `ip` (string, optional): IP address where Mechanical is running. Default: "127.0.0.1"
-- `port` (int, optional): gRPC port where Mechanical is listening. Default: 10000
+- `ip` (string, default: "127.0.0.1"): IP address where Mechanical is running.
+- `port` (int, default: 10000): gRPC port where Mechanical is listening. 
 
-**Returns**: Connection status with Mechanical version information
+**Returns**: Connection status with Mechanical version information.
 
 > [!NOTE]
-> This tool is disabled when `--connect-on-startup` is used or when running on AALI environments.
+> This tool is disabled when `--connect-on-startup` is used or when running in AALI environments.
 
 #### `disconnect_from_mechanical`
 
 Disconnect from the currently connected Mechanical instance.
 
-**Returns**: Disconnection status message
+**Returns**: Disconnection status message.
 
 > [!NOTE]
-> This tool is disabled when `--connect-on-startup` is used or when running on AALI environments.
+> This tool is disabled when `--connect-on-startup` is used or when running in AALI environments.
 
 #### `list_mechanical_instances`
 
@@ -376,132 +377,131 @@ List all Mechanical instances running on the local machine by scanning for activ
 Inside a Docker container, process scanning is limited to the container, so the tool returns
 a message directing users to `connect_to_mechanical` instead.
 
-**Returns**: Formatted table of instances, or a Docker-aware message.
+**Returns**: Formatted table of instances or a Docker-aware message.
 
-### Mechanical Status and Information
+### Mechanical status and information
 
 #### `check_mechanical_status`
 
 Check the status and comprehensive information of the connected Mechanical instance.
 
-**Returns**: JSON string containing comprehensive Mechanical status information including:
-- Connection details (version, IP, port, project directory)
-- Product information (version, build date)
-- Model information (name, product version)
+**Returns**: JSON string with Mechanical status information, including:
+- Connection details (version, IP, port, and project directory)
+- Product information (version and build date)
+- Model information (name and product version)
 
 #### `check_mechanical_installed`
 
 Check if Mechanical is installed on the system.
-Inside a Docker container, reports the configured connection target instead
-(Mechanical is expected on the host, not in the container).
+Inside a Docker container, this tool reports the configured connection target instead. (Mechanical is expected on the host, not in the container.)
 
-**Returns**: Installation status, or configured host target when in Docker.
+**Returns**: Installation status or configured host target when in Docker.
 
 > [!NOTE]
-> This tool is disabled when running on AALI environments.
+> This tool is disabled when running in AALI environments.
 
 #### `get_model_info`
 
 Get detailed information about the current model in Mechanical.
 
-**Returns**: JSON string containing model information including:
-- Project info (name, product version)
+**Returns**: JSON string with model information, including:
+- Project info (name and product version)
 - Model info (name)
 - Geometry info (body count)
-- Mesh info (node count, element count)
+- Mesh info (node count, and element count)
 - Analysis count
 
 #### `get_project_directory`
 
 Get the project directory of the Mechanical instance.
 
-**Returns**: The project directory path
+**Returns**: Project directory path.
 
 #### `screenshot`
 
 Capture a screenshot of the current Mechanical view.
 
 **Parameters**:
-- `view_type` (string, optional): Type of view to capture: "model", "mesh", or "result". Default: "model"
+- `view_type` (string, default: `"model"`): Type of view to capture. Options are `"model"`, `"mesh"`, and `"result"`.
 
 **Returns**: List containing:
 - TextContent with the screenshot file path
 - ImageContent with the base64-encoded image data (if successful)
 
-### File Operations
+### File operations
 
 #### `list_files`
 
 List files in the Mechanical working directory.
 
-**Returns**: List of files in the working directory
+**Returns**: List of files in the working directory.
 
 #### `upload_file`
 
 Upload a file to the Mechanical instance's working directory.
 
 **Parameters**:
-- `file_path` (string): Path to the local file to upload
+- `file_path` (string): Path to the local file to upload.
 
-**Returns**: Upload status message
+**Returns**: Upload status message.
 
 #### `download_file`
 
 Download a file from the Mechanical instance's working directory.
 
 **Parameters**:
-- `file_name` (string): Name of the file to download
-- `target_dir` (string, optional): Local directory to save the file. If None, uses current directory
+- `file_name` (string): Name of the file to download.
+- `target_dir` (string, default: None): Local directory to save the file to. If `None`, the current directory is used.
 
-**Returns**: Download status message with local file path
+**Returns**: Download status message with local file path.
 
 #### `clear_mechanical`
 
 Clear the Mechanical database, providing a fresh start for a new analysis.
 
-**Returns**: Clear status message
+**Returns**: Clear status message.
 
-### Mechanical Script Execution
+### Mechanical script execution
 
 #### `run_python_script`
 
 Execute a Python script inside Mechanical using the Mechanical scripting API (IronPython). The script has access to Mechanical's ExtAPI, DataModel, Model, Tree, and Graphics entry points.
 
 **Parameters**:
-- `script` (string): The Python script to execute inside Mechanical
+- `script` (string): Python script to execute inside Mechanical.
 
-**Returns**: Script execution result with the string value of the last executed statement
+**Returns**: Script execution result with the string value of the last executed statement.
 
 #### `run_python_script_from_file`
 
 Execute a Python script file inside Mechanical.
 
 **Parameters**:
-- `file_path` (string): Path to the Python script file to execute
+- `file_path` (string): Path to the Python script file to execute.
 
-**Returns**: Script execution result
+**Returns**: Script execution result.
 
 #### `run_multiple_scripts`
 
 Execute multiple Mechanical Python scripts in sequence.
 
 **Parameters**:
-- `scripts` (list of strings): List of Mechanical Python scripts to execute
+- `scripts` (list of strings): List of Mechanical Python scripts to execute.
 
-**Returns**: Execution result with summary of scripts executed
+**Returns**: Execution result with summary of scripts executed.
 
 > [!NOTE]
-> This tool runs scripts sequentially, useful for multi-step workflows. This tool is disabled when running on AALI environments.
+> This tool runs scripts sequentially, which is useful for multi-step workflows. This tool is disabled when running in AALI environments.
 
-### Python Session and Custom Processing
+### Python session and custom processing
 
 #### `run_python_code`
 
 Execute arbitrary Python and PyMechanical code in a persistent Python session.
 
 **Parameters**:
-- `code` (string): The Python code to execute
-- `timeout` (int, optional): Maximum time in seconds to allow for code execution. Default: 60 seconds
+- `code` (string): Python code to execute.
+- `timeout` (int, default: 60): Maximum time in seconds to allow for code execution.
 
 **Returns**: JSON string with execution result containing:
 - `success` (boolean): Whether execution succeeded
@@ -512,31 +512,31 @@ Execute arbitrary Python and PyMechanical code in a persistent Python session.
 **Use cases**:
 - Custom data processing and analysis
 - Advanced visualizations
-- NumPy/Pandas data manipulation
-- Custom matplotlib plots
+- NumPy or Pandas data manipulation
+- Custom Matplotlib plots
 
 #### `create_custom_plot`
 
-Create custom plots using matplotlib in the persistent Python session.
+Create custom plots using Matplotlib in the persistent Python session.
 
 **Parameters**:
-- `plot_code` (string): Python code to create the plot. Should use matplotlib.pyplot
-- `plot_type` (string, optional): Type of plot: "matplotlib". Default: "matplotlib"
-- `timeout` (int, optional): Maximum time in seconds for plot generation. Default: 60 seconds
+- `plot_code` (string): Python code to create the plot. You should use `matplotlib.pyplot`.
+- `plot_type` (string, default: `"matplotlib"`): Plot type.
+- `timeout` (int, default: 60): Maximum time in seconds for plot generation.
 
 **Returns**: List containing:
 - TextContent with the plot creation status message
 - ImageContent with the base64-encoded image data (if successful)
 
 **Pre-configured helpers in persistent session**:
-- `save_matplotlib_plot(filename, dpi)`: Save matplotlib plots
+- `save_matplotlib_plot(filename, dpi)`: Save Matplotlib plots.
 
 > [!IMPORTANT]
-> This tool is specifically designed for custom plots using Python visualization libraries. This tool is disabled when running on AALI environments.
+> This tool is designed for custom plots that use Python visualization libraries. This tool is disabled when running in AALI environments.
 
-### Workflow Context and Guidance
+### Workflow context and guidance
 
-The following context tools provide comprehensive guidelines and best practices for Mechanical workflows. These tools are disabled when running on AALI environments.
+The following context tools provide guidelines and best practices for Mechanical workflows. These tools are disabled when running in AALI environments.
 
 #### `get_guidelines_for_workflow_overview`
 
@@ -580,7 +580,7 @@ Get general rules and best practices for Mechanical simulations including accura
 
 ## Development
 
-### Installation From Source
+### Installation from source
 
 1. Clone the repository:
 
@@ -604,11 +604,11 @@ source .venv/bin/activate  # On macOS/Linux
 pip install -e .
 ```
 
-This will install the package in editable mode along with all dependencies defined in `pyproject.toml`.
+This installs the package in editable mode along with all dependencies defined in the `pyproject.toml` file.
 
-### Development Installation
+### Development installation
 
-For development with additional tools (pytest, black, mypy, pre-commit, etc.):
+For development with additional tools (such as pytest, black, mypy, and pre-commit):
 
 ```bash
 pip install -e ".[dev]"
@@ -620,18 +620,19 @@ After installing development dependencies, set up pre-commit hooks:
 pre-commit install
 ```
 
-This will automatically run code quality checks (black, isort, flake8, mypy, etc.) before each commit.
+This automatically runs code quality checks (such as black, isort, flake8, and mypy) before each commit.
 
-### Integrating with AI Assistants
+### Integrating with AI assistants
 
-This MCP server can be integrated with MCP-compatible AI assistants (like Claude Desktop, etc.). Add the server configuration to your MCP settings file:
+You can integrate PyMechanical-MCP with MCP-compatible AI assistants (like Claude Desktop). Add the server configuration to your MCP settings file:
 
 
-#### From PyPI (Coming Soon)
+#### From PyPI (coming soon)
 
-> **⚠️ Note:** The PyPI installation method described below is not yet available. This package has not been published to PyPI. For now, use the development installation methods shown in the sections below.
+> [!NOTE]
+> Because this package has not yet been published to PyPI, this installation method is not available. For now, use one of the subsequent development installation methods.
 
-Once published to PyPI, you'll be able to run the server directly using `uvx`:
+Once this package is published to PyPI, you'll be able to run PyMechanical-MCP directly using `uvx`:
 
 <details>
 <summary><b>VS Code integration</b></summary>
@@ -668,13 +669,12 @@ Once published to PyPI, you'll be able to run the server directly using `uvx`:
 
 #### From local installation
 
-If you are doing development, you can use the server as it is in the GitHub repository.
-To do that, you should clone to a directory.
+For development, you can run PyMechanical-MCP directly from this GitHub repository after cloning it locally.
 
 <details>
 <summary><b>VS Code integration</b></summary>
 
-You should add the following to your `.vscode/mcp.json` file:
+Add the following to your `.vscode/mcp.json` file:
 
 ```json
 {
@@ -736,9 +736,9 @@ Or if you prefer `uv`:
 
 ## Testing
 
-The project includes a comprehensive pytest-based testing suite covering all functionality.
+PyMechanical-MCP includes a pytest-based test suite that covers all functionality.
 
-### Quick set up
+### Quick setup
 
 Run unit tests (fast, no Mechanical required):
 
@@ -764,18 +764,17 @@ The main CI matrix job runs only unit tests (`-m "not integration"`).
 
 Integration tests run as part of the main CI workflow, but in a dedicated job:
 
-- `integration-tests`: starts a Mechanical container and connects to it over gRPC
+- `integration-tests`: Starts a Mechanical container and connects to it over gRPC.
 
-Run `pytest -m integration`.
+To run integration tests locally, run `pytest -m integration`.
 
-Session startup behavior follows official PyMechanical guidance:
+Session startup behavior follows the guidance given in the PyMechanical guidance documentation:
 
-- Launch/connect basics: https://mechanical.docs.pyansys.com/version/stable/getting_started/running_mechanical.html
-- Docker remote session (including explicit `--transport-mode insecure` startup):
-  https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html
+- For launch and connection basics, see [Launching PyMechanical](https://mechanical.docs.pyansys.com/version/stable/getting_started/running_mechanical.html).
+- For a Docker remote session (including explicit `--transport-mode insecure` startup), see [Using Mechanical through Docker](https://mechanical.docs.pyansys.com/version/stable/getting_started/docker.html).
 
 
-### Test Commands Reference
+### Test commands reference
 
 ```bash
 # Run specific test file
@@ -792,32 +791,30 @@ pytest --cov=ansys.mechanical.mcp --cov-report=html
 pytest tests/test_tools.py::TestRunMechanicalScript::test_run_script_success
 ```
 
-## Contributing
+## Contribute
 
-Contributions are welcome! Please:
+Contributions are welcome.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Install development dependencies: `pip install -e ".[dev]"`
-4. Install pre-commit hooks: `pre-commit install`
-5. Make your changes
-6. Add tests for new functionality (aim for >80% coverage)
-7. Run tests: `pytest -m "not integration"`
-8. Commit (pre-commit hooks will run automatically)
-9. Push and submit a pull request
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/your-feature`).
+3. Install development dependencies: `pip install -e ".[dev]"`.
+4. Install pre-commit hooks: `pre-commit install`.
+5. Make your changes.
+6. Add tests for new functionality (aim for greater than 80% coverage).
+7. Run tests (`pytest -m "not integration"`).
+8. Commit. (Pre-commit hooks run automatically.)
+9. Push and submit a pull request.
 
-The pre-commit hooks and CI will ensure code quality. If hooks fail, review the changes, stage them with `git add .`, and commit again.
-pre-commit run --all-files
+Pre-commit hooks and CI ensure code quality. If the hooks fail, review the changes, stage them with `git add .`, and commit again. Use the
+``pre-commit run --all-files`` command.
 
-### Adding a New Tool
+### Add a new tool
 
-`pymechanical-mcp` uses connection-aware tool visibility: tools that need a
-live Mechanical session are hidden until `launch_mechanical` or
-`connect_to_mechanical` succeeds. This is enforced via tool **tags**.
+PyMechanical-MCP uses connection-aware tool visibility. This means tools that need a live Mechanical session stay hidden until `launch_mechanical` or `connect_to_mechanical` succeeds. This behavior is enforced with tool **tags**.
 
 When you add a new `@app.tool(...)` to `src/ansys/mechanical/mcp/tools.py`:
 
-- **Default case: the tool needs a Mechanical connection.** Tag it with
+- **Default case: The tool needs a Mechanical connection.** Tag it with
   `REQUIRES_MECHANICAL_TAG` (defined at the top of `tools.py`):
 
   ```python
@@ -826,22 +823,19 @@ When you add a new `@app.tool(...)` to `src/ansys/mechanical/mcp/tools.py`:
       ...
   ```
 
-  The server disables it until a session exists, then unlocks it via
+  The server disables it until a session exists. It then unlocks it via
   `enable_components(tags={REQUIRES_MECHANICAL_TAG})`.
 
-- **Special case: the tool is genuinely usable BEFORE any Mechanical
-  session** (e.g. an installation check). Do NOT add the tag, and add the
-  tool's name to the `ALWAYS_AVAILABLE_TOOLS` allowlist in
+- **Special case: The tool is genuinely usable before any Mechanical
+  session** (for example, an installation check). Do not add the tag. Add the tool's name to the `ALWAYS_AVAILABLE_TOOLS` allowlist in
   `tests/test_tools.py::TestRequiresMechanicalVisibility::test_no_tool_surface_drift`.
 
-The `test_no_tool_surface_drift` test will fail if a new tool is neither
-tagged nor on the allowlist. This is intentional: it forces every
-contributor to make an explicit decision about pre-connection visibility.
+If a new tool is neither tagged nor on the allowlist, the `test_no_tool_surface_drift` test fails. This is intentional and forces every contributor to make an explicit decision about pre-connection visibility.
 
 
 ## Architecture
 
-The server uses the PyAnsysBaseMCP framework (built on FastMCP) with lifespan management:
+PyMechanical-MCP uses the PyAnsysBaseMCP framework (built on FastMCP) with lifespan management:
 
 ```mermaid
 flowchart TB
@@ -895,30 +889,30 @@ flowchart TB
     style ContextTools fill:#f3e5f5
 ```
 
-### Workflow Overview
+### Workflow overview
 
 1. **Startup**:
-   - Initializes a persistent Python session for custom code execution
-   - Optionally connects to an existing Mechanical instance (if `--connect-on-startup` is used)
-   - Otherwise, waits for dynamic connection through tools
+   - Initializes a persistent Python session for custom code execution.
+   - Optionally connects to an existing Mechanical instance (if `--connect-on-startup` is used).
+   - Otherwise, waits for dynamic connection through tools.
 2. **Runtime**:
-   - Exposes tools for Mechanical interaction
-   - Manages dynamic Mechanical connections
-   - Executes scripts in both Mechanical and Python sessions
-   - Provides workflow guidance through context tools
+   - Exposes tools for Mechanical interaction.
+   - Manages dynamic Mechanical connections.
+   - Executes scripts in both Mechanical and Python sessions.
+   - Provides workflow guidance through context tools.
 3. **Shutdown**:
-   - Gracefully disconnects from Mechanical
-   - Cleans up persistent Python session resources
+   - Gracefully disconnects from Mechanical.
+   - Cleans up persistent Python session resources.
 
-### Application Context
+### Application context
 
-The server uses a strongly-typed `PyMechanicalAppContext` that includes:
+PyMechanical-MCP uses a strongly-typed `PyMechanicalAppContext` that includes:
 - Mechanical instance connection
 - Persistent Python session for custom code
-- Transport configuration (STDIO or HTTP)
-- Connection settings (IP, port, auto-connect options)
+- Transport configuration (STDIO or Streamable HTTP)
+- Connection settings (IP, port, and auto-connect options)
 
-### Adding New Tools
+### Add new tools
 
 To add new Mechanical tools, edit `src/ansys/mechanical/mcp/tools.py` and use the `@app.tool()` decorator:
 
@@ -937,7 +931,7 @@ def your_new_tool(ctx: Context, param: str) -> str:
     return f"Result: {result}"
 ```
 
-### Adding Context Tools
+### Add context tools
 
 To add workflow guidance tools, edit `src/ansys/mechanical/mcp/contexts.py` and use the `@app.tool()` decorator:
 
@@ -951,18 +945,18 @@ def get_guidelines_for_your_topic() -> str:
     str
         Detailed guidelines and best practices.
     """
-    return """# Your Topic Guidelines
+    return """# Your topic guidelines
 
-    Your comprehensive guidance here...
+    Your comprehensive guidance.
     """
 ```
 
-### Tool Enabling/Disabling
+### Tool enabling and disabling
 
-Tools can be conditionally enabled or disabled based on server configuration:
+You can conditionally enable or disable tools based on server configuration:
 
 ```python
-# Disable tool when connection is locked or on AALI
+# Disable tool when connection is locked or in an AALI environment
 @app.tool(enabled=not (session.locked_connection or session.on_aali))
 def connect_to_mechanical(ctx: Context, port: int = 10000, ip: str = "127.0.0.1") -> str:
     # Tool implementation
@@ -976,21 +970,21 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Resources
 
-- [PyMechanical Documentation](https://mechanical.docs.pyansys.com/)
+- [PyMechanical documentation](https://mechanical.docs.pyansys.com/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp)
+- [FastMCP documentation](https://github.com/jlowin/fastmcp)
 - [Ansys Mechanical](https://www.ansys.com/products/structures/ansys-mechanical)
 
-## Docker Deployment
+## Docker deployment
 
-Deploy PyMechanical MCP Server as a containerized application with HTTP transport for remote access. The server can connect to either a containerized Mechanical instance or a local Mechanical installation.
+Deploy PyMechanical-MCP as a containerized application with HTTP transport for remote access. The server can connect to either a containerized Mechanical instance or a local Mechanical installation.
 
 > [!WARNING]
-> The HTTP transport is not encrypted. Use only in trusted networks or with a reverse proxy (Nginx, HAProxy) providing TLS/SSL.
+> The Streamable HTTP transport is not encrypted. Use it only in trusted networks or with a reverse proxy (Nginx, HAProxy) providing TLS/SSL.
 
-### Quick Start with Docker Compose
+### Quick start with Docker Compose
 
-The easiest way to run both Mechanical and the MCP server is using Docker Compose.
+The easiest way to run both Mechanical and PyMechanical-MCP is with Docker Compose.
 
 **1. Configure environment:**
 
@@ -999,47 +993,46 @@ The easiest way to run both Mechanical and the MCP server is using Docker Compos
 cp env.example .env
 ```
 
-Edit `.env` with your settings:
-- `PYMECHANICAL_IP`: Set to `mechanical` (container), `host.docker.internal` (local Windows/Mac), or IP address (remote)
-- `ANSYSLMD_LICENSE_FILE`: Your ANSYS license server
-- `CONNECT_ON_STARTUP`: Set to `true` to auto-connect, `false` (default) for dynamic connection
+Edit the `.env` file:
+- Set `PYMECHANICAL_IP` to `mechanical` (container), `host.docker.internal` (local Windows/Mac), or a remote IP address.
+- Set `ANSYSLMD_LICENSE_FILE` to your ANSYS license server.
+- Set `CONNECT_ON_STARTUP` to `true` for auto-connect or `false` (default) for dynamic connection.
 
 **2. Start services:**
 
 ```bash
-# Start Mechanical container and MCP server
+# Start Mechanical container and PyMechanical-MCP
 docker compose up
 
 # Or run in detached mode
 docker compose up -d
 ```
 
-The MCP server will be available at `http://localhost:8080`.
+PyMechanical-MCP is available at `http://localhost:8080`.
 
-### Docker Compose Configuration
+### Docker Compose configuration
 
-The `docker-compose.yml` includes two services:
+The `docker-compose.yml` file includes two services:
 
-- **pymechanical-mcp**: MCP server with HTTP transport
-- **mechanical**: ANSYS Mechanical container (optional, can connect to local instance instead)
+- **pymechanical-mcp**: PyMechanical-MCP with Streamable HTTP transport
+- **mechanical**: Ansys Mechanical container (optional, can connect to local instance instead)
 
 To connect to a local Mechanical instance instead of the container:
-1. Remove or comment out the `mechanical` service and `depends_on` in `docker-compose.yml`
-2. Set `PYMECHANICAL_IP=host.docker.internal` (Windows/Mac)
-3. Start Mechanical locally with gRPC server enabled
+1. Remove or comment out the `mechanical` service and `depends_on` in the `docker-compose.yml` file.
+2. Set `PYMECHANICAL_IP=host.docker.internal` (Windows/Mac).
+3. Start Mechanical locally with gRPC server enabled.
 
-### Building Standalone Image
+### Build a standalone image
 
-The MCP server depends on `ansys-common-mcp`, which is hosted on a **private PyPI feed**.
-You must set the `PYANSYS_PYPI_PRIVATE_PAT` environment variable to a Personal Access Token
-(PAT) with read access to the [PyAnsys Azure DevOps feed](https://dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/)
-before building the image.
+PyMechanical-MCP depends on `ansys-common-mcp`, which is hosted on a **private PyPI feed**.
+Before building the image, you must set the `PYANSYS_PYPI_PRIVATE_PAT` environment variable to a Personal Access Token
+(PAT) with read access to the [PyAnsys Azure DevOps feed](https://dev.azure.com/pyansys/_packaging/pyansys/pypi/simple/).
 
 > [!NOTE]
 > `PYANSYS_PYPI_PRIVATE_PAT` must be set on the machine that runs `docker build`.
 > The token is only used at build time and is **not** baked into the final image.
 
-#### On Linux / macOS
+#### On Linux or macOS
 
 From the repository root:
 
@@ -1063,9 +1056,9 @@ docker build `
   -f docker\Dockerfile -t pymechanical-mcp .
 ```
 
-### Running Standalone Container
+### Run a standalone container
 
-By default, the container starts **without** an active Mechanical connection. Use the `connect_to_mechanical` tool from your MCP client to connect dynamically.
+By default, the container starts **without** an active Mechanical connection. Use the `connect_to_mechanical` tool in your MCP client to connect dynamically.
 
 **Basic (auto-detect transport mode, recommended):**
 ```bash
@@ -1108,11 +1101,11 @@ docker run -p 8080:8080 \
   pymechanical-mcp
 ```
 
-### gRPC Transport Mode in Docker
+### gRPC transport mode in Docker
 
-When the MCP server runs inside a Docker container (Linux), the gRPC transport mode is **auto-detected** by default:
+When PyMechanical-MCP runs inside a Docker container (Linux), the gRPC transport mode is **auto-detected** by default:
 
-| Scenario | Certs mounted? | Auto-detected mode | Secure? |
+| Scenario | Certificates mounted? | Auto-detected mode | Secure? |
 |----------|---------------|-------------------|---------|
 | No certs, no env var | No | `insecure` | ❌ |
 | Certs at `/app/certs` | Yes | `mtls` | ✅ |
@@ -1120,9 +1113,9 @@ When the MCP server runs inside a Docker container (Linux), the gRPC transport m
 | `PYMECHANICAL_TRANSPORT_MODE=mtls` | Yes | `mtls` | ✅ |
 
 > [!IMPORTANT]
-> The client transport mode **must match** the mode the Mechanical server was started with. If your Mechanical instance was started with the default Windows mode (`wnua`), you need to restart it with `--transport-mode insecure` or `--transport-mode mtls` to allow cross-platform connections from Docker.
+> The client transport mode **must match** the mode the Mechanical server was started with. If your Mechanical instance was started with the default Windows mode (`wnua`), you must restart it with `--transport-mode insecure` or `--transport-mode mtls` to allow cross-platform connections from Docker.
 
-### Environment Variables
+### Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -1135,7 +1128,7 @@ When the MCP server runs inside a Docker container (Linux), the gRPC transport m
 | `CONNECT_ON_STARTUP` | `false` | Whether to connect to Mechanical on startup (`true`/`false`) |
 | `ANSYSLMD_LICENSE_FILE` | - | License server (format: `port@server`) |
 
-### MCP Client Configuration
+### MCP client configuration
 
 Configure your MCP client to connect to the HTTP server:
 
@@ -1155,14 +1148,14 @@ Configure your MCP client to connect to the HTTP server:
 
 For issues and questions:
 
-- Open an issue on GitHub
-- Consult the PyMechanical documentation
-- Check the Ansys Developer Portal
+- Open an issue on GitHub.
+- Consult the PyMechanical documentation.
+- Check the Ansys Developer Portal.
 
 ## Acknowledgments
 
 Built with:
 
-- [PyMechanical](https://github.com/ansys/pymechanical) - Python interface for Ansys Mechanical
-- [FastMCP](https://github.com/jlowin/fastmcp) - Fast Model Context Protocol implementation
-- [Ansys Mechanical](https://www.ansys.com/) - Finite element analysis software
+- [PyMechanical](https://github.com/ansys/pymechanical): Python interface for Ansys Mechanical
+- [FastMCP](https://github.com/jlowin/fastmcp): Fast Model Context Protocol implementation
+- [Ansys Mechanical](https://www.ansys.com/): Finite element analysis software
