@@ -22,6 +22,12 @@ Learn how to use PyMechanical-MCP effectively.
 
         Reference for every tool the server exposes.
 
+    .. grid-item-card:: :fa:`sliders` Configuration
+        :link: configuration
+        :link-type: doc
+
+        Startup flags, environment variables, transport modes, and connection options.
+
     .. grid-item-card:: :fa:`docker` Docker deployment
         :link: docker
         :link-type: doc
@@ -34,4 +40,5 @@ Learn how to use PyMechanical-MCP effectively.
 
    overview
    tools_and_capabilities
+   configuration
    docker

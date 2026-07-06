@@ -8,11 +8,11 @@ Tool availability model
 
 PyMechanical-MCP uses connection-aware visibility.
 
-- Tools requiring a live Mechanical session are tagged with
-  ``REQUIRES_MECHANICAL_TAG``.
-- These tools are hidden until a successful ``launch_mechanical`` or
-  ``connect_to_mechanical``.
-- If ``--connect-on-startup`` is used, they are available immediately.
+- **Offline-capable tools** are available before any Mechanical session.
+- **Live-session tools** are tagged with ``REQUIRES_MECHANICAL_TAG`` and are
+  hidden until a successful ``launch_mechanical`` or ``connect_to_mechanical``.
+- If ``--connect-on-startup`` is used, live-session tools are available
+  immediately and connection lifecycle tools are intentionally locked.
 
 Always available (before connection)
 ------------------------------------
@@ -47,10 +47,12 @@ Available after connection
      - Description
    * - ``disconnect_from_mechanical``
      - Gracefully detach from Mechanical.
-   * - ``clear_mechanical``
-     - Clear context and release session resources.
    * - ``run_python_code``
      - Execute Python snippets in the persistent session.
+   * - ``create_custom_plot``
+     - Produce custom plots from analysis data.
+   * - ``clear_mechanical``
+     - Clear context and release session resources.
    * - ``run_python_script``
      - Execute a Mechanical script string.
    * - ``run_python_script_from_file``
@@ -79,8 +81,11 @@ Available after connection
      - Retrieve Mechanical logs for diagnostics.
    * - ``export_results``
      - Export result objects/artifacts.
-   * - ``create_custom_plot``
-     - Produce custom plots from analysis data.
+
+.. note::
+  When running with ``--connect-on-startup``, ``launch_mechanical``,
+  ``connect_to_mechanical``, and ``disconnect_from_mechanical`` are disabled
+  by design.
 
 Guideline topics
 ----------------

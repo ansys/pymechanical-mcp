@@ -22,6 +22,12 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
 
           Setting up your IDE for PyMechanical-MCP development.
 
+    .. grid-item-card:: :fa:`rocket`  Quick start
+          :link: quick_start
+          :link-type: doc
+
+          Launch the server and follow a practical first workflow.
+
     .. grid-item-card:: :fa:`users`  Contribution
           :link: contribution
           :link-type: doc
@@ -34,4 +40,5 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
 
    installation
    ide_configuration
+   quick_start
    contribution

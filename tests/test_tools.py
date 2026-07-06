@@ -1824,11 +1824,10 @@ class TestRequiresMechanicalVisibility:
         # connected Mechanical instance must NOT be here.
         ALWAYS_AVAILABLE_TOOLS = {
             "check_mechanical_installed",
+            "check_mechanical_status",
             "launch_mechanical",
             "connect_to_mechanical",
             "list_mechanical_instances",
-            "run_python_code",
-            "create_custom_plot",
             "get_guidelines_for",
         }
 

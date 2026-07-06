@@ -34,6 +34,12 @@ Ansys Mechanical through PyAnsys.
 
         Install PyMechanical-MCP and get your first MCP server running.
 
+    .. grid-item-card:: :fa:`cogs` Configure your IDE
+        :link: getting_started/ide_configuration
+        :link-type: doc
+
+        Set up PyMechanical-MCP with Claude Code, Visual Studio Code, or Claude Desktop.
+
     .. grid-item-card:: :fa:`book-open-reader` Use the API reference
         :link: api/index
         :link-type: doc
@@ -46,8 +52,32 @@ Ansys Mechanical through PyAnsys.
 
         Review tool availability, capability groups, and workflow examples.
 
+    .. grid-item-card:: :fa:`book` Learn best practices
+        :link: user_guide/best_practices
+        :link-type: doc
+
+        Discover practical workflow recommendations to avoid common setup and solve issues.
+
+    .. grid-item-card:: :fa:`code` Browse examples
+        :link: examples/index
+        :link-type: doc
+
+        Explore practical Mechanical workflows that can be adapted for MCP-assisted analysis.
+
+    .. grid-item-card:: :fa:`external-link-alt` Open official PyMechanical docs
+        :link: https://mechanical.docs.pyansys.com/
+        :link-type: url
+
+        Access the official PyMechanical API and user documentation for product-level details.
+
     .. grid-item-card:: :fa:`question` Find help or report issues
         :link: https://github.com/ansys/pymechanical-mcp/discussions
         :link-type: url
 
         Ask questions or report issues on the GitHub Discussions page.
+
+    .. grid-item-card:: :fa:`users` Contribute to the project
+        :link: getting_started/contribution
+        :link-type: doc
+
+        Learn how to contribute code, docs, and examples to PyMechanical-MCP.

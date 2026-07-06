@@ -9,7 +9,7 @@ Prerequisites
 -------------
 
 - Ansys Mechanical installation (local or remote) with an available gRPC endpoint
-- Python 3.11+
+- Python 3.11 through 3.14
 - Network access between MCP server and Mechanical server
 
 Install from PyPI
