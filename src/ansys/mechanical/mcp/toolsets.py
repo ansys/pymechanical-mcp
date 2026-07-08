@@ -67,32 +67,28 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "Python snippets against the live Mechanical session."
         ),
         "skill": (
-            "Use run_python_code to execute an inline snippet, "
-            "run_python_script to execute an inline Mechanical script "
-            "string against ExtAPI, run_python_script_from_file to execute "
-            "a .py file uploaded to the Mechanical working directory, and "
-            "run_multiple_scripts to execute several scripts in one round "
-            "trip. All script tools share the same persistent ExtAPI session."
+            "Use run_python_code to execute an inline snippet in the "
+            "persistent external Python session, and run_python_script to "
+            "execute a Mechanical script against ExtAPI. Provide "
+            "run_python_script with either an inline ``script`` string or "
+            "a ``file_path`` pointing to a local ``.py`` file."
         ),
         "tools": [
             "run_python_code",
             "run_python_script",
-            "run_python_script_from_file",
-            "run_multiple_scripts",
         ],
     },
     "project-management": {
-        "description": ("Tools for saving, opening, and locating Mechanical project files."),
+        "description": ("Tools for saving and opening Mechanical project files."),
         "skill": (
             "Use save_project to persist the current project (optionally "
-            "save-as a new path), open_project to load a .mechdb file, and "
-            "get_project_directory to retrieve the working directory used "
-            "by the active session."
+            "save-as a new path) and open_project to load a .mechdb file. "
+            "Read the ``files://mechanical/working_directory`` resource to "
+            "discover the active session working directory."
         ),
         "tools": [
             "save_project",
             "open_project",
-            "get_project_directory",
         ],
     },
     "file-management": {

@@ -49,7 +49,6 @@ class TestMCPProtocol:
         from ansys.mechanical.mcp.tools import (
             check_mechanical_status,
             launch_mechanical,
-            run_multiple_scripts,
             run_python_script,
         )
 
@@ -57,7 +56,6 @@ class TestMCPProtocol:
             check_mechanical_status,
             launch_mechanical,
             run_python_script,
-            run_multiple_scripts,
         ]
 
         for tool in tools:

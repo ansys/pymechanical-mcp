@@ -30,13 +30,11 @@ from ansys.mechanical.mcp.tools import (
     disconnect_from_mechanical,
     download_file,
     get_model_info,
-    get_project_directory,
     launch_mechanical,
     list_files,
     list_mechanical_instances,
-    run_multiple_scripts,
+    mechanical_working_directory,
     run_python_script,
-    run_python_script_from_file,
     screenshot,
     upload_file,
 )
@@ -154,126 +152,58 @@ class TestRunMechanicalScript:
             == len(scripts)
         )
 
+    def test_run_script_from_file(self, mock_context, tmp_path):
+        """Test running an inline script sourced from a local file."""
+        script_file = tmp_path / "snippet.py"
+        script_file.write_text("print('from file')")
+
+        result = run_python_script(mock_context, file_path=str(script_file))
+
+        assert "Script executed successfully" in result
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.assert_called_once_with(
+            "print('from file')"
+        )
+
+    def test_run_script_from_missing_file(self, mock_context):
+        """Test running from a file that does not exist."""
+        result = run_python_script(mock_context, file_path="/nonexistent/script.py")
+
+        assert "Script file not found" in result
+
+    def test_run_script_without_script_or_file(self, mock_context):
+        """Test that at least one of script or file_path is required."""
+        result = run_python_script(mock_context)
+
+        assert "Provide either" in result
+
 
 @pytest.mark.unit
-class TestRunMultipleScripts:
-    """Tests for run_multiple_scripts tool."""
+class TestMechanicalWorkingDirectoryResource:
+    """Tests for the files://mechanical/working_directory resource."""
 
-    def test_run_multiple_scripts_success(self, mock_context):
-        """Test running multiple Mechanical scripts successfully."""
-        scripts = ["print('1')", "x = 1 + 2", "print(x)"]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
-            "Script executed"
-        )
+    def test_working_directory_returns_project_directory(self, monkeypatch, mock_mechanical):
+        """When Mechanical is connected, resource returns its project directory."""
+        from ansys.mechanical.mcp import app as mechanical_app
 
-        result = run_multiple_scripts(mock_context, scripts)
+        ctx = MagicMock()
+        ctx.mechanical = mock_mechanical
+        monkeypatch.setattr(mechanical_app, "context", ctx, raising=False)
 
-        assert isinstance(result, str)
-        assert "Executed 3 scripts" in result
-        assert "Script 1: Success" in result
-        assert "Script 2: Success" in result
-        assert "Script 3: Success" in result
+        result = mechanical_working_directory()
 
-        # Verify that Mechanical's run_python_script method was called 3 times
-        assert (
-            mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count
-            == 3
-        )
+        assert result == "/tmp/mechanical_project"
 
-    def test_run_multiple_scripts_with_output(self, mock_context):
-        """Test running multiple scripts with Mechanical output."""
-        scripts = ["print('1')", "print('2')"]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = [
-            "1",
-            "2",
-        ]
+    def test_working_directory_not_connected(self, monkeypatch):
+        """When Mechanical is not connected, resource returns a hint."""
+        from ansys.mechanical.mcp import app as mechanical_app
 
-        result = run_multiple_scripts(mock_context, scripts)
+        ctx = MagicMock()
+        ctx.mechanical = None
+        monkeypatch.setattr(mechanical_app, "context", ctx, raising=False)
 
-        assert "Executed 2 scripts" in result
-        assert "Script 1: Success - 1" in result
-        assert "Script 2: Success - 2" in result
+        result = mechanical_working_directory()
 
-    def test_run_multiple_scripts_empty_list(self, mock_context):
-        """Test running multiple scripts with an empty list."""
-        result = run_multiple_scripts(mock_context, [])
-
-        assert "No scripts provided" in result
-
-    def test_run_multiple_scripts_without_mechanical(self, mock_context_no_mechanical):
-        """Test running multiple scripts when Mechanical is not available."""
-        scripts = ["print('1')", "print('2')"]
-        result = run_multiple_scripts(mock_context_no_mechanical, scripts)
-
-        # Should return helpful error message instead of raising exception
-        assert isinstance(result, str)
-        assert "No Mechanical connection available" in result
-        assert "connect_to_mechanical" in result
-
-    def test_run_multiple_scripts_single_script(self, mock_context):
-        """Test running a single script through multiple scripts."""
-        scripts = ["print('hello')"]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
-            "hello"
-        )
-
-        result = run_multiple_scripts(mock_context, scripts)
-
-        assert "Executed 1 scripts" in result
-        assert "Script 1: Success" in result
-
-    def test_run_multiple_scripts_error_handling(self, mock_context):
-        """Test error handling when script execution fails."""
-        scripts = ["print('1')", "invalid_syntax((", "print('2')"]
-        # First script succeeds, second fails, third succeeds
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = [
-            "1",
-            Exception("Invalid syntax"),
-            "2",
-        ]
-
-        result = run_multiple_scripts(mock_context, scripts)
-
-        # Should continue with remaining scripts even if one fails
-        assert "Executed 3 scripts" in result
-        assert "Script 1: Success" in result
-        assert "Script 2: Error - Invalid syntax" in result
-        assert "Script 3: Success" in result
-
-    def test_run_multiple_scripts_large_batch(self, mock_context):
-        """Test running a large batch of scripts."""
-        # Create 10 scripts
-        scripts = [f"x_{i} = {i}" for i in range(1, 11)]
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = (
-            "ok"
-        )
-
-        result = run_multiple_scripts(mock_context, scripts)
-
-        assert "Executed 10 scripts" in result
-        # Verify run_python_script was called for each script
-        assert (
-            mock_context.request_context.lifespan_context.mechanical.run_python_script.call_count
-            == 10
-        )
-
-    def test_run_multiple_scripts_sequential_execution(self, mock_context):
-        """Test that scripts are executed in the correct sequence."""
-        scripts = ["SCRIPT1", "SCRIPT2", "SCRIPT3"]
-        call_order = []
-
-        def track_calls(script):
-            call_order.append(script)
-            return "ok"
-
-        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
-            track_calls
-        )
-
-        run_multiple_scripts(mock_context, scripts)
-
-        # Verify scripts were called in order
-        assert call_order == scripts
+        assert "Mechanical is not connected" in result
 
 
 @pytest.mark.unit
@@ -1117,38 +1047,6 @@ class TestCheckMechanicalInstalled:
 
 
 @pytest.mark.unit
-class TestRunPythonScriptFromFile:
-    """Tests for run_python_script_from_file tool."""
-
-    def test_run_script_from_file_success(self, mock_context, tmp_path):
-        """Test running script from file successfully."""
-        # Create a temporary script file
-        script_file = tmp_path / "test_script.py"
-        script_file.write_text("print('hello')")
-
-        mock_context.request_context.lifespan_context.mechanical.run_python_script_from_file.return_value = "hello"
-
-        result = run_python_script_from_file(mock_context, str(script_file))
-
-        assert "Script file executed successfully" in result
-
-    def test_run_script_from_file_not_found(self, mock_context):
-        """Test running script from non-existent file."""
-        result = run_python_script_from_file(mock_context, "/nonexistent/script.py")
-
-        assert "Script file not found" in result
-
-    def test_run_script_from_file_no_mechanical(self, mock_context_no_mechanical, tmp_path):
-        """Test running script from file without Mechanical connection."""
-        script_file = tmp_path / "test_script.py"
-        script_file.write_text("print('hello')")
-
-        result = run_python_script_from_file(mock_context_no_mechanical, str(script_file))
-
-        assert "No Mechanical connection available" in result
-
-
-@pytest.mark.unit
 class TestListMechanicalInstances:
     """Tests for list_mechanical_instances tool."""
 
@@ -1329,24 +1227,6 @@ class TestClearMechanical:
         result = clear_mechanical(mock_context)
 
         assert "Error clearing database" in result
-
-
-@pytest.mark.unit
-class TestGetProjectDirectory:
-    """Tests for get_project_directory tool."""
-
-    def test_get_project_directory_success(self, mock_context):
-        """Test getting project directory successfully."""
-        result = get_project_directory(mock_context)
-
-        assert "Project directory:" in result
-        assert "/tmp/mechanical_project" in result
-
-    def test_get_project_directory_no_mechanical(self, mock_context_no_mechanical):
-        """Test getting directory without Mechanical connection."""
-        result = get_project_directory(mock_context_no_mechanical)
-
-        assert "No Mechanical connection available" in result
 
 
 @pytest.mark.unit

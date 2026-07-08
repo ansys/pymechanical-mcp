@@ -36,8 +36,6 @@ def mock_mechanical():
     mechanical.ip = "127.0.0.1"
     mechanical.port = 10000
     mechanical.run_python_script = MagicMock(return_value="Script executed")
-    mechanical.run_python_script_from_file = MagicMock(return_value="Script executed")
-    mechanical.run_python_script_batch = MagicMock(return_value="Scripts executed")
     mechanical.exit = MagicMock()
 
     # Mock common Mechanical attributes

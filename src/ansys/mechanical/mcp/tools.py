@@ -175,19 +175,31 @@ def check_mechanical_installed(ctx: Context) -> str:
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def run_python_script(ctx: Context, script: str) -> str:
+def run_python_script(
+    ctx: Context,
+    script: str | None = None,
+    file_path: str | None = None,
+) -> str:
     """Execute a Python script inside Mechanical.
 
     This tool runs a Python script block inside the connected Mechanical instance
     using Mechanical's scripting API. The script has access to Mechanical's
     ExtAPI, DataModel, Model, Tree, and Graphics entry points.
 
+    Provide either an inline ``script`` string or a ``file_path`` pointing to a
+    local ``.py`` file. When ``file_path`` is given, its contents are read and
+    executed inside Mechanical.
+
     Parameters
     ----------
     ctx : Context
         MCP context containing server session and application context.
-    script : str
-        The Python script to execute inside Mechanical.
+    script : str, optional
+        The Python script to execute inside Mechanical. Required when
+        ``file_path`` is not provided.
+    file_path : str, optional
+        Path to a local Python script file whose contents are executed inside
+        Mechanical. Takes precedence over ``script`` when both are provided.
 
     Returns
     -------
@@ -202,6 +214,20 @@ def run_python_script(ctx: Context, script: str) -> str:
             "No Mechanical connection available. "
             "Use connect_to_mechanical tool to establish a connection."
         )
+
+    if file_path is not None:
+        path = Path(file_path)
+        if not path.exists():
+            return f"Script file not found: {file_path}"
+        try:
+            script = path.read_text(encoding="utf-8")
+        except Exception as e:
+            error_msg = f"Error reading script file '{file_path}': {str(e)}"
+            logger.error(error_msg)
+            return error_msg
+
+    if script is None:
+        return "Provide either a 'script' string or a 'file_path' to execute."
 
     try:
         # Warn about f-strings: Mechanical < 2026 R1 uses IronPython 2.7 which doesn't support them
@@ -218,96 +244,6 @@ def run_python_script(ctx: Context, script: str) -> str:
         error_msg = f"Error executing script: {str(e)}"
         logger.error(error_msg)
         return error_msg
-
-
-@app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def run_python_script_from_file(ctx: Context, file_path: str) -> str:
-    """Execute a Python script file inside Mechanical.
-
-    This tool runs the contents of a Python file inside the connected Mechanical
-    instance. The file must be accessible from the local filesystem.
-
-    Parameters
-    ----------
-    ctx : Context
-        MCP context containing server session and application context.
-    file_path : str
-        Path to the Python script file to execute.
-
-    Returns
-    -------
-    str
-        Script execution result.
-    """
-    mechanical = ctx.request_context.lifespan_context.mechanical
-
-    if mechanical is None:
-        return (
-            "No Mechanical connection available. "
-            "Use connect_to_mechanical tool to establish a connection."
-        )
-
-    if not Path(file_path).exists():
-        return f"Script file not found: {file_path}"
-
-    try:
-        result = mechanical.run_python_script_from_file(file_path)
-        return f"Script file executed successfully. Result: {result}"
-    except Exception as e:
-        error_msg = f"Error executing script file: {str(e)}"
-        logger.error(error_msg)
-        return error_msg
-
-
-@app.tool(tags={"aali", REQUIRES_MECHANICAL_TAG})
-def run_multiple_scripts(ctx: Context, scripts: list[str]) -> str:
-    """Execute multiple Python scripts inside Mechanical in sequence.
-
-    This tool runs multiple Python scripts inside the connected Mechanical instance
-    in sequence. This is useful for multi-step workflows where each script builds
-    on the previous one.
-
-    Parameters
-    ----------
-    ctx : Context
-        MCP context containing server session and application context.
-    scripts : list[str]
-        List of Python scripts to execute inside Mechanical.
-
-    Returns
-    -------
-    str
-        Execution results for all scripts.
-    """
-    mechanical = ctx.request_context.lifespan_context.mechanical
-
-    if mechanical is None:
-        return (
-            "No Mechanical connection available. "
-            "Use connect_to_mechanical tool to establish a connection."
-        )
-
-    if not scripts:
-        return "No scripts provided to execute."
-
-    results = []
-    for i, script in enumerate(scripts, 1):
-        try:
-            # Warn about f-strings (IronPython 2.7 doesn't support them)
-            if re.search(r'\bf["\']', script):
-                logger.warning(
-                    "Script %d contains f-string syntax. Mechanical versions before "
-                    "2026 R1 use IronPython 2.7 which does not support f-strings.",
-                    i,
-                )
-
-            result = mechanical.run_python_script(script)
-            results.append(f"Script {i}: Success - {result}")
-        except Exception as e:
-            results.append(f"Script {i}: Error - {str(e)}")
-            # Continue with remaining scripts even if one fails
-
-    return f"Executed {len(scripts)} scripts:\n" + "\n".join(results)
 
 
 @app.tool(tags={"aali", "locked_connection"})
@@ -769,34 +705,29 @@ def clear_mechanical(ctx: Context) -> str:
         return error_msg
 
 
-@app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def get_project_directory(ctx: Context) -> str:
-    """Get the project directory of the Mechanical instance.
+@app.resource("files://mechanical/working_directory")
+def mechanical_working_directory() -> str:
+    """Return the working directory of the connected Mechanical instance.
 
-    Parameters
-    ----------
-    ctx : Context
-        MCP context containing server session and application context.
+    This resource provides the absolute path to the active project directory
+    used by the connected Mechanical instance. The value is resolved lazily
+    each time the resource is read.
 
     Returns
     -------
     str
-        The project directory path.
+        Absolute path to the Mechanical project directory, or a message
+        indicating that Mechanical is not connected.
     """
-    mechanical = ctx.request_context.lifespan_context.mechanical
+    mechanical = getattr(getattr(app, "context", None), "mechanical", None)
 
     if mechanical is None:
-        return (
-            "No Mechanical connection available. "
-            "Use connect_to_mechanical tool to establish a connection."
-        )
+        return "Mechanical is not connected. Use connect_to_mechanical or launch_mechanical."
 
     try:
-        return f"Project directory: {mechanical.project_directory}"
+        return str(mechanical.project_directory)
     except Exception as e:
-        error_msg = f"Error getting project directory: {str(e)}"
-        logger.error(error_msg)
-        return error_msg
+        return f"Could not retrieve project directory: {e}"
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})

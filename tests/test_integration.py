@@ -30,7 +30,6 @@ import pytest
 from ansys.mechanical.mcp.server import PyMechanicalAppContext
 from ansys.mechanical.mcp.tools import (
     check_mechanical_status,
-    run_multiple_scripts,
     run_python_script,
 )
 
@@ -158,55 +157,6 @@ class TestMechanicalIntegration:
 
         assert isinstance(result, str)
         assert "Script executed successfully" in result
-
-    def test_real_run_multiple_scripts(self, real_context):
-        """Test running multiple scripts with real Mechanical."""
-        # Run multiple scripts - use valid syntax that doesn't depend on previous state
-        scripts = [
-            "print('Script 1')",
-            "print('Script 2')",
-            "result = 1 + 1",
-            "print(f'Result: {result}')",
-        ]
-
-        result = run_multiple_scripts(real_context, scripts)
-
-        assert isinstance(result, str)
-        assert "Executed 4 scripts" in result
-
-    def test_real_run_multiple_scripts_empty_list(self, real_context):
-        """Test error handling with empty script list."""
-        result = run_multiple_scripts(real_context, [])
-
-        assert "No scripts provided" in result
-
-    def test_multiple_scripts_large_batch(self, real_context, mechanical):
-        """Test running a large batch of scripts."""
-        # Create many scripts
-        scripts = [f"x_{i} = {i}" for i in range(1, 51)]
-
-        result = run_multiple_scripts(real_context, scripts)
-
-        assert "Executed 50 scripts" in result
-
-    def test_multiple_scripts_error_handling(self, real_context):
-        """Test error handling with invalid scripts."""
-        # Include an invalid script
-        scripts = [
-            "print('valid')",
-            "INVALID_PYTHON_SYNTAX_XYZ((",  # This should cause an error
-        ]
-
-        result = run_multiple_scripts(real_context, scripts)
-
-        # Should get error message
-        assert isinstance(result, str)
-        # Either successful execution or error message
-        assert (
-            "Successfully executed" in result
-            or "Error executing scripts" in result
-            or "error" in result.lower()
-        )
 
 
 @pytest.mark.integration

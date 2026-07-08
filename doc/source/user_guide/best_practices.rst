@@ -22,7 +22,7 @@ This improves observability and error recovery.
 
 - Use ``run_python_script`` for Mechanical API-heavy commands.
 - Use ``run_python_code`` for lightweight Python processing and orchestration.
-- Use ``run_multiple_scripts`` when sequential script execution is required.
+- Pass ``file_path`` to ``run_python_script`` when a script lives on disk.
 
 For long setup scripts:
 

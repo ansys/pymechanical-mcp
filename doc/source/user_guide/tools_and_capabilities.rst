@@ -54,17 +54,11 @@ Available after connection
    * - ``clear_mechanical``
      - Clear context and release session resources.
    * - ``run_python_script``
-     - Execute a Mechanical script string.
-   * - ``run_python_script_from_file``
-     - Execute a script file from working directory.
-   * - ``run_multiple_scripts``
-     - Execute multiple scripts sequentially.
+     - Execute a Mechanical script string, or read one from a local file via ``file_path``.
    * - ``save_project``
      - Save active project.
    * - ``open_project``
      - Open an existing ``.mechdb`` project.
-   * - ``get_project_directory``
-     - Return active project working directory.
    * - ``upload_file``
      - Upload local file to Mechanical working directory.
    * - ``download_file``
