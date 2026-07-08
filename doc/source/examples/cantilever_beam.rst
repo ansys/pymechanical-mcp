@@ -36,7 +36,7 @@ Setup requirements
    * - Fixed support
      - YZ face at X = -100 mm
    * - Pressure load
-     - 1 megapascal on the top face (XY face at Z = +5 mm)
+     - 1,000,000 pascals on the top face (XY face at Z = +5 mm)
 
 Tool workflow
 -------------
@@ -46,7 +46,7 @@ Tool workflow
 3. Assign Structural Steel using `run_python_script`.
 4. Generate a 5 mm element size mesh using `run_python_script`.
 5. Apply a fixed support at the clamped face using `run_python_script`.
-6. Apply a 1 megapascal pressure on the top face using `run_python_script`.
+6. Apply a 1,000,000 pascal pressure on the top face using `run_python_script`.
 7. Run the solver using `solve_analysis`.
 8. Add Total Deformation and Equivalent Stress results using `run_python_script`.
 9. Capture a screenshot of the equivalent stress contour using `screenshot`.
@@ -71,6 +71,6 @@ The following prompt drives the complete workflow end-to-end:
    - Material: Structural Steel (default)
    - Mesh: default mesh with element size 5 mm
    - Fixed support on the YZ face at X = -100 mm
-   - Pressure load of 1 MPa on the top face (XY face at Z = +5 mm)
-   - Results: Total Deformation, Equivalent (von Mises) Stress
-   - Take a screenshot of the von Mises stress result
+  - Pressure load of 1,000,000 pascals on the top face (XY face at Z = +5 mm)
+  - Results: Total Deformation and equivalent stress
+  - Take a screenshot of the equivalent stress result
