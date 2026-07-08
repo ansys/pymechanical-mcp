@@ -81,3 +81,10 @@ You can supply the same values with environment variables:
 
 - ``PYMECHANICAL_TRANSPORT_MODE``
 - ``ANSYS_GRPC_CERTIFICATES``
+
+Next steps
+----------
+
+- To run your first Mechanical workflow, see :doc:`quick_start`.
+- For IDE setup, see :doc:`ide_configuration`.
+- For startup options and environment variables, see :doc:`../user_guide/configuration`.

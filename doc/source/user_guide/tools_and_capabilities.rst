@@ -150,3 +150,16 @@ Checks after solving
 #. ``get_mechanical_logs`` for warnings and errors
 #. ``run_python_code`` for custom data extraction
 #. ``export_results`` for report artifacts
+
+Feature reference
+-----------------
+
+For complete parameter signatures and return values for all tools, see
+:doc:`/api/index`.
+
+Next steps
+----------
+
+- See :doc:`best_practices` for recommendations on using the tools effectively.
+- Explore :doc:`/examples/usage_examples` for end-to-end workflow examples.
+- For startup and environment options, see :doc:`configuration`.

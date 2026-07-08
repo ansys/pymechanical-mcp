@@ -5,51 +5,26 @@ Examples
 ========
 
 Explore practical Mechanical simulation workflows driven by PyMechanical-MCP.
-Each example covers the engineering objective, the recommended MCP tool sequence,
-and includes a simulation video that is available when assets are provided.
 
-.. grid:: 2 2 3 3
-    :gutter: 1 2 3 3
-    :padding: 1 2 3 3
-
-    .. grid-item-card:: Cantilever beam
-        :link: cantilever_beam
-        :link-type: doc
-
-        Static structural workflow for a cantilever beam under a transverse end load
-        with deformation and stress results.
+.. grid:: 2
 
     .. grid-item-card:: Usage examples
-        :link: usage_examples
-        :link-type: doc
+       :link: ref_usage_examples
+       :link-type: ref
 
-        Primary workflow collection with links to detailed engineering examples.
+       Review engineering workflow examples with step-by-step MCP tool sequences.
 
-    .. grid-item-card:: Usage examples: Videos
-        :link: usage_examples_videos
-        :link-type: doc
+    .. grid-item-card:: Implement a custom tool
+       :link: ref_implementing_a_tool
+       :link-type: ref
 
-        Video gallery page for workflow demonstrations and upcoming assets.
-
-    .. grid-item-card:: Plate with hole
-        :link: plate_with_hole
-        :link-type: doc
-
-        Stress concentration workflow for a plate with a central circular hole
-        under uniaxial tension.
-
-    .. grid-item-card:: Bracket modal analysis
-        :link: bracket_modal
-        :link-type: doc
-
-        Modal analysis workflow for a bracket assembly with natural frequency
-        extraction and mode-shape visualization.
+       Learn how to implement a custom MCP tool for PyMechanical-MCP.
 
 .. toctree::
    :hidden:
 
-    usage_examples
-    usage_examples_videos
+   usage_examples
+   implementing_a_tool
    cantilever_beam
    plate_with_hole
    bracket_modal

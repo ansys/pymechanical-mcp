@@ -10,14 +10,17 @@ You can contribute to PyMechanical-MCP in several ways:
 - Report defects or request features on the `GitHub Issues page <https://github.com/ansys/pymechanical-mcp/issues>`_
 - Submit pull requests with bug fixes, new features, or documentation updates
 
-Before contributing, review the `PyAnsys developer's guide <https://dev.docs.pyansys.com/>`_, paying particular
-attention to the guidance on these pages:
+Before contributing, review the `PyAnsys developer's guide <https://dev.docs.pyansys.com/>`_, paying
+particular attention to the guidance on these pages:
 
 - `Contributing <https://dev.docs.pyansys.com/how-to/contributing.html>`_
 - `Coding style <https://dev.docs.pyansys.com/coding-style/index.html>`_
+- `Branch-naming conventions <https://dev.docs.pyansys.com/how-to/contributing.html#branch-naming-conventions>`_
 
 Development setup
 =================
+
+Clone and install in editable mode with development dependencies:
 
 .. code-block:: bash
 
@@ -36,10 +39,6 @@ Run tests:
    # Integration tests (requires Mechanical)
    pytest -m integration
 
-The CI pipeline runs integration tests in a dedicated job:
-
-- ``Integration Tests (remote Mechanical)``
-
 Run linters:
 
 .. code-block:: bash
@@ -52,29 +51,9 @@ Build documentation:
 
    python -m sphinx -W -b html doc/source doc/_build/html
 
-Add a new tool
-==============
+Next steps
+==========
 
-When adding ``@app.tool(...)`` entries in ``src/ansys/mechanical/mcp/tools.py``:
-
-1. If the tool requires an active Mechanical session, tag it with
-   ``REQUIRES_MECHANICAL_TAG``.
-
-   .. code-block:: python
-
-      from ansys.mechanical.mcp.tools import REQUIRES_MECHANICAL_TAG
-
-      @app.tool(tags={REQUIRES_MECHANICAL_TAG})
-      def my_new_tool(ctx: Context, ...) -> str:
-          ...
-
-2. If the tool must be available before connection, do not tag it with
-   ``REQUIRES_MECHANICAL_TAG`` and update the pre-connection visibility tests.
-
-3. Add the tool to ``src/ansys/mechanical/mcp/toolsets.py`` so it appears in
-   the ``toolsets://definition`` discovery resource.
-
-4. Document the tool in :doc:`../user_guide/tools_and_capabilities`.
-
-5. If the tool requires Mechanical scripting patterns, update
-   ``src/ansys/mechanical/mcp/contexts.py`` guidance where appropriate.
+- To implement a custom tool, see :doc:`/examples/implementing_a_tool`.
+- For an overview of available tools, see :doc:`/user_guide/tools_and_capabilities`.
+- For the complete API reference, see :doc:`/api/index`.

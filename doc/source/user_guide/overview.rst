@@ -66,3 +66,11 @@ Typical workflow
 #. Import the geometry and set up the analysis with scripting tools.
 #. Solve (``solve_analysis``).
 #. Inspect and export results (``get_model_info``, ``export_results``, ``screenshot``).
+
+Next steps
+----------
+
+- Learn about every available tool in :doc:`tools_and_capabilities`.
+- Review :doc:`best_practices` for workflow recommendations.
+- Explore :doc:`/examples/usage_examples` for end-to-end examples.
+- Access the complete tool reference in :doc:`/api/index`.

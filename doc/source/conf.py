@@ -22,7 +22,7 @@ from pathlib import Path
 import re
 import sys
 
-from ansys_sphinx_theme import ansys_favicon, get_version_match
+from ansys_sphinx_theme import ansys_favicon, get_version_match, pyansys_logo_black
 
 # Add package source directory for autodoc/version imports.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -52,7 +52,7 @@ USERNAME = "ansys"
 BRANCH = "main"
 
 # Select desired logo, theme, and declare the html title
-html_logo = "_static/logo/pymechanical-logo.png"
+html_logo = pyansys_logo_black
 html_theme = "ansys_sphinx_theme"
 html_short_title = html_title = "PyMechanical-MCP"
 
@@ -81,10 +81,6 @@ html_theme_options = {
         "version_match": switcher_version,
     },
     "check_switcher": False,
-    "logo": {
-        "image_light": "logo/pymechanical-logo.png",
-        "image_dark": "logo/pymechanical-logo-dark.png",
-    },
     "ansys_sphinx_theme_autoapi": {
         "project": project,
     },

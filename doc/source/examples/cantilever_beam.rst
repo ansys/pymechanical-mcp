@@ -3,44 +3,74 @@
 Cantilever beam
 ===============
 
-This example demonstrates a static structural workflow for a cantilever beam
-subjected to a transverse end load. It covers geometry import, material
-assignment, mesh generation, boundary condition setup, solver execution,
-and deformation result extraction using PyMechanical-MCP.
+This example demonstrates a static structural analysis of a cantilever beam
+using PyMechanical-MCP. The geometry is a 200 mm x 20 mm x 10 mm rectangular beam.
 
 Engineering objective
 ---------------------
 
-Determine the maximum deformation and equivalent stress distribution in a
-cantilever beam that is clamped at one end and loaded at the free end with a
-transverse point force.
+Determine the maximum deformation and equivalent stress distribution in a cantilever
+beam clamped at one end and loaded at the free end with a transverse pressure.
+Confirm that the maximum deformation occurs at the free end and stress concentrates
+at the fixed support.
+
+Geometry
+--------
+
+- **File**: `beam.step`
+- **Dimensions**: 200 mm x 20 mm x 10 mm rectangular beam
+
+Setup requirements
+------------------
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Setting
+     - Value
+   * - Material
+     - Structural Steel (default)
+   * - Mesh
+     - Default mesh, element size 5 mm
+   * - Fixed support
+     - YZ face at X = -100 mm
+   * - Pressure load
+     - 1 MPa on the top face (XY face at Z = +5 mm)
 
 Tool workflow
 -------------
 
-1. Connect to or launch Mechanical using ``connect_to_mechanical`` or ``launch_mechanical``.
-2. Upload the STEP geometry file using ``upload_file``.
-3. Use ``run_python_script`` to assign a structural steel material to the body.
-4. Use ``run_python_script`` to generate a mesh with a suitable element size.
-5. Apply a fixed support at the clamped end and a force load at the free end using ``run_python_script``.
-6. Run the solver using ``solve_analysis``.
-7. Export deformation and stress results using ``export_results``.
-8. Capture a screenshot of the deformation contour using ``screenshot``.
+1. Connect to or launch Mechanical using `connect_to_mechanical` or `launch_mechanical`.
+2. Upload `beam.step` using `upload_file`.
+3. Assign Structural Steel using `run_python_script`.
+4. Generate a 5 mm element size mesh using `run_python_script`.
+5. Apply a fixed support at the clamped face using `run_python_script`.
+6. Apply a 1 MPa pressure on the top face using `run_python_script`.
+7. Run the solver using `solve_analysis`.
+8. Add Total Deformation and Equivalent Stress results using `run_python_script`.
+9. Capture a screenshot of the von Mises stress using `screenshot`.
 
-Simulation
-----------
+Expected outcome
+----------------
 
-.. only:: html
+- Maximum deformation at the free end of the beam.
+- Stress concentration at the fixed support.
+- Stress gradient from low (blue) at the free end to high (red) at the fixed support.
 
-    .. raw:: html
+Prompt example
+--------------
 
-       <figure style="text-align:center;">
-          <video controls muted loop autoplay style="width:80%;">
-             <source src="../_static/videos/cantilever_beam.mp4" type="video/mp4">
-             Your browser does not support the video tag.
-          </video>
-          <figcaption>Cantilever beam deformation and stress simulation</figcaption>
-       </figure>
+The following prompt drives the complete workflow end-to-end:
 
-.. note::
-   The simulation video is added when available.
+.. code-block:: text
+
+   Perform a static structural analysis of a cantilever beam.
+   Upload the geometry file beam.step.
+
+   - Material: Structural Steel (default)
+   - Mesh: default mesh with element size 5 mm
+   - Fixed support on the YZ face at X = -100 mm
+   - Pressure load of 1 MPa on the top face (XY face at Z = +5 mm)
+   - Results: Total Deformation, Equivalent (von Mises) Stress
+   - Take a screenshot of the von Mises stress result

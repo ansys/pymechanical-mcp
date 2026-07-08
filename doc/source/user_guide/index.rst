@@ -34,6 +34,12 @@ Learn how to use PyMechanical-MCP effectively.
 
         Guide to deploying PyMechanical-MCP in a containerized environment.
 
+    .. grid-item-card:: :fa:`check-circle` Best practices
+        :link: best_practices
+        :link-type: doc
+
+        Workflow recommendations for sessions, scripting, and result handling.
+
 
 .. toctree::
    :hidden:
@@ -41,4 +47,5 @@ Learn how to use PyMechanical-MCP effectively.
    overview
    tools_and_capabilities
    configuration
+   best_practices
    docker

@@ -59,3 +59,10 @@ AI workflow guidance
 Call ``get_guidelines_for`` at workflow boundaries (geometry, meshing,
 analysis setup, postprocessing). This reduces avoidable script mistakes and
 keeps generated commands aligned with Mechanical best practices.
+
+Next steps
+----------
+
+- See :doc:`tools_and_capabilities` for a complete list of available tools.
+- Browse :doc:`/examples/usage_examples` for end-to-end workflow examples.
+- For startup and transport options, see :doc:`configuration`.
