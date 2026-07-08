@@ -61,13 +61,14 @@ def check_mechanical_status(ctx: Context) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
 
     Returns
     -------
     str
         JSON string containing comprehensive Mechanical status information including:
-        - connection: Basic connection info (version, project_directory, is_alive)
+
+        - connection: Basic connection information (version, project_directory, is_alive)
         - product_info: Product version and build information
 
         Returns an error message if Mechanical is not available or has exited.
@@ -83,7 +84,7 @@ def check_mechanical_status(ctx: Context) -> str:
     try:
         # Check if Mechanical has exited
         if hasattr(mechanical, "exited") and mechanical.exited:
-            return "Mechanical instance has exited. Please reconnect or launch a new instance."
+            return "Mechanical instance has exited. Reconnect or launch a new instance."
 
         info = get_info(mechanical)
 
@@ -100,13 +101,13 @@ def check_mechanical_status(ctx: Context) -> str:
 def check_mechanical_installed(ctx: Context) -> str:
     """Check if Mechanical is installed on the system.
 
-    This tool checks whether ANSYS Mechanical is properly installed and
+    This tool checks whether Ansys Mechanical is properly installed and
     available on the system by inspecting standard installation paths.
 
     .. note::
 
-       When the MCP server runs inside a Docker container the host
-       filesystem is not accessible.  In that case the tool probes the
+       When PyMechanical-MCP runs inside a Docker container, the host
+       filesystem is not accessible.  In this case, the tool probes the
        configured gRPC endpoint instead and reports whether a Mechanical
        server is reachable.
 
@@ -148,7 +149,7 @@ def check_mechanical_installed(ctx: Context) -> str:
             f"check is not available.\n"
             f"No Mechanical gRPC server detected at {ip}:{port} "
             f"(error: {probe['error']}).\n"
-            f"Please start Mechanical on the host machine with gRPC "
+            f"Start Mechanical on the host machine with gRPC "
             f"enabled on port {port}, then retry."
         )
 
@@ -164,7 +165,7 @@ def check_mechanical_installed(ctx: Context) -> str:
             logger.info("Mechanical installation not found")
             return (
                 "Mechanical is not installed on this system or cannot be found in the "
-                "standard locations. Please ensure ANSYS/Mechanical is properly installed "
+                "standard locations. Ensure Ansys Mechanical is properly installed "
                 "and the installation path is correct."
             )
 
@@ -184,16 +185,16 @@ def run_python_script(
 
     This tool runs a Python script block inside the connected Mechanical instance
     using Mechanical's scripting API. The script has access to Mechanical's
-    ExtAPI, DataModel, Model, Tree, and Graphics entry points.
+    ``ExtAPI``, ``DataModel``, ``Model``, ``Tree``, and ``Graphics`` entry points.
 
     Provide either an inline ``script`` string or a ``file_path`` pointing to a
-    local ``.py`` file. When ``file_path`` is given, its contents are read and
+    local Python file. When ``file_path`` is given, its contents are read and
     executed inside Mechanical.
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     script : str, optional
         The Python script to execute inside Mechanical. Required when
         ``file_path`` is not provided.
@@ -257,29 +258,30 @@ async def launch_mechanical(
 ) -> str:
     """Launch a new Mechanical instance.
 
-    This tool starts a new Mechanical instance using PyMechanical's launch_mechanical
+    This tool starts a new Mechanical instance using PyMechanical's ``launch_mechanical``
     function. The launched instance will be automatically connected and stored in
     the context for subsequent operations. Once connected, additional tools become
-    available to interact with it (run_python_script, screenshot, save_project, etc.).
+    available to interact with it (including ``run_python_script``, ``screenshot``,
+    and ``save_project``).
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
-    exec_file : str, optional
-        The path to the Mechanical executable. If None, PyMechanical will attempt
+        MCP context containing the server session and application context.
+    exec_file : str, default: None
+        path to the Mechanical executable. If ``None``, PyMechanical attempts
         to find the executable automatically.
-    port : int, optional
-        The gRPC port for Mechanical to listen on. If None, defaults to 10000.
-    batch : bool, optional
-        Whether to launch Mechanical in batch mode. Default is True.
-    version : str, optional
-        Mechanical version to run (e.g., "252" for 2025 R2). If None, uses the
-        latest installed version.
-    transport_mode : str, optional
-        gRPC transport mode for the launched instance. Accepted values: "auto",
-        "insecure", "mtls", "wnua". When None or "auto", PyMechanical applies
-        the platform default.
+    port : int, default: None
+        gRPC port for Mechanical to listen on. If ``None``, ``10000`` is used.
+    batch : bool, default: True
+        Whether to launch Mechanical in batch mode.
+    version : str, default: None
+        Mechanical version to run (such as "252" for 2025 R2). If ``None``, the
+        latest installed version is used.
+    transport_mode : str, default: None
+        gRPC transport mode for the launched instance. Options are ``auto``,
+        ``insecure``, ``mtls``, and ``wnua``. When ``None`` or ``auto``,
+        PyMechanical applies the platform default.
 
     Returns
     -------
@@ -294,7 +296,7 @@ async def launch_mechanical(
             return (
                 "Launching Mechanical from inside a Docker container is not "
                 "supported: the MCP server cannot start host processes.\n"
-                f"Please start Mechanical on the host machine with gRPC "
+                f"Start Mechanical on the host machine with gRPC "
                 f"enabled on port {target_port}, then use "
                 f"'connect_to_mechanical' to establish a session."
             )
@@ -303,7 +305,7 @@ async def launch_mechanical(
         if ctx.request_context.lifespan_context.mechanical is not None:
             return (
                 "Already connected to a Mechanical instance. "
-                "Please disconnect first using disconnect_from_mechanical tool."
+                "Disconnect first using disconnect_from_mechanical tool."
             )
 
         # Merge: tool parameter > CLI/env config > auto
@@ -372,23 +374,23 @@ async def connect_to_mechanical(
 
     This tool establishes a connection to a running Mechanical instance using the
     provided port and IP address. The connection is stored for subsequent
-    operations and can be closed using the disconnect_from_mechanical tool. Once
+    operations and can be closed using the ``disconnect_from_mechanical`` tool. Once
     connected, additional tools become available to interact with it
-    (run_python_script, screenshot, save_project, etc.).
+    (including ``run_python_script``, ``screenshot``, and ``save_project``).
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
-    port : int, optional
-        The gRPC port where Mechanical is listening. Default is 10000.
-    ip : str, optional
-        The IP address where Mechanical is running. Default is "127.0.0.1".
-    transport_mode : str, optional
-        gRPC transport mode. Accepted values: "auto", "insecure", "mtls",
-        "wnua". When None or "auto", the mode is determined automatically:
-        on Windows it defers to PyMechanical's default (wnua); on Linux/Docker
-        it uses mtls if certificates are found, otherwise insecure.
+        MCP context containing the server session and application context.
+    port : int, default: 10000
+        gRPC port where Mechanical is listening.
+    ip : str, default: "127.0.0.1"
+        IP address where Mechanical is running.
+    transport_mode : str, default: None
+        gRPC transport mode. Options are ``"auto"``, ``"insecure"``, ``"mtls"``,
+        and ``"wnua"``. When ``None`` or ``"auto"``, the mode is determined automatically.
+        On Windows, it defers to PyMechanical's default ( ``"wnua"``). On Linux/Docker,
+        it uses ``"mtls"`` if certificates are found. Otherwise it uses ``"insecure"``.
 
     Returns
     -------
@@ -412,7 +414,7 @@ async def connect_to_mechanical(
         if ctx.request_context.lifespan_context.mechanical is not None:
             return (
                 "Already connected to a Mechanical instance. "
-                "Please disconnect first using disconnect_from_mechanical tool."
+                "Disconnect first using disconnect_from_mechanical tool."
             )
 
         # Merge: tool parameter > CLI/env config > auto
@@ -472,7 +474,7 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
 
     Returns
     -------
@@ -515,7 +517,7 @@ def list_mechanical_instances() -> str:
     .. note::
 
        When the MCP server runs inside a Docker container, host process
-       scanning is not available.  In that case the tool probes the
+       scanning is not available.  In this case, the tool probes the
        configured gRPC endpoint and reports its reachability.
 
     Returns
@@ -543,7 +545,7 @@ def list_mechanical_instances() -> str:
             f"scanning is not available.\n"
             f"Mechanical gRPC endpoint at {ip}:{port} is "
             f"NOT REACHABLE (error: {probe['error']}).\n"
-            f"Please start Mechanical on the host machine with gRPC "
+            f"Start Mechanical on the host machine with gRPC "
             f"enabled on port {port}, then retry."
         )
 
@@ -560,7 +562,7 @@ def list_files(ctx: Context) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
 
     Returns
     -------
@@ -597,7 +599,7 @@ def upload_file(ctx: Context, file_path: str) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     file_path : str
         Path to the local file to upload.
 
@@ -636,11 +638,11 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     file_name : str
         Name of the file to download from the Mechanical working directory.
     target_dir : str, optional
-        Local directory to save the downloaded file. If None, uses current directory.
+        Local directory to save the downloaded file. If ``None``, the current directory is used.
 
     Returns
     -------
@@ -681,7 +683,7 @@ def clear_mechanical(ctx: Context) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
 
     Returns
     -------
@@ -741,7 +743,7 @@ def get_model_info(ctx: Context) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
 
     Returns
     -------
@@ -832,14 +834,16 @@ def screenshot(
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
-    view_type : str, optional
-        Type of view to capture: "model", "mesh", or "result". Default is "model".
+        MCP context containing the server session and application context.
+    view_type : str, default: ``"model"``
+        Type of view to capture. Options are ``"model"``, ``"mesh"``, and ``"result"``.
+
 
     Returns
     -------
     list[TextContent | ImageContent]
         A list containing:
+
         - TextContent with the screenshot file path
         - ImageContent with the base64-encoded image data
     """
@@ -938,25 +942,27 @@ def run_python_code(
 ) -> str:
     """Execute Python code in the persistent Python session for data processing.
 
-    IMPORTANT: This tool runs in a separate Python process and does NOT have access
-    to the Mechanical gRPC connection. Use this for:
-    - Custom data processing and analysis (NumPy, Pandas, SciPy)
-    - Creating matplotlib plots and visualizations
-    - Post-processing results exported from Mechanical
+    **IMPORTANT:** This tool runs in a separate Python process and does NOT have access
+    to the Mechanical gRPC connection. Use this tool for:
+
+    - Custom data processing and analysis (NumPy, Pandas, and SciPy)
+    - Creating Matplotlib plots and visualizations
+    - Postprocessing results exported from Mechanical
     - General Python computations
 
-    For code that needs to run inside Mechanical (IronPython with ExtAPI, Model, etc.),
+    For code that needs to run inside Mechanical (such as IronPython with ``ExtAPI`` or ``Model``),
     use the 'run_python_script' tool instead.
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     code : str
-        The Python code to execute. Should use standard Python libraries.
-        Does NOT have access to Mechanical's ExtAPI, Model, or other internal objects.
-    timeout : int, optional
-        Maximum time in seconds to allow for code execution. Default is 60 seconds.
+        Python code to execute. You should use standard Python libraries.
+        This tool does NOT have access to Mechanical's ``ExtAPI``, ``Model``,
+        or other internal objects.
+    timeout : int, default: 60
+        Maximum time in seconds to allow for code execution.
 
     Returns
     -------
@@ -1060,13 +1066,13 @@ def create_custom_plot(
     - Create plots from result files (such as CSV and TXT).
     - Perform postprocessing visualizations.
 
-    For plots that need data directly from Mechanical, first use `'run_python_script'`
+    For plots that need data directly from Mechanical, first use ``run_python_script``
     to export the data to a file. Then use this tool to create the visualization.
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     plot_code : str
         Python code to create the plot. You should use ``matplotlib.pyplot``.
         For Matplotlib, the code should create the figure or plot but not call ``plt.show()``.
@@ -1184,17 +1190,17 @@ def create_custom_plot(
 def save_project(ctx: Context, file_path: str | None = None) -> str:
     """Save the current Mechanical project.
 
-    This tool saves the current project to disk. If a file_path is provided,
+    This tool saves the current project to disk. If ``file_path`` is provided,
     the project is saved to that location (Save As). Otherwise, the project
     is saved in place.
 
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
-    file_path : str, optional
+        MCP context containing the server session and application context.
+    file_path : str, default: None
         Full path for saving the project (Save As). The path should end with
-        .mechdb extension. If None, saves the project in the current location.
+        a ``.mechdb`` extension. If ``None``, the project is savedin the current location.
 
     Returns
     -------
@@ -1251,7 +1257,7 @@ def open_project(ctx: Context, file_path: str) -> str:
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     file_path : str
         Full path to the MECHDB file to open.
 
@@ -1321,7 +1327,7 @@ def solve_analysis(
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     analysis_index : int, default: 0
         Index of the analysis to solve (0-based). The default, ``0``,
         corresponds to the first analysis.
@@ -1427,15 +1433,15 @@ def export_results(
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
-    result_type : str, optional
-        Type of result to export: "all", "deformation", "stress", "strain",
-        or a specific result object name. Default is "all".
-    export_format : str, optional
-        Export format: "png" for images, "txt" for text data, "both" for
-        images and text. Default is "png".
-    output_dir : str, optional
-        Directory to save exported files. If None, uses the project directory.
+        MCP context containing the server session and application context.
+    result_type : str, default: ``"all"``
+        Type of result to export. Options are ``"all"``, ``"deformation"``, ``"stress"``,
+         ``"strain"``, or a specific result object name.
+    export_format : str, default: ``"png"``
+        Export format. Use ``"png"`` for images, ``"txt"`` for text data, or ``"both"`` for
+        images and text.
+    output_dir : str, default: None
+        Directory to save exported files. If ``None``, uses the project directory.
 
     Returns
     -------
@@ -1642,7 +1648,7 @@ def get_mechanical_logs(
     Parameters
     ----------
     ctx : Context
-        MCP context containing server session and application context.
+        MCP context containing the server session and application context.
     source : str, optional
         Log source to read. Options are:
 

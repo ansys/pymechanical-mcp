@@ -19,7 +19,7 @@ To run the server over streamable HTTP:
 Connect to your IDE or client
 -----------------------------
 
-PyMechanical-MCP works with multiple MCP-compatible clients. For setup details,
+PyMechanical-MCP works with multiple MCP-compatible clients. For setup information,
 see :doc:`ide_configuration`.
 
 - Claude Code
@@ -42,7 +42,7 @@ Ask your assistant to call ``connect_to_mechanical`` with the host and port.
 
 **Option 3: Connect on startup.**
 
-Use ``--connect-on-startup`` when launching the MCP server.
+Use ``--connect-on-startup`` when launching the MCP server:
 
 .. code-block:: bash
 
@@ -50,8 +50,8 @@ Use ``--connect-on-startup`` when launching the MCP server.
 
 .. warning::
    When you use ``--connect-on-startup``, PyMechanical-MCP locks the connection and
-   disables ``launch_mechanical``, ``connect_to_mechanical``, and
-   ``disconnect_from_mechanical``.
+   disables the ``launch_mechanical``, ``connect_to_mechanical``, and
+   ``disconnect_from_mechanical`` tools.
 
 Tool availability before and after connecting
 ---------------------------------------------
@@ -74,7 +74,7 @@ First workflow checklist
 3. ``upload_file`` (geometry or script, as needed)
 4. ``run_python_script`` (model setup)
 5. ``solve_analysis``
-6. ``get_model_info``, ``export_results``, or ``screenshot``
+6. ``get_model_info``, ``export_results``, and/or ``screenshot``
 
 Next steps
 ----------

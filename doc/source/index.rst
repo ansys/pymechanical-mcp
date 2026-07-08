@@ -10,9 +10,9 @@
 
     getting_started/index
     user_guide/index
-    contributing/index
     api/index
     examples/index
+    contributing/index
     changelog
 
 .. image:: _static/logo-dark.png

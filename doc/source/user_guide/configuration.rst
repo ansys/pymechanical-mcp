@@ -23,7 +23,7 @@ Command-line tool startup flags
    * - ``--transport-mode``
      - gRPC mode: ``auto``, ``insecure``, ``mtls``, or ``wnua``.
    * - ``--certs-dir``
-     - Path to mTLS certificates directory (``ca.crt``, ``client.crt``,
+     - Path to mTLS certificates directory (``ca.crt``, and ``client.crt``,
        ``client.key``).
    * - ``--cors-origins``
      - Comma-separated allowed origins for HTTP transport.

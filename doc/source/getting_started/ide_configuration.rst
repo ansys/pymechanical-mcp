@@ -55,8 +55,9 @@ Key features:
 - Uses uvx for automatic fetching from GitHub.
 - Requires no manual management of configuration files.
 
-For more information, see `Claude Code MCP installation
-<https://code.claude.com/docs/en/mcp#installing-mcp-servers>`_.
+For more information, see `Installing MCP servers
+<https://code.claude.com/docs/en/mcp#installing-mcp-servers>`_
+in the Claude Code documentation.
 
 Visual Studio Code
 ------------------
@@ -94,7 +95,7 @@ Features:
 Set up for local development
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use this configuration when working from a local source checkout:
+Use this configuration when working from a local clone of the repository:
 
 .. code-block:: json
 
@@ -123,7 +124,7 @@ Configure HTTP transport
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 For remote access or server-style deployments, start the server separately and then
-point VS Code at it:
+point Visual Studio Code at it:
 
 .. code-block:: bash
 
@@ -145,17 +146,16 @@ Enable MCP in Visual Studio Code
 
 1. Open Visual Studio Code settings (``Ctrl+,`` or ``Cmd+,``).
 2. Search for ``MCP`` or ``Copilot MCP``.
-3. Enable the setting to allow Copilot to use MCP servers.
+3. Enable the settings that allow Copilot to use MCP servers:
+
+   .. figure:: ../_static/enabled_mcp.png
+    :alt: Visual Studio Code settings to enable MCP
+
 4. Restart Visual Studio Code for the changes to take effect.
 
-.. figure:: ../_static/enabled_mcp.png
-  :alt: Visual Studio Code setting to enable MCP
-  :align: center
-
-  Enable MCP server access in Visual Studio Code settings.
-
-For more information, see `Visual Studio Code MCP Servers
-<https://code.visualstudio.com/docs/copilot/customization/mcp-servers>`_.
+For more information, see `Add and manage MCP servers in VS Code
+<https://code.visualstudio.com/docs/copilot/customization/mcp-servers>`_
+in the Visual Studio Code documentation.
 
 Claude Desktop
 --------------
@@ -187,8 +187,9 @@ Features:
 - Uses STDIO transport by default.
 - Supports full MCP tool discovery.
 
-For more information, see `Claude Desktop MCP configuration
-<https://modelcontextprotocol.io/docs/develop/build-server#testing-your-server-with-claude-for-desktop>`_.
+For more information, see `Build an MCP server
+<https://modelcontextprotocol.io/docs/develop/build-server#testing-your-server-with-claude-for-desktop>`_
+in the Model Context Protocol documentation.
 
 General MCP clients
 -------------------
@@ -208,17 +209,17 @@ For local clients on the same machine:
 HTTP transport
 ~~~~~~~~~~~~~~
 
-For remote clients or web-based clients, start the server first:
+#. For remote clients or web-based clients, start the server:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   # Start the server with HTTP
-   ansys-mechanical-mcp --transport http --http-host 0.0.0.0 --http-port 8080
+      # Start the server with HTTP
+      ansys-mechanical-mcp --transport http --http-host 0.0.0.0 --http-port 8080
 
-   # With CORS origins for web clients
-   ansys-mechanical-mcp --transport http --cors-origins "http://localhost:3000"
+      # With CORS origins for web clients
+      ansys-mechanical-mcp --transport http --cors-origins "http://localhost:3000"
 
-Then configure your client to connect to ``http://[server-ip]:8080``.
+#. Configure your client to connect to ``http://[server-ip]:8080``.
 
 Claude Code versus Visual Studio Code
 --------------------------------------
@@ -257,7 +258,9 @@ Connect to a remote Mechanical instance
 
 Pass ``--connect-on-startup`` with the host and port to auto-connect at startup.
 
-Visual Studio Code:
+**Visual Studio Code:**
+
+Edit the ``.vscode/mcp.json`` file:
 
 .. code-block:: json
 
@@ -278,7 +281,7 @@ Visual Studio Code:
      }
    }
 
-Claude Code:
+**Claude Code:**
 
 .. code-block:: bash
 
@@ -291,7 +294,9 @@ Claude Code:
 Enable debug logging
 ~~~~~~~~~~~~~~~~~~~~~
 
-Visual Studio Code (``.vscode/mcp.json``):
+**Visual Studio Code**
+
+Edit the ``.vscode/mcp.json`` file:
 
 .. code-block:: json
 
@@ -312,7 +317,7 @@ Visual Studio Code (``.vscode/mcp.json``):
      }
    }
 
-Command line:
+**Command line:**
 
 .. code-block:: bash
 
@@ -321,24 +326,24 @@ Command line:
 Integrate with Docker
 ~~~~~~~~~~~~~~~~~~~~~
 
-For containerized deployments with HTTP transport, start the container first:
+#. For containerized deployments with HTTP transport, start the container:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   docker run -p 8080:8080 pymechanical-mcp --transport http
+      docker run -p 8080:8080 pymechanical-mcp --transport http
 
-Then configure your VS Code client:
+#. Configure your Visual Studio Code client:
 
-.. code-block:: json
+   .. code-block:: json
 
-   {
-     "servers": {
-       "pymechanical-mcp": {
-         "type": "http",
-         "url": "http://localhost:8080"
-       }
-     }
-   }
+      {
+        "servers": {
+          "pymechanical-mcp": {
+            "type": "http",
+            "url": "http://localhost:8080"
+          }
+        }
+      }
 
 For information about Docker deployment options, see :doc:`../user_guide/docker`.
 

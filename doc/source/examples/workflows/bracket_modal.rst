@@ -9,16 +9,16 @@ The workflow extracts the first six natural frequencies and mode shapes to ident
 Engineering objective
 ---------------------
 
-Determine the first six natural frequencies and mode shapes of a 5 mm-thick L-shaped steel bracket.
+Determine the first six natural frequencies and mode shapes of a five-millimeter thick L-shaped steel bracket.
 Identify the fundamental bending mode and higher-order twisting modes. Confirm natural frequencies
 are in the range of approximately 100 Hz to several kilohertz.
 
 Geometry
 --------
 
-- **File**: `bracket.step`
-- **Shape**: L-bracket, 100 mm vertical x 60 mm horizontal x 80 mm wide x 5 mm thick
-- **Features**: two 8 mm mounting holes in the horizontal leg; one 15 mm hole in the vertical plate
+- **File**: ``bracket.step``
+- **L-bracket dimensions**: 100 millimeters vertical x 60 millimeters horizontal x 80 millimeters wide x 5 millimeters thick
+- **Features**: Two eight-millimeter mounting holes in the horizontal leg and one 15-millimeter hole in the vertical plate
 
 Setup requirements
 ------------------
@@ -32,7 +32,7 @@ Setup requirements
    * - Material
      - Structural Steel (default)
    * - Mesh
-     - Element size 3 mm for good mode-shape resolution
+     - Element size is 3 millimeters for good mode-shape resolution
    * - Fixed support
      - Cylindrical faces of the two mounting holes in the horizontal leg
    * - Analysis type
@@ -40,27 +40,27 @@ Setup requirements
    * - Number of modes
      - First 6
    * - Frequency range
-     - 0 to 10 000 Hz
+     - 0 to 10 000 hertz
 
 Tool workflow
 -------------
 
 1. Connect to or launch Mechanical using `connect_to_mechanical` or `launch_mechanical`.
-2. Upload `bracket.step` using `upload_file`.
-3. Assign Structural Steel to all bodies using `run_python_script`.
-4. Insert a Modal analysis system and set the number of modes to 6 using `run_python_script`.
+2. Upload the `bracket.step` file using `upload_file`.
+3. Assign structural steel as the material to all bodies using `run_python_script`.
+4. Insert a modal analysis system and set the number of modes to six using `run_python_script`.
 5. Apply fixed supports to the bolt-hole cylindrical faces using `run_python_script`.
-6. Generate a 3 mm element size mesh using `run_python_script`.
+6. Generate a three-millimeter element size mesh using `run_python_script`.
 7. Run the solver using `solve_analysis`.
 8. Retrieve and print natural frequencies using `run_python_script`.
-9. Capture a screenshot of Mode 1 (fundamental mode) using `screenshot`.
+9. Capture a screenshot of Mode 1 (the fundamental mode) using `screenshot`.
 
 Expected outcome
 ----------------
 
-- **Mode 1**: Bending of the vertical plate (fundamental mode).
-- **Modes 2 to 6**: Progressive twisting and complex deformation patterns.
-- Natural frequencies ranging from approximately 100 Hz to several kilohertz.
+- **Mode 1**: Bending of the vertical plate (fundamental mode)
+- **Modes 2 to 6**: Progressive twisting and complex deformation patterns
+- Natural frequencies ranging from approximately 100 hertz to several kilohertz
 
 Prompt example
 --------------

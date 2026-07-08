@@ -28,12 +28,6 @@ Learn how to install and configure PyMechanical-MCP.
 
           Launch PyMechanical-MCP and follow a practical first workflow.
 
-    .. grid-item-card:: :fa:`users` Contribute
-          :link: ../contributing/index
-          :link-type: doc
-
-          Contribute code, documentation, or examples to PyMechanical-MCP.
-
 .. toctree::
    :hidden:
 

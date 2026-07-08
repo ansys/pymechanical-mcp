@@ -60,8 +60,8 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         determined automatically based on the platform and certificate
         availability.
     certs_dir : Optional[str]
-        Path to directory containing mTLS certificate files (ca.crt,
-        client.crt, and client.key). Used when ``grpc_transport_mode`` is ``'mtls'``.
+        Path to directory containing mTLS certificate files (``ca.crt``,
+        ``client.crt``, and ``client.key``). Used when ``grpc_transport_mode`` is ``'mtls'``.
     """
 
     mechanical: Any | None = None
@@ -306,7 +306,7 @@ def launcher(argv: list[str] | None = None) -> None:
         default=None,
         help=(
             "Path to directory containing mTLS certificate files "
-            "(ca.crt, client.crt, client.key). "
+            "(ca.crt, client.crt, and client.key). "
             "Can also be set via the ANSYS_GRPC_CERTIFICATES env var."
         ),
     )

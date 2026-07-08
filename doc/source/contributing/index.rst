@@ -12,8 +12,8 @@ You can contribute to PyMechanical-MCP in several ways:
 
 Before contributing, read `Contributing
 <https://dev.docs.pyansys.com/how-to/contributing.html>`_ and `Coding style
-<https://dev.docs.pyansys.com/coding-style/index.html>`_ in the PyAnsys developer's
-guide. To generate useful release notes, follow the guidelines in
+<https://dev.docs.pyansys.com/coding-style/index.html>`_ in the *PyAnsys developer's
+guide*. To generate useful release notes, follow the guidelines in
 `Branch-naming conventions
 <https://dev.docs.pyansys.com/how-to/contributing.html#branch-naming-conventions>`_
 and `Commit-naming conventions
@@ -47,39 +47,39 @@ When possible, use these issue templates:
 If your issue does not fit into any existing category, click
 `Blank issue <https://github.com/ansys/pymechanical-mcp/issues/new>`_.
 
-Development setup
-=================
+Contribute code or documentation
+================================
 
-Clone and install in editable mode with development dependencies:
+#. Clone and install in editable mode with development dependencies:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   git clone https://github.com/ansys/pymechanical-mcp.git
-   cd pymechanical-mcp
-   pip install -e ".[dev]"
-   pre-commit install
+      git clone https://github.com/ansys/pymechanical-mcp.git
+      cd pymechanical-mcp
+      pip install -e ".[dev]"
+      pre-commit install
 
-Run tests:
+#. Run tests:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   # Fast unit tests (default CI matrix path)
-   pytest -m "not integration"
+      # Fast unit tests (default CI matrix path)
+      pytest -m "not integration"
 
-   # Integration tests (requires Mechanical)
-   pytest -m integration
+      # Integration tests (requires Mechanical)
+      pytest -m integration
 
-Run linters:
+#. Run linters:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   pre-commit run --all-files
+      pre-commit run --all-files
 
-Build documentation:
+#. Build documentation:
 
-.. code-block:: bash
+   .. code-block:: bash
 
-   python -m sphinx -W -b html doc/source doc/_build/html
+      python -m sphinx -W -b html doc/source doc/_build/html
 
 Next steps
 ==========

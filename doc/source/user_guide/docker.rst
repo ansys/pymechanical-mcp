@@ -28,7 +28,7 @@ Quick start with Docker Compose
 
       docker compose up -d --build
 
-   The MCP server is available at ``http://localhost:8080`` by default.
+   PyMechanical-MCP is available at ``http://localhost:8080`` by default.
 
 4. Follow logs:
 
@@ -63,20 +63,20 @@ Important environment variables
      - Whether PyMechanical-MCP is to connect to Mechanical on startup.
    * - ``PYMECHANICAL_TRANSPORT_MODE``
      - ``auto``
-     - gRPC mode: ``auto``, ``insecure``, ``mtls``, ``wnua``.
+     - gRPC mode: ``auto``, ``insecure``, ``mtls``, or ``wnua``.
    * - ``ANSYS_GRPC_CERTIFICATES``
      - (unset)
-     - Path containing ``ca.crt``, ``client.crt``, ``client.key`` for mTLS.
+     - Path containing ``ca.crt``, ``client.crt``, and ``client.key`` for mTLS.
 
 Local Mechanical connectivity notes
 -----------------------------------
 
 - On Windows, macOS, or Docker Desktop, use ``host.docker.internal`` for a host
   Mechanical instance.
-- On Linux, prefer host networking or explicit host IP routing.
+- On Linux, use host networking or explicit host IP routing.
 
-VS Code MCP client example (HTTP)
----------------------------------
+Visual Studio Code MCP client example (HTTP)
+--------------------------------------------
 
 .. code-block:: json
 
@@ -94,5 +94,5 @@ Limitations
 
 - Containerizing PyMechanical-MCP does not containerize Ansys Mechanical
   licensing requirements.
-- Ensure Mechanical gRPC endpoint and license server are reachable from the
+- Ensure the Mechanical gRPC endpoint and license server are reachable from the
   container network.

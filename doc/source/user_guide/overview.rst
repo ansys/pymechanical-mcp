@@ -4,17 +4,16 @@ Overview
 ========
 
 PyMechanical-MCP is a Model Context Protocol (MCP) server that connects
-AI assistants to Ansys Mechanical through PyMechanical.
-
-It enables natural-language workflows for structural, thermal, and modal
+AI assistants to Ansys Mechanical through PyMechanical. It enables
+natural-language workflows for structural, thermal, and modal
 analysis setup and review.
 
 Core capabilities
 -----------------
 
-- Manage Mechanical sessions (launch, attach, disconnect, clear)
+- Manage Mechanical sessions (launch, attach, disconnect, and clear)
 - Execute Mechanical scripts and Python snippets in a persistent session
-- Inspect model state (geometry, mesh, analyses, boundary conditions, results)
+- Inspect model state (geometry, mesh, analyses, boundary conditions, and results)
 - Open and save project files and transfer artifacts
 - Export result data and create custom plots
 - Provide topic-specific workflow guidance with ``get_guidelines_for``
@@ -23,8 +22,8 @@ How it works
 ------------
 
 PyMechanical-MCP runs a FastMCP server and exposes a set of tools that map
-to Mechanical operations. A client (VS Code, Claude Code, Claude Desktop,
-or a custom MCP client) invokes tools over STDIO or HTTP transport.
+to Mechanical operations. A client (Visual Studio Code, Claude Code, Claude Desktop,
+or a custom MCP client) invokes tools over STDIO or Streamable HTTP transport.
 
 The server maintains a persistent app context that stores connection
 state and execution session data across tool calls.
@@ -61,16 +60,16 @@ deployments with consistent MCP semantics.
 Typical workflow
 ----------------
 
-#. Check the installation and status (``check_mechanical_installed``, ``check_mechanical_status``).
+#. Check the installation and status (``check_mechanical_installed`` and ``check_mechanical_status``).
 #. Connect or launch Mechanical.
 #. Import the geometry and set up the analysis with scripting tools.
 #. Solve (``solve_analysis``).
-#. Inspect and export results (``get_model_info``, ``export_results``, ``screenshot``).
+#. Inspect and export results (``get_model_info``, ``export_results``, and ``screenshot``).
 
 Next steps
 ----------
 
-- Learn about every available tool in :doc:`tools_and_capabilities`.
+- Learn about available tools in :doc:`tools_and_capabilities`.
 - Review :doc:`best_practices` for workflow recommendations.
 - Explore :doc:`/examples/usage_examples` for end-to-end examples.
 - Access the complete tool reference in :doc:`/api/index`.

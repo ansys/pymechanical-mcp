@@ -8,11 +8,11 @@ Explore practical Mechanical simulation workflows driven by PyMechanical-MCP.
 
 .. grid:: 2
 
-    .. grid-item-card:: Usage examples
+    .. grid-item-card:: Review engineering workflow examples
        :link: ref_usage_examples
        :link-type: ref
 
-       Review engineering workflow examples with step-by-step MCP tool sequences.
+       Review engineering workflow examples that provide step-by-step MCP tool sequences.
 
     .. grid-item-card:: Implement a custom tool
        :link: ref_implementing_a_tool
@@ -23,8 +23,5 @@ Explore practical Mechanical simulation workflows driven by PyMechanical-MCP.
 .. toctree::
    :hidden:
 
-   usage_examples
+   workflows/usage_examples_index
    implementing_a_tool
-   cantilever_beam
-   plate_with_hole
-   bracket_modal

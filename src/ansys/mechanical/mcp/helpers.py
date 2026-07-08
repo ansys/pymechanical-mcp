@@ -141,7 +141,7 @@ def resolve_transport_mode(
     tuple[str | None, str | None]
         ``(resolved_transport_mode, resolved_certs_dir)``
 
-        *resolved_transport_mode* is ``None`` when the caller should let
+        ``resolved_transport_mode`` is ``None`` when the caller should let
         PyMechanical choose (for example, Windows auto-detect).
         ``resolved_certs_dir`` is ``None`` unless mTLS is selected and
         certificates were located.
@@ -235,13 +235,13 @@ def list_instances(
     str
         A formatted table string containing information about Mechanical instances.
         The table includes columns for process name, status, gRPC port, PID,
-        and optionally command line and working directory based on the parameters.
+        and optionally the command line and working directory based on the parameters.
 
     Notes
     -----
-    - This function identifies Mechanical processes by looking for "AnsysWBU" or
-      "mechanical" in the process name or command line.
-    - Only processes with status RUNNING, IDLE, or SLEEPING are considered valid.
+    - This function identifies Mechanical processes by looking for ``AnsysWBU`` or
+      ``mechanical`` in the process name or command line.
+    - Only processes with status ``RUNNING``, ``IDLE``, or ``SLEEPING`` are considered valid.
     """
     import psutil
     from tabulate import tabulate

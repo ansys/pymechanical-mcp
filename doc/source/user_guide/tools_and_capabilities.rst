@@ -54,11 +54,11 @@ Available after connection
    * - ``clear_mechanical``
      - Clear context and release session resources.
    * - ``run_python_script``
-     - Execute a Mechanical script string, or read one from a local file via ``file_path``.
+     - Execute a Mechanical script string or read one from a local file with ``file_path``.
    * - ``save_project``
      - Save active project.
    * - ``open_project``
-     - Open an existing ``.mechdb`` project.
+     - Open an existing MECHDB project.
    * - ``upload_file``
      - Upload local file to Mechanical working directory.
    * - ``download_file``
@@ -78,8 +78,8 @@ Available after connection
 
 .. note::
   When you run with ``--connect-on-startup``, PyMechanical-MCP disables
-  ``launch_mechanical``, ``connect_to_mechanical``, and
-  ``disconnect_from_mechanical`` by design.
+  the ``launch_mechanical``, ``connect_to_mechanical``, and
+  ``disconnect_from_mechanical`` tools by design.
 
 Guideline topics
 ----------------
@@ -123,7 +123,7 @@ Static structural run
 #. ``check_mechanical_status``
 #. ``launch_mechanical`` or ``connect_to_mechanical``
 #. ``upload_file`` (geometry)
-#. ``run_python_script`` (import geometry, assign material, mesh)
+#. ``run_python_script`` (import geometry, assign material, and mesh)
 #. ``run_python_script`` (apply boundary conditions and loads)
 #. ``solve_analysis``
 #. ``export_results`` and ``screenshot``

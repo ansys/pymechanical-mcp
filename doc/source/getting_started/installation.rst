@@ -35,7 +35,7 @@ Clone and install in editable mode:
 Run the server
 --------------
 
-Use STDIO transport (the default) for MCP clients such as VS Code and Claude Code:
+Use STDIO transport (the default) for MCP clients such as Visual Studio Code and Claude Code:
 
 .. code-block:: bash
 
