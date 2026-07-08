@@ -71,5 +71,5 @@ Next steps
 
 - Learn about available tools in :doc:`tools_and_capabilities`.
 - Review :doc:`best_practices` for workflow recommendations.
-- Explore :doc:`/examples/usage_examples` for end-to-end examples.
+- Explore :doc:`/examples/workflowsusage_examples` for end-to-end examples.
 - Access the complete tool reference in :doc:`/api/index`.

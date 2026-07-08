@@ -64,5 +64,5 @@ Next steps
 ----------
 
 - See :doc:`tools_and_capabilities` for a complete list of available tools.
-- Browse :doc:`/examples/usage_examples` for end-to-end workflow examples.
+- Browse :doc:`/examples/workflows/usage_examples` for end-to-end workflow examples.
 - See :doc:`configuration` for startup and transport options.

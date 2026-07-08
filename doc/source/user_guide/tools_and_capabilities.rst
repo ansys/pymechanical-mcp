@@ -155,5 +155,5 @@ Next steps
 ----------
 
 - See :doc:`best_practices` for recommendations on using the tools effectively.
-- Explore :doc:`/examples/usage_examples` for end-to-end workflow examples.
+- Explore :doc:`/examples/workflows/usage_examples` for end-to-end workflow examples.
 - For startup and environment options, see :doc:`configuration`.
