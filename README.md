@@ -73,9 +73,9 @@ pip install -e ".[dev]"
 ## Usage
 
 For step-by-step setup instructions for VS Code, Claude Code, Claude Desktop, and other
-MCP-compatible clients, see the
+MCP-compatible clients, see
 [IDE and client configuration](https://mechanical-mcp.docs.pyansys.com/version/stable/getting_started/ide_configuration.html)
-page in the documentation.
+in the documentation.
 
 ## Configuration
 
