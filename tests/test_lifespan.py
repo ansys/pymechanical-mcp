@@ -44,7 +44,7 @@ def test_app_context_dataclass():
 def test_mcp_server_initialization():
     """Test that MCP server is properly initialized."""
     assert app is not None
-    assert app.name == "PyMechanical MCP Server"
+    assert app.name == "PyMechanical-MCP"
 
 
 @pytest.mark.unit

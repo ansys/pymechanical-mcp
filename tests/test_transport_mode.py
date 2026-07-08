@@ -28,7 +28,7 @@ Covers:
 
 import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -529,7 +529,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher([])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher([])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg is not None
@@ -542,7 +543,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher(["--transport-mode", "insecure"])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher(["--transport-mode", "insecure"])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg["grpc_transport_mode"] == "insecure"
@@ -553,7 +555,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher(["--transport-mode", "mtls", "--certs-dir", "/path/to/certs"])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher(["--transport-mode", "mtls", "--certs-dir", "/path/to/certs"])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg["grpc_transport_mode"] == "mtls"
@@ -574,7 +577,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher([])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher([])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg["grpc_transport_mode"] == "insecure"
@@ -587,7 +591,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher(["--transport-mode", "mtls"])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher(["--transport-mode", "mtls"])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg["grpc_transport_mode"] == "mtls"
@@ -600,7 +605,8 @@ class TestCLITransportModeArgs:
         from ansys.mechanical.mcp.server import launcher
 
         with patch.object(asyncio, "run"):
-            launcher([])
+            with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+                launcher([])
 
         cfg = getattr(package_mcp, "_cli_config", None)
         assert cfg["certs_dir"] == "/custom/certs"
@@ -613,13 +619,9 @@ class TestCLITransportModeArgs:
 class TestProductStartupTransportMode:
     """Tests that product_startup passes resolved transport_mode."""
 
-    @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_startup_connect_passes_transport_mode(self, _mock_linux, tmp_path, monkeypatch):
+    def test_startup_connect_passes_transport_mode(self):
         """product_startup uses resolve_transport_mode and passes to connect."""
-        monkeypatch.delenv("ANSYS_GRPC_CERTIFICATES", raising=False)
-        monkeypatch.chdir(tmp_path)
-
-        from ansys.mechanical.mcp.server import PyMechanicalMCP
+        from ansys.mechanical.mcp.server import PyMechanicalAppContext, PyMechanicalMCP
 
         fake_mechanical = MagicMock()
         fake_mechanical.exit = MagicMock()
@@ -628,37 +630,30 @@ class TestProductStartupTransportMode:
             "ansys.mechanical.core.connect_to_mechanical",
             return_value=fake_mechanical,
         ) as mock_connect:
-            mcp = PyMechanicalMCP()
-            setattr(
-                mcp,
-                "_cli_config",
-                {
-                    "transport_type": "stdio",
-                    "mechanical_ip": "host.docker.internal",
-                    "mechanical_port": 10000,
-                    "connect_on_startup": True,
-                    "http_host": "127.0.0.1",
-                    "http_port": 8080,
-                    "cors_origins": None,
-                    "grpc_transport_mode": None,  # auto
-                    "certs_dir": None,
-                },
-            )
-            mcp.create_context()
-            mcp.product_startup()
+            with patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=("insecure", None),
+            ):
+                mcp = PyMechanicalMCP()
+                mcp.context = PyMechanicalAppContext(
+                    mechanical_ip="host.docker.internal",
+                    mechanical_port=10000,
+                    connect_on_startup=True,
+                    grpc_transport_mode=None,
+                    certs_dir=None,
+                )
+                mcp.product_startup()
 
-            # On Linux without certs, should pass transport_mode='insecure'
-            call_kwargs = mock_connect.call_args[1]
-            assert call_kwargs["transport_mode"] == "insecure"
-            assert call_kwargs["ip"] == "host.docker.internal"
-            assert call_kwargs["port"] == 10000
+                call_kwargs = mock_connect.call_args[1]
+                assert call_kwargs["transport_mode"] == "insecure"
+                assert call_kwargs["ip"] == "host.docker.internal"
+                assert call_kwargs["port"] == 10000
 
-    @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=True)
-    def test_startup_connect_with_explicit_mode(self, _mock_linux, tmp_path, monkeypatch):
+                mcp.product_cleanup()
+
+    def test_startup_connect_with_explicit_mode(self):
         """product_startup honours explicit grpc_transport_mode from CLI."""
-        monkeypatch.chdir(tmp_path)
-
-        from ansys.mechanical.mcp.server import PyMechanicalMCP
+        from ansys.mechanical.mcp.server import PyMechanicalAppContext, PyMechanicalMCP
 
         fake_mechanical = MagicMock()
         fake_mechanical.exit = MagicMock()
@@ -667,36 +662,30 @@ class TestProductStartupTransportMode:
             "ansys.mechanical.core.connect_to_mechanical",
             return_value=fake_mechanical,
         ) as mock_connect:
-            mcp = PyMechanicalMCP()
-            setattr(
-                mcp,
-                "_cli_config",
-                {
-                    "transport_type": "stdio",
-                    "mechanical_ip": "10.0.0.1",
-                    "mechanical_port": 10001,
-                    "connect_on_startup": True,
-                    "http_host": "127.0.0.1",
-                    "http_port": 8080,
-                    "cors_origins": None,
-                    "grpc_transport_mode": "insecure",
-                    "certs_dir": None,
-                },
-            )
-            mcp.create_context()
-            mcp.product_startup()
+            with patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=("insecure", None),
+            ):
+                mcp = PyMechanicalMCP()
+                mcp.context = PyMechanicalAppContext(
+                    mechanical_ip="10.0.0.1",
+                    mechanical_port=10001,
+                    connect_on_startup=True,
+                    grpc_transport_mode="insecure",
+                    certs_dir=None,
+                )
+                mcp.product_startup()
 
-            call_kwargs = mock_connect.call_args[1]
-            assert call_kwargs["transport_mode"] == "insecure"
-            assert call_kwargs["ip"] == "10.0.0.1"
-            assert call_kwargs["port"] == 10001
+                call_kwargs = mock_connect.call_args[1]
+                assert call_kwargs["transport_mode"] == "insecure"
+                assert call_kwargs["ip"] == "10.0.0.1"
+                assert call_kwargs["port"] == 10001
 
-    @patch("ansys.mechanical.mcp.helpers._is_linux", return_value=False)
-    def test_startup_connect_windows_auto(self, _mock_linux, tmp_path, monkeypatch):
-        """On Windows auto, transport_mode is NOT passed to pymechanical."""
-        monkeypatch.chdir(tmp_path)
+                mcp.product_cleanup()
 
-        from ansys.mechanical.mcp.server import PyMechanicalMCP
+    def test_startup_connect_windows_auto(self):
+        """When resolution defers, transport_mode is not passed to pymechanical."""
+        from ansys.mechanical.mcp.server import PyMechanicalAppContext, PyMechanicalMCP
 
         fake_mechanical = MagicMock()
         fake_mechanical.exit = MagicMock()
@@ -705,28 +694,25 @@ class TestProductStartupTransportMode:
             "ansys.mechanical.core.connect_to_mechanical",
             return_value=fake_mechanical,
         ) as mock_connect:
-            mcp = PyMechanicalMCP()
-            setattr(
-                mcp,
-                "_cli_config",
-                {
-                    "transport_type": "stdio",
-                    "mechanical_ip": "127.0.0.1",
-                    "mechanical_port": 10000,
-                    "connect_on_startup": True,
-                    "http_host": "127.0.0.1",
-                    "http_port": 8080,
-                    "cors_origins": None,
-                    "grpc_transport_mode": None,
-                    "certs_dir": None,
-                },
-            )
-            mcp.create_context()
-            mcp.product_startup()
+            with patch(
+                "ansys.mechanical.mcp.helpers.resolve_transport_mode",
+                return_value=(None, None),
+            ):
+                mcp = PyMechanicalMCP()
+                mcp.context = PyMechanicalAppContext(
+                    mechanical_ip="127.0.0.1",
+                    mechanical_port=10000,
+                    connect_on_startup=True,
+                    grpc_transport_mode=None,
+                    certs_dir=None,
+                )
+                mcp.product_startup()
 
-            call_kwargs = mock_connect.call_args[1]
-            assert "transport_mode" not in call_kwargs
-            assert call_kwargs["ip"] == "127.0.0.1"
+                call_kwargs = mock_connect.call_args[1]
+                assert "transport_mode" not in call_kwargs
+                assert call_kwargs["ip"] == "127.0.0.1"
+
+                mcp.product_cleanup()
 
 
 # ---------------------------------------------------------------------------

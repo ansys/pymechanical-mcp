@@ -1502,7 +1502,7 @@ class TestOpenProject:
         from ansys.mechanical.mcp.tools import open_project
 
         result = open_project(mock_context_no_mechanical, "test.mechdb")
-        assert "No Mechanical connection available" in result
+        assert "No Mechanical connection is available" in result
 
     def test_open_project_file_not_found(self, mock_context):
         """Test opening a non-existent project file."""
@@ -1520,7 +1520,7 @@ class TestOpenProject:
 
         result = open_project(mock_context, str(wrong_file))
         assert "Invalid file type" in result
-        assert ".mechdb" in result
+        assert "MECHDB" in result
 
     def test_open_project_success(self, mock_context, tmp_path):
         """Test opening a valid project file."""
@@ -1563,7 +1563,7 @@ class TestSolveAnalysis:
         from ansys.mechanical.mcp.tools import solve_analysis
 
         result = solve_analysis(mock_context_no_mechanical)
-        assert "No Mechanical connection available" in result
+        assert "No Mechanical connection is available" in result
 
     def test_solve_success(self, mock_context):
         """Test successful solve."""

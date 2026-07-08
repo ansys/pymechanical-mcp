@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Toolset definitions for PyAnsysMCPService discovery.
+"""Toolset definitions for conductor service discovery.
 
 Exposes the ``toolsets://definition`` MCP resource that groups every tool
 registered on the PyMechanical MCP server into logical, user-facing
@@ -176,7 +176,7 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
 
 
 def _build_toolsets() -> list[dict[str, Any]]:
-    """Return the toolset catalogue as the list[dict] payload expected by clients."""
+    """Return the toolset catalog as the list[dict] payload expected by clients."""
     return [
         {
             "name": name,
@@ -191,9 +191,9 @@ def _build_toolsets() -> list[dict[str, Any]]:
 @app.resource(
     "toolsets://definition",
     name="toolsets_definition",
-    description="Toolset definitions for PyAnsysMCPService discovery.",
+    description="Toolset definitions for conductor service discovery.",
     mime_type="application/json",
 )
 def get_toolsets() -> list[dict[str, Any]]:
-    """Return toolset definitions for PyAnsysMCPService discovery."""
+    """Return toolset definitions for conductor service discovery."""
     return _build_toolsets()

@@ -23,7 +23,7 @@ from ansys.mechanical.mcp import tools
 
 def test_get_mechanical_logs_no_connection(mock_context_no_mechanical):
     result = tools.get_mechanical_logs(mock_context_no_mechanical)
-    assert "No Mechanical connection available" in result
+    assert "No Mechanical connection is available" in result
 
 
 def test_get_mechanical_logs_invalid_params(mock_context):

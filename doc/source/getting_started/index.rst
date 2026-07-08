@@ -4,7 +4,7 @@
 Getting started
 ===============
 
-Learn how to install and configure PyMechanical-MCP, and how to contribute to the project.
+Learn how to install and configure PyMechanical-MCP.
 
 .. grid:: 2 2 3 3
     :gutter: 1 2 3 3
@@ -28,17 +28,9 @@ Learn how to install and configure PyMechanical-MCP, and how to contribute to th
 
           Launch PyMechanical-MCP and follow a practical first workflow.
 
-    .. grid-item-card:: :fa:`users` Contributing
-          :link: contribution
-          :link-type: doc
-
-          Learn how to contribute code, documentation, and examples.
-
-
 .. toctree::
    :hidden:
 
    installation
    ide_configuration
    quick_start
-   contribution

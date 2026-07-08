@@ -28,7 +28,7 @@ class TestMCPProtocol:
 
     def test_server_name(self):
         """Test that server has correct name."""
-        assert app.name == "PyMechanical MCP Server"
+        assert app.name == "PyMechanical-MCP"
 
     def test_server_is_fastmcp_instance(self):
         """Test that server is an instance of FastMCP."""
@@ -40,7 +40,7 @@ class TestMCPProtocol:
         # Simply check that the server was created with lifespan by checking it's a valid instance
         # The actual lifespan functionality is tested in test_lifespan.py
         assert isinstance(app, FastMCP)
-        assert app.name == "PyMechanical MCP Server"
+        assert app.name == "PyMechanical-MCP"
 
     @pytest.mark.asyncio
     async def test_server_tools_registered(self):

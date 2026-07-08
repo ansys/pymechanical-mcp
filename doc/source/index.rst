@@ -10,13 +10,28 @@ PyMechanical-MCP
 
     getting_started/index
     user_guide/index
+    contributing/index
     api/index
     examples/index
     changelog
 
-Welcome to the PyMechanical-MCP documentation. PyMechanical-MCP is a Model Context Protocol
-(MCP) server that provides seamless integration between AI assistants and
-Ansys Mechanical through PyAnsys.
+.. image:: _static/logo-dark.png
+    :class: only-dark
+    :width: 900
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+.. image:: _static/logo-light.png
+    :class: only-light
+    :width: 900
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+**Welcome to the PyMechanical-MCP documentation!** PyMechanical-MCP is a Model Context Protocol
+(MCP) server that provides seamless integration between AI assistants and Ansys Mechanical through
+PyMechanical.
+
+**What do you want to do?**
 
 .. grid:: 2 2 3 3
     :gutter: 1 2 3 3
@@ -77,7 +92,7 @@ Ansys Mechanical through PyAnsys.
         Ask questions or report issues on the GitHub Discussions page.
 
     .. grid-item-card:: :fa:`users` Contribute to the project
-        :link: getting_started/contribution
+        :link: contributing/index
         :link-type: doc
 
         Learn how to contribute code, documentation, and examples to PyMechanical-MCP.

@@ -16,7 +16,7 @@
 
 """Tests for main entry point functionality."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -37,7 +37,7 @@ def test_main_entry_point():
     from ansys.mechanical.mcp.server import app, launcher
 
     with patch.object(asyncio, "run") as mock_run:
-        with patch.object(app, "run_stdio_async", new_callable=AsyncMock):
+        with patch.object(app, "run_stdio_async", new=Mock(return_value=object())):
             # Mock asyncio.run to avoid actually starting the server
             launcher([])
 
@@ -53,7 +53,7 @@ def test_main_with_http_transport():
     from ansys.mechanical.mcp.server import app, launcher
 
     with patch.object(asyncio, "run") as mock_run:
-        with patch.object(app, "run_http_async", new_callable=AsyncMock):
+        with patch.object(app, "run_http_async", new=Mock(return_value=object())):
             # Mock asyncio.run to avoid actually starting the server
             launcher(["--transport", "http"])
 
@@ -69,7 +69,7 @@ def test_main_http_with_custom_host_port():
     from ansys.mechanical.mcp.server import app, launcher
 
     with patch.object(asyncio, "run") as mock_run:
-        with patch.object(app, "run_http_async", new_callable=AsyncMock):
+        with patch.object(app, "run_http_async", new=Mock(return_value=object())):
             launcher(["--transport", "http", "--http-host", "0.0.0.0", "--http-port", "9000"])
 
             # Verify that asyncio.run was called
@@ -89,7 +89,7 @@ def test_main_with_cors_origins():
     from ansys.mechanical.mcp.server import app, launcher
 
     with patch.object(asyncio, "run"):
-        with patch.object(app, "run_http_async", new_callable=AsyncMock):
+        with patch.object(app, "run_http_async", new=Mock(return_value=object())):
             launcher(
                 [
                     "--transport",
@@ -115,7 +115,7 @@ def test_mechanical_args_work_with_http():
     from ansys.mechanical.mcp.server import app, launcher
 
     with patch.object(asyncio, "run"):
-        with patch.object(app, "run_http_async", new_callable=AsyncMock):
+        with patch.object(app, "run_http_async", new=Mock(return_value=object())):
             launcher(
                 [
                     "--transport",
