@@ -5,7 +5,7 @@ Cantilever beam
 
 This example demonstrates a static structural workflow for a cantilever beam
 subjected to a transverse end load. It covers geometry import, material
-assignment, mesh generation, boundary condition application, solver execution,
+assignment, mesh generation, boundary condition setup, solver execution,
 and deformation result extraction using PyMechanical-MCP.
 
 Engineering objective
@@ -43,5 +43,5 @@ Simulation
        </figure>
 
 .. note::
-   The simulation video above will be added when available.
+   The simulation video is added when available.
 

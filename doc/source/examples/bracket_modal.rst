@@ -42,5 +42,5 @@ Simulation
        </figure>
 
 .. note::
-   The simulation video above will be added when available.
+   The simulation video is added when available.
 

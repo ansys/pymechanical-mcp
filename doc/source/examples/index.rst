@@ -6,7 +6,7 @@ Examples
 
 Explore practical Mechanical simulation workflows driven by PyMechanical-MCP.
 Each example covers the engineering objective, the recommended MCP tool sequence,
-and includes a simulation video that will be available when assets are provided.
+and includes a simulation video that is available when assets are provided.
 
 .. grid:: 2 2 3 3
     :gutter: 1 2 3 3
