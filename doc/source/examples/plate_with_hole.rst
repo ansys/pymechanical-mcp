@@ -49,7 +49,7 @@ Tool workflow
 6. Apply a 10 000 N tensile force in +X on the right end face using `run_python_script`.
 7. Run the solver using `solve_analysis`.
 8. Add Total Deformation, Equivalent Stress, and Normal Stress X results using `run_python_script`.
-9. Capture a screenshot of the von Mises stress contour using `screenshot`.
+9. Capture a screenshot of the equivalent stress contour using `screenshot`.
 
 Expected outcome
 ----------------

@@ -225,13 +225,13 @@ Claude Code versus Visual Studio Code
      - Claude Code
      - Visual Studio Code
    * - Configuration method
-     - CLI command (``claude mcp add``)
+     - Command-line tool command (``claude mcp add``)
      - JSON file (``.vscode/mcp.json``)
    * - Setup level
      - Project or global (``--scope user``)
      - Project-level only
    * - Manual configuration
-     - None (auto-managed by CLI)
+     - None (auto-managed by command-line tool)
      - Manual JSON editing required
    * - Transport support
      - STDIO (default)

@@ -83,7 +83,7 @@ Registering the tool
 Once you write the function:
 
 1. Place it in ``src/ansys/mechanical/mcp/tools.py``.
-2. Add the tool name to ``src/ansys/mechanical/mcp/toolsets.py`` under the appropriate toolset.
+2. Add the tool name to ``src/ansys/mechanical/mcp/toolsets.py`` under the appropriate tool group.
 3. Document the tool in :doc:`/user_guide/tools_and_capabilities`.
 4. Run ``pytest -m "not integration"`` to confirm the surface-drift test still passes.
 
@@ -129,6 +129,6 @@ See also
 --------
 
 - Source code: ``src/ansys/mechanical/mcp/tools.py``
-- Toolset catalog: ``src/ansys/mechanical/mcp/toolsets.py``
+- Tool catalog: ``src/ansys/mechanical/mcp/toolsets.py``
 - :doc:`/user_guide/tools_and_capabilities`
 - :doc:`/user_guide/best_practices`
