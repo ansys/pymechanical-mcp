@@ -43,4 +43,3 @@ Simulation
 
 .. note::
    The simulation video is added when available.
-

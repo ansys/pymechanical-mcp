@@ -19,6 +19,18 @@ and includes a simulation video that is available when assets are provided.
         Static structural workflow for a cantilever beam under a transverse end load
         with deformation and stress results.
 
+    .. grid-item-card:: Usage examples
+        :link: usage_examples
+        :link-type: doc
+
+        Primary workflow collection with links to detailed engineering examples.
+
+    .. grid-item-card:: Usage examples: Videos
+        :link: usage_examples_videos
+        :link-type: doc
+
+        Video gallery page for workflow demonstrations and upcoming assets.
+
     .. grid-item-card:: Plate with hole
         :link: plate_with_hole
         :link-type: doc
@@ -36,6 +48,8 @@ and includes a simulation video that is available when assets are provided.
 .. toctree::
    :hidden:
 
+    usage_examples
+    usage_examples_videos
    cantilever_beam
    plate_with_hole
    bracket_modal
