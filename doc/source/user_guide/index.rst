@@ -20,7 +20,7 @@ Learn how to use PyMechanical-MCP effectively.
         :link: tools_and_capabilities
         :link-type: doc
 
-        Reference for every tool the server exposes.
+        Reference for every tool PyMechanical-MCP exposes.
 
     .. grid-item-card:: :fa:`sliders` Configuration
         :link: configuration
@@ -34,6 +34,12 @@ Learn how to use PyMechanical-MCP effectively.
 
         Guide to deploying PyMechanical-MCP in a containerized environment.
 
+    .. grid-item-card:: :fa:`check-circle` Best practices
+        :link: best_practices
+        :link-type: doc
+
+        Workflow recommendations for sessions, scripting, and result handling.
+
 
 .. toctree::
    :hidden:
@@ -41,4 +47,5 @@ Learn how to use PyMechanical-MCP effectively.
    overview
    tools_and_capabilities
    configuration
+   best_practices
    docker

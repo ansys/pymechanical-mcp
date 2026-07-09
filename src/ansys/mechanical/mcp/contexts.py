@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Context tools for PyMechanical MCP Server.
+"""Context tools for PyMechanical-MCP.
 
 This module defines MCP tools that provide context and guidance for
 PyMechanical and Ansys Mechanical workflows. These tools return context
@@ -43,7 +43,7 @@ GuidelinesContent = Literal[
 
 
 def get_guidelines_for_workflow_overview() -> str:
-    """Get general Mechanical simulation workflow guidelines.
+    """Get general simulation workflow guidelines for Mechanical.
 
     Use this tool when explaining or generating PyMechanical or Ansys Mechanical workflows.
 
@@ -146,7 +146,7 @@ def get_guidelines_for_geometry_import() -> str:
     Returns
     -------
     str
-        Guidelines for importing geometry in Mechanical.
+        Guidelines for importing a geometry in Mechanical.
     """
     return """# Geometry Import in Mechanical
 
@@ -522,7 +522,7 @@ mechanical.run_python_script(script)
 
 
 def get_guidelines_for_boundary_conditions() -> str:
-    """Get boundary conditions and loads guidelines for Mechanical.
+    """Get boundary condition and load guidelines for Mechanical.
 
     Use this tool when applying supports, constraints, and loads.
 
@@ -955,27 +955,27 @@ mechanical.run_python_script(script)
 
 
 def get_guidelines_for_named_selections() -> str:
-    """Get Named Selection guidelines for Mechanical.
+    """Get named selection guidelines for Mechanical.
 
-    Use this tool when working with Named Selections.
+    Use this tool when working with named selections.
 
     Returns
     -------
     str
-        Guidelines for creating and using Named Selections in Mechanical.
+        Guidelines for creating and using named selections in Mechanical.
     """
     return """# Named Selections in Mechanical
 
-Named Selections are the preferred way to define geometry scopes for loads,
+Named selections are the preferred way to define geometry scopes for loads,
 supports, and results in Mechanical scripting.
 
-## Creating Named Selections
+## Creating named selections
 
-### Worksheet-Based (Recommended for Scripting)
+### Worksheet-based (recommended for scripting)
 
 ```python
 script = '''
-# Create a Named Selection using worksheet criteria (location-based)
+# Create a named selection using worksheet criteria (location-based)
 ns = Model.AddNamedSelection()
 ns.ScopingMethod = GeometryDefineByType.Worksheet
 worksheet = ns.GenerationCriteria
@@ -1003,29 +1003,29 @@ mechanical.run_python_script(script)
 - `SelectionCriterionType.Type`: filter by entity type
 - `SelectionCriterionType.Name`: filter by CAD body name
 
-### Available Entity Types
+### Available entity types
 
 - `SelectionType.GeoFace`: faces
 - `SelectionType.GeoEdge`: edges
 - `SelectionType.GeoVertex`: vertices
 - `SelectionType.GeoBody`: bodies
 
-### Accessing Existing Named Selections
+### Accessing existing named selections
 
 ```python
 script = '''
-# Get all Named Selections
+# Get all named selections
 named_selections = Model.NamedSelections.GetChildren(
     DataModelObjectCategory.NamedSelection, True
 )
 
 for ns in named_selections:
-    print("Named Selection: {0}".format(ns.Name))
+    print("Named selection: {0}".format(ns.Name))
 '''
 mechanical.run_python_script(script)
 ```
 
-### Getting Named Selection by Name
+### Get named selection by name
 
 ```python
 script = '''
@@ -1038,15 +1038,15 @@ ns = ExtAPI.DataModel.GetObjectsByName("FixedEnd")[0]
 mechanical.run_python_script(script)
 ```
 
-## Using Named Selections
+## Use named selections
 
-### With Boundary Conditions
+### With boundary conditions
 
 ```python
 script = '''
 analysis = Model.Analyses[0]
 
-# Add fixed support scoped to Named Selection
+# Add fixed support scoped to named selection
 fixed = analysis.AddFixedSupport()
 ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedEnd"][0]
 fixed.Location = ns
@@ -1054,13 +1054,13 @@ fixed.Location = ns
 mechanical.run_python_script(script)
 ```
 
-### With Results
+### With results
 
 ```python
 script = '''
 solution = Model.Analyses[0].Solution
 
-# Add stress result scoped to Named Selection
+# Add stress result scoped to named selection
 stress = solution.AddEquivalentStress()
 ns = [n for n in Model.NamedSelections.Children if n.Name == "CriticalArea"][0]
 stress.Location = ns
@@ -1072,10 +1072,10 @@ mechanical.run_python_script(script)
 
 ## Best Practices
 
-1. Create Named Selections for frequently used geometry scopes
-2. Use descriptive names (e.g., "FixedSupport_Bottom", "Load_TopFace")
-3. Named Selections persist across geometry updates (when possible)
-4. Use Named Selections for parameterization and automation
+1. Create named selections for frequently used geometry scopes.
+2. Use descriptive names (such as "FixedSupport_Bottom" and "Load_TopFace").
+3. Named selections persist across geometry updates (when possible).
+4. Use named selections for parameterization and automation.
 """
 
 
@@ -1091,7 +1091,7 @@ def get_guidelines_for_general_rules() -> str:
     """
     return """# General Rules and Best Practices for PyMechanical
 
-## Script Execution Pattern
+## Script execution pattern
 
 Always use `mechanical.run_python_script()` to execute Mechanical scripts:
 
@@ -1104,7 +1104,7 @@ result
 output = mechanical.run_python_script(script)
 ```
 
-## Return Values
+## Return values
 
 The script returns the string value of the last executed statement:
 
@@ -1119,7 +1119,7 @@ mechanical.run_python_script("ExtAPI.DataModel.Project.ProductVersion")
 mechanical.run_python_script("x = 10")
 ```
 
-## Using Quantities
+## Using qantities
 
 Mechanical uses the Quantity class for values with units.
 **Always use square brackets** around the unit string:
@@ -1144,7 +1144,7 @@ omega = Quantity("10 [rad/s]")
 mechanical.run_python_script(script)
 ```
 
-## IronPython Compatibility (Mechanical 2025 R2 and earlier)
+## IronPython compatibility (Mechanical 2025 R2 and earlier)
 
 Mechanical versions before 2026 R1 use **IronPython 2.7**. Do NOT use:
 - f-strings (`f"value: {x}"`): use `.format()` instead
@@ -1160,9 +1160,9 @@ Mechanical versions before 2026 R1 use **IronPython 2.7**. Do NOT use:
 script = '"Result: {0}".format(value)'
 ```
 
-## Transaction for Performance
+## Transaction for performance
 
-Wrap multiple modifications in a Transaction:
+Wrap multiple modifications in a transaction:
 
 ```python
 script = '''
@@ -1175,7 +1175,7 @@ with Transaction():
 mechanical.run_python_script(script)
 ```
 
-## Error Handling
+## Error handling
 
 ```python
 try:
@@ -1184,9 +1184,9 @@ except grpc.RpcError as error:
     print("Script error: {0}".format(error.details()))
 ```
 
-## File Transfers
+## File transfers
 
-Use upload/download for file operations:
+Use upload and download for file operations:
 
 ```python
 # Upload file to Mechanical
@@ -1199,25 +1199,25 @@ mechanical.download("results.txt", target_dir="./output")
 mechanical.download_project(target_dir="./project_backup")
 ```
 
-## Common Pitfalls
+## Common pitfalls
 
-1. **Not checking connection status** before running scripts
-2. **Missing mesh generation** before solving
-3. **No boundary conditions** causing rigid body motion
-4. **Forgetting to evaluate results** after adding result objects
-5. **Path issues**: use raw strings (r"path") or double backslashes
-6. **Using f-strings**: Mechanical 2025 R2 uses IronPython 2.7 (no f-strings)
-7. **Wrong Quantity format**: use `Quantity("5 [mm]")` with square brackets
-8. **Setting component values directly**: use `.Output.DiscreteValues = [...]`
+- **Not checking connection status** before running scripts
+- **Missing mesh generation** before solving
+- **No boundary conditions** causing rigid body motion
+- **Forgetting to evaluate results** after adding result objects
+- **Path issues**: Use raw strings (r"path") or double backslashes
+- **Using f-strings**: Mechanical 2025 R2 uses IronPython 2.7 (no f-strings)
+- **Wrong Quantity format**: Use `Quantity("5 [mm]")` with square brackets
+- **Setting component values directly**: Use `.Output.DiscreteValues = [...]`
 
-## Verification Steps
+## Verification steps
 
-1. Check model setup: geometry, materials, mesh
-2. Verify boundary conditions prevent rigid body motion
-3. Review solver messages for warnings
-4. Validate results against expected behavior
-5. Check mesh convergence for critical results
-6. Compare stress results against material yield strength
+1. Check model setup: geometry, materials, and mesh.
+2. Verify boundary conditions prevent rigid body motion.
+3. Review solver messages for warnings.
+4. Validate results against expected behavior.
+5. Check mesh convergence for critical results.
+6. Compare stress results against material yield strength.
 """
 
 
@@ -1241,24 +1241,24 @@ def get_guidelines_for(content: GuidelinesContent) -> str:
 
     Use this tool before writing PyMechanical or Ansys Mechanical scripting
     code to retrieve the relevant guidelines for the workflow step you are
-    about to implement. Call it once per topic needed; it is strongly
-    recommended before every code-generation task.
+    about to implement. Call it once per topic needed. You should call it
+    before every code-generation task.
 
     Parameters
     ----------
     content : str
-        The guideline topic to retrieve. One of:
+        The guideline topic to retrieve. options are:
 
         - ``"workflow"``: Mechanical simulation workflow overview.
-        - ``"geometry"``: Geometry import (CAD files, units, scoping).
+        - ``"geometry"``: Geometry import (CAD files, units, and scoping).
         - ``"materials"``: Material assignment and engineering data.
-        - ``"meshing"``: Mesh controls, sizing, quality.
+        - ``"meshing"``: Mesh controls, sizing, and quality.
         - ``"analysis_setup"``: Analysis system creation
-          (Static Structural, Modal, Thermal, etc.).
+          (such as static structural, modal, or thermal).
         - ``"boundary_conditions"``: Supports, constraints, loads
-          (forces, pressures, temperatures).
+          (forces, pressures, and temperatures).
         - ``"solution"``: Solver configuration and execution.
-        - ``"postprocessing"``: Result objects, evaluation, exports.
+        - ``"postprocessing"``: Result objects, evaluation, and exports.
         - ``"named_selections"``: Creating and using named selections.
         - ``"general"``: General Mechanical rules and best practices.
 

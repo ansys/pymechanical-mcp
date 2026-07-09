@@ -17,7 +17,7 @@
 """Unit tests for MCP CLI parsing and startup connection behavior."""
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -30,8 +30,9 @@ def test_main_parses_defaults(monkeypatch):
 
     # Prevent actual asyncio.run from running
     with patch.object(asyncio, "run") as mock_run:
-        launcher([])
-        mock_run.assert_called_once()
+        with patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())):
+            launcher([])
+            mock_run.assert_called_once()
 
     # Ensure mcp._cli_config attached and has defaults
     cfg = getattr(package_mcp, "_cli_config", None)
@@ -53,8 +54,9 @@ def test_main_accepts_http_transport(monkeypatch):
 
     # Prevent actual asyncio.run from running
     with patch.object(asyncio, "run") as mock_run:
-        launcher(["--transport", "http"])
-        mock_run.assert_called_once()
+        with patch.object(package_mcp, "run_http_async", new=Mock(return_value=object())):
+            launcher(["--transport", "http"])
+            mock_run.assert_called_once()
 
     # Ensure mcp._cli_config attached and has http transport
     cfg = getattr(package_mcp, "_cli_config", None)

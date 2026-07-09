@@ -1,8 +1,8 @@
-.. _ref_index:
+.. title:: Welcome to PyMechanical-MCP
 
-================
-PyMechanical-MCP
-================
+.. meta::
+   :keywords: pymechanical, mechanical, mcp, ai, llm, simulation, finite elements, python
+   :description: Welcome to PyMechanical-MCP documentation.
 
 .. toctree::
     :hidden:
@@ -12,11 +12,34 @@ PyMechanical-MCP
     user_guide/index
     api/index
     examples/index
+    contributing/index
     changelog
 
-Welcome to the PyMechanical-MCP documentation. PyMechanical-MCP is a Model Context Protocol
-(MCP) server that provides seamless integration between AI assistants and
-Ansys Mechanical through PyAnsys.
+.. image:: _static/logo-dark.png
+    :class: only-dark
+    :width: 800
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+.. image:: _static/logo-light.png
+    :class: only-light
+    :width: 800
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+.. vale off
+
+.. vale off
+
+**Welcome to the PyMechanical-MCP documentation!** PyMechanical-MCP is a Model Context Protocol
+(MCP) server that provides seamless integration between AI assistants and Ansys Mechanical through
+PyMechanical.
+
+.. vale on
+
+.. vale on
+
+**What do you want to do?**
 
 .. grid:: 2 2 3 3
     :gutter: 1 2 3 3
@@ -64,11 +87,11 @@ Ansys Mechanical through PyAnsys.
 
         Explore practical Mechanical workflows that can be adapted for MCP-assisted analysis.
 
-    .. grid-item-card:: :fa:`external-link-alt` Open official PyMechanical docs
+    .. grid-item-card:: :fa:`external-link-alt` Access PyMechanical documentation
         :link: https://mechanical.docs.pyansys.com/
         :link-type: url
 
-        Access the official PyMechanical API and user documentation for product-level details.
+        Access the PyMechanical documentation for product-level details.
 
     .. grid-item-card:: :fa:`question` Find help or report issues
         :link: https://github.com/ansys/pymechanical-mcp/discussions
@@ -77,7 +100,7 @@ Ansys Mechanical through PyAnsys.
         Ask questions or report issues on the GitHub Discussions page.
 
     .. grid-item-card:: :fa:`users` Contribute to the project
-        :link: getting_started/contribution
+        :link: contributing/index
         :link-type: doc
 
-        Learn how to contribute code, docs, and examples to PyMechanical-MCP.
+        Learn how to contribute code, documentation, and examples to PyMechanical-MCP.

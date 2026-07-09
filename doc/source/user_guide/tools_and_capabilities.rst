@@ -9,10 +9,10 @@ Tool availability model
 PyMechanical-MCP uses connection-aware visibility.
 
 - **Offline-capable tools** are available before any Mechanical session.
-- **Live-session tools** are tagged with ``REQUIRES_MECHANICAL_TAG`` and are
-  hidden until a successful ``launch_mechanical`` or ``connect_to_mechanical``.
-- If ``--connect-on-startup`` is used, live-session tools are available
-  immediately and connection lifecycle tools are intentionally locked.
+- **Live-session tools** use ``REQUIRES_MECHANICAL_TAG`` and remain hidden
+  until you successfully call ``launch_mechanical`` or ``connect_to_mechanical``.
+- If you use ``--connect-on-startup``, live-session tools are available
+  immediately, and PyMechanical-MCP locks the connection lifecycle tools.
 
 Always available (before connection)
 ------------------------------------
@@ -54,17 +54,11 @@ Available after connection
    * - ``clear_mechanical``
      - Clear context and release session resources.
    * - ``run_python_script``
-     - Execute a Mechanical script string.
-   * - ``run_python_script_from_file``
-     - Execute a script file from working directory.
-   * - ``run_multiple_scripts``
-     - Execute multiple scripts sequentially.
+     - Execute a Mechanical script string or read one from a local file with ``file_path``.
    * - ``save_project``
      - Save active project.
    * - ``open_project``
-     - Open an existing ``.mechdb`` project.
-   * - ``get_project_directory``
-     - Return active project working directory.
+     - Open an existing MECHDB project.
    * - ``upload_file``
      - Upload local file to Mechanical working directory.
    * - ``download_file``
@@ -74,18 +68,18 @@ Available after connection
    * - ``solve_analysis``
      - Solve active analysis system.
    * - ``get_model_info``
-     - Structured model summary (geometry, mesh, analyses, results).
+     - Return a structured model summary (geometry, mesh, analyses, results).
    * - ``screenshot``
      - Capture current Mechanical view.
    * - ``get_mechanical_logs``
      - Retrieve Mechanical logs for diagnostics.
    * - ``export_results``
-     - Export result objects/artifacts.
+     - Export result objects and artifacts.
 
 .. note::
-  When running with ``--connect-on-startup``, ``launch_mechanical``,
-  ``connect_to_mechanical``, and ``disconnect_from_mechanical`` are disabled
-  by design.
+  When you run with ``--connect-on-startup``, PyMechanical-MCP disables
+  the ``launch_mechanical``, ``connect_to_mechanical``, and
+  ``disconnect_from_mechanical`` tools by design.
 
 Guideline topics
 ----------------
@@ -129,7 +123,7 @@ Static structural run
 #. ``check_mechanical_status``
 #. ``launch_mechanical`` or ``connect_to_mechanical``
 #. ``upload_file`` (geometry)
-#. ``run_python_script`` (import geometry, assign material, mesh)
+#. ``run_python_script`` (import geometry, assign material, and mesh)
 #. ``run_python_script`` (apply boundary conditions and loads)
 #. ``solve_analysis``
 #. ``export_results`` and ``screenshot``
@@ -137,16 +131,29 @@ Static structural run
 Modal analysis
 ~~~~~~~~~~~~~~
 
-#. Connect to Mechanical
-#. Import model and define fixed supports
-#. Create modal analysis settings with script tools
-#. ``solve_analysis``
-#. ``create_custom_plot`` for mode-shape reporting
+#. Connect to Mechanical.
+#. Import the model and define fixed supports.
+#. Create modal analysis settings with script tools.
+#. Run ``solve_analysis``.
+#. Use ``create_custom_plot`` for mode-shape reporting.
 
 Checks after solving
 ~~~~~~~~~~~~~~~~~~~~~
 
-#. ``get_model_info`` to verify solved state
-#. ``get_mechanical_logs`` for warnings/errors
+#. ``get_model_info`` for verifying solved state
+#. ``get_mechanical_logs`` for warnings and errors
 #. ``run_python_code`` for custom data extraction
 #. ``export_results`` for report artifacts
+
+Feature reference
+-----------------
+
+For complete parameter signatures and return values for all tools, see
+:doc:`/api/index`.
+
+Next steps
+----------
+
+- See :doc:`best_practices` for recommendations on using the tools effectively.
+- Explore :doc:`/examples/workflows/usage_examples_index` for end-to-end workflow examples.
+- For startup and environment options, see :doc:`configuration`.

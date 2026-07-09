@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Entry point for running the MCP server as a module."""
+"""Entry point for running the PyMechanical-MCP server as a module."""
 
 from ansys.mechanical.mcp.server import launcher
 

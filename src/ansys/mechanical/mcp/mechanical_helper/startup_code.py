@@ -58,17 +58,17 @@ except ImportError:
 
 def save_plot(plotter) -> str:
     """
-    Save PyVista plot to file and return as base64.
+    Save the PyVista plot to file and return as base64.
 
     Parameters
     ----------
     plotter : pv.Plotter
-        The PyVista plotter to save
+        PyVista plotter to save.
 
     Returns
     -------
     str
-        Base64 data URI of the plot
+        Base64 data URI of the plot.
     """
     if not PYVISTA_AVAILABLE:
         return "Error: PyVista is not available"
@@ -108,12 +108,12 @@ def save_matplotlib_plot(dpi=150):
     Parameters
     ----------
     dpi : int
-        Resolution in dots per inch
+        Resolution in dots per inch.
 
     Returns
     -------
     str
-        Base64 data URI of the plot
+        Base64 data URI of the plot.
     """
     if not MATPLOTLIB_AVAILABLE:
         return "Error: matplotlib is not available"
