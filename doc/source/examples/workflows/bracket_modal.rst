@@ -40,7 +40,7 @@ Setup requirements
    * - Number of modes
      - First 6
    * - Frequency range
-     - 0 to 10 000 hertz
+     - 0 to 10,000 hertz
 
 Tool workflow
 -------------
@@ -73,6 +73,6 @@ Prompt example
    - Material: Structural Steel (default)
    - Mesh: element size 3 mm
    - Fixed support on mounting hole cylindrical faces (horizontal leg)
-   - Modal analysis: first 6 modes, frequency range 0-10000 Hz
+   - Modal analysis: first 6 modes, frequency range 0-10,000 Hz
    - Results: Total Deformation for each mode, list of natural frequencies
    - Take a screenshot of Mode 1 (fundamental mode)

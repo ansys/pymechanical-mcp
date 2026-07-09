@@ -38,7 +38,7 @@ Setup requirements
    * - Fixed support
      - Left end face (YZ face at X = -100 millimeters)
    * - Tensile force
-     - 10 000 newton in +X direction on right end face (YZ face at X = +100 millimeters)
+     - 10,000 newton in +X direction on right end face (YZ face at X = +100 millimeters)
 
 Tool workflow
 -------------
@@ -48,7 +48,7 @@ Tool workflow
 3. Assign structural steel as the material to the plate body using `run_python_script`.
 4. Generate a two-millimeter element size mesh for fine resolution near the hole using `run_python_script`.
 5. Apply a fixed support on the left end face using `run_python_script`.
-6. Apply a 10 000 newton tensile force in +X on the right end face using `run_python_script`.
+6. Apply a 10,000 newton tensile force in +X on the right end face using `run_python_script`.
 7. Run the solver using `solve_analysis`.
 8. Add total deformation, equivalent stress, and normal stress X results using `run_python_script`.
 9. Capture a screenshot of the equivalent stress contour using `screenshot`.
@@ -78,6 +78,6 @@ Prompt example
    - Material: Structural Steel (default)
    - Mesh: element size 2 mm (fine mesh to capture stress concentration around hole)
    - Fixed support on left end face (YZ face at X = -100 mm)
-   - Tensile force of 10000 N in +X on right end face (YZ face at X = +100 mm)
+   - Tensile force of 10,000 N in +X on right end face (YZ face at X = +100 mm)
    - Results: Total Deformation, Equivalent (von Mises) Stress, Normal Stress X
    - Take a screenshot of the von Mises stress result

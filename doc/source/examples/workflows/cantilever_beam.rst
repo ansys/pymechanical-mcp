@@ -72,6 +72,6 @@ The following prompt drives the complete workflow end to end:
    - Material: Structural Steel (default)
    - Mesh: default mesh with element size 5 mm
    - Fixed support on the YZ face at X = -100 mm
-  - Pressure load of 1,000,000 pascals on the top face (XY face at Z = +5 mm)
-  - Results: Total Deformation and equivalent stress
-  - Take a screenshot of the equivalent stress result
+   - Pressure load of 1,000,000 pascals on the top face (XY face at Z = +5 mm)
+   - Results: Total Deformation and equivalent stress
+   - Take a screenshot of the equivalent stress result

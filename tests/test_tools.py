@@ -80,7 +80,7 @@ class TestCheckMechanicalStatus:
 
         assert isinstance(result, str)
         assert "Mechanical instance has exited" in result
-        assert "reconnect or launch" in result
+        assert "reconnect or launch" in result.lower()
 
     def test_check_status_returns_connection_info(self, mock_context):
         """Test status extraction returns proper connection information."""
@@ -340,7 +340,7 @@ class TestConnectToMechanical:
 
         # Verify appropriate error message
         assert "Already connected to a Mechanical instance" in result
-        assert "disconnect first" in result
+        assert "disconnect first" in result.lower()
 
     @pytest.mark.asyncio
     async def test_connect_connection_error(self, mock_context_no_mechanical):
@@ -691,7 +691,7 @@ class TestLaunchMechanical:
 
         # Verify appropriate error message
         assert "Already connected to a Mechanical instance" in result
-        assert "disconnect first" in result
+        assert "disconnect first" in result.lower()
 
     @pytest.mark.asyncio
     async def test_launch_error(self, mock_context_no_mechanical):
@@ -1008,7 +1008,7 @@ class TestLaunchWorkflow:
         # Now try to launch - should fail
         launch_result = await launch_mechanical(mock_context_no_mechanical)
         assert "Already connected to a Mechanical instance" in launch_result
-        assert "disconnect first" in launch_result
+        assert "disconnect first" in launch_result.lower()
 
 
 @pytest.mark.unit

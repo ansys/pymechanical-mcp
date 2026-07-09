@@ -1,12 +1,10 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="doc/source/_static/pymechanical-mcp-transparent.png">
-    <source media="(prefers-color-scheme: light)" srcset="doc/source/_static/pymechanical-mcp.png">
-    <img alt="PyMechanical-MCP" src="doc/source/_static/pymechanical-mcp.png" width="900">
+    <source media="(prefers-color-scheme: dark)" srcset="doc/source/_static/pymechanical-mcp-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="doc/source/_static/pymechanical-mcp-light.png">
+    <img alt="PyMechanical-MCP" src="doc/source/_static/pymechanical-mcp-light.png" width="900">
   </picture>
 </p>
-
-# PyMechanical-MCP
 
 [![PyAnsys](https://img.shields.io/badge/Py-Ansys-ffc107.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABDklEQVQ4jWNgoDfg5+OQgMJ/0AqCqXGQMEBAwBEKQj5gGDjQsA80UeCDscxrD4YhGsgABEELnC5zAwAu6AKQDAQzNBFwAAVdgFEAnfDiQAATyIBaAFgCbkAI5DQwAVGAYkAMA4gHgg2AC+AAgQIABggagAqyAD4AACkR7cEdcEBQOPjIvAEtRDoAbYLANQAZGsBEAFeBwCsAY0HgGCAAEQTaDj7xQABItJ+S3DsQAAAABJRU5ErkJggg==)](https://docs.pyansys.com/)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)

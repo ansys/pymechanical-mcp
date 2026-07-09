@@ -30,7 +30,7 @@ Quick start with Docker Compose
 
    PyMechanical-MCP is available at ``http://localhost:8080`` by default.
 
-4. Follow logs:
+4. Validate: view container logs to confirm the ``pymechanical-mcp`` service is ready:
 
    .. code-block:: bash
 
