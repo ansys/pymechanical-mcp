@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prompt templates for PyMechanical MCP server.
+"""Prompt templates for PyMechanical-MCP.
 
 This module provides the system prompt registered with FastMCP's prompt system.
-The system prompt guides LLMs in using the PyMechanical MCP server effectively,
+The system prompt guides LLMs in using PyMechanical-MCP effectively,
 instructing them to call the appropriate guideline tools for context-specific help.
 
 References
@@ -93,11 +93,11 @@ boundary conditions, loads, and results.
     "concepts, and workflow rules for Ansys Mechanical simulations.",
 )
 def system_prompt() -> str:
-    """Return the system prompt for the PyMechanical MCP server.
+    """Return the system prompt for PyMechanical-MCP.
 
     Returns
     -------
     str
-        The system prompt text.
+        System prompt text.
     """
     return SYSTEM_PROMPT

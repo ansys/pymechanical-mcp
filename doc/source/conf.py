@@ -113,6 +113,9 @@ numpydoc_validation_checks = {
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
+# Paths that contain custom static files (such as style sheets).
+html_static_path = ["_static"]
+
 # The suffix(es) of source filenames.
 source_suffix = ".rst"
 

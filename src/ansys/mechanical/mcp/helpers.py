@@ -113,24 +113,24 @@ def resolve_transport_mode(
 ) -> tuple[str | None, str | None]:
     """Determine the gRPC transport mode and certificate directory to use.
 
-    The resolution strategy is:
+    The resolution strategy follows:
 
-    1. **Explicit override**: if the caller (CLI flag, env-var, or tool
+    1. **Explicit override**: If the caller (CLI flag, environment variable, or tool
        parameter) supplies a concrete mode (``insecure``, ``mtls``, or
-       ``wnua``), honour it unconditionally.
+       ``wnua``), honor it unconditionally.
     2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):
-         - On **Windows** → return ``None`` so that PyMechanical applies its
+         - On **Windows**: Return ``None`` so that PyMechanical applies its
            own platform default (``wnua``).
-         - On **Linux / Docker**, return ``"mtls"`` plus the resolved
-           certificate directory when mTLS certificate files are found;
-           otherwise, return ``"insecure"`` (the only mode that can
-           succeed without certs; WNUA is Windows-only).
+         - On **Linux / Docker**: Return ``"mtls"`` plus the resolved
+           certificate directory when mTLS certificate files are found.
+           Otherwise, return ``"insecure"`` (the only mode that can
+           succeed without certificates). WNUA is Windows-only.
 
     Parameters
     ----------
     transport_mode : str | None
-        Transport mode requested by the user.  Accepted values:
-        ``"auto"`` (default), ``"insecure"``, ``"mtls"``, ``"wnua"``.
+        Transport mode requested by the user. Options are
+        ``"auto"`` (default), ``"insecure"``, ``"mtls"``, and ``"wnua"``.
         ``None`` is treated identically to ``"auto"``.
     certs_dir : str | None
         Explicit path to a directory containing ``ca.crt``,
@@ -141,15 +141,15 @@ def resolve_transport_mode(
     tuple[str | None, str | None]
         ``(resolved_transport_mode, resolved_certs_dir)``
 
-        *resolved_transport_mode* is ``None`` when the caller should let
-        PyMechanical choose (i.e. Windows auto-detect).
-        *resolved_certs_dir* is ``None`` unless mTLS is selected and
+        ``resolved_transport_mode`` is ``None`` when the caller should let
+        PyMechanical choose (for example, Windows auto-detect).
+        ``resolved_certs_dir`` is ``None`` unless mTLS is selected and
         certificates were located.
 
     Raises
     ------
     ValueError
-        If *transport_mode* is not one of the accepted values.
+        If ``transport_mode`` is not one of the accepted values.
     """
     # Normalise
     mode = (transport_mode or "auto").strip().lower()
@@ -219,31 +219,29 @@ def list_instances(
 
     Parameters
     ----------
-    instances : bool, optional
-        If True, only show main Mechanical instances (exclude child processes).
-        If False, show all Mechanical-related processes. Default is False.
-    long : bool, optional
-        If True, enable verbose output including command line and working directory.
-        This automatically sets both `cmd` and `location` to True. Default is False.
-    cmd : bool, optional
-        If True, include the command line arguments in the output table.
-        Default is False.
-    location : bool, optional
-        If True, include the working directory path in the output table.
-        Default is False.
+    instances : bool, default: False
+        If ``True``, only show main Mechanical instances (exclude child processes).
+        If ``False``, show all Mechanical-related processes.
+    long : bool, default: False
+        If ``True``, enable verbose output including command line and working directory.
+        This automatically sets both ``cmd`` and ``location`` to ``True``.
+    cmd : bool, default: False
+        If ``True``, include the command-line arguments in the output table.
+    location : bool, default: False
+        If ``True``, include the working directory path in the output table.
 
     Returns
     -------
     str
         A formatted table string containing information about Mechanical instances.
         The table includes columns for process name, status, gRPC port, PID,
-        and optionally command line and working directory based on the parameters.
+        and optionally the command line and working directory based on the parameters.
 
     Notes
     -----
-    - This function identifies Mechanical processes by looking for "AnsysWBU" or
-      "mechanical" in the process name or command line.
-    - Only processes with status RUNNING, IDLE, or SLEEPING are considered valid.
+    - This function identifies Mechanical processes by looking for ``AnsysWBU`` or
+      ``mechanical`` in the process name or command line.
+    - Only processes with status ``RUNNING``, ``IDLE``, or ``SLEEPING`` are considered valid.
     """
     import psutil
     from tabulate import tabulate
@@ -353,12 +351,12 @@ def get_info(mechanical: "Mechanical") -> dict[str, str | dict[str, Any]]:
     Parameters
     ----------
     mechanical : Mechanical
-        Mechanical instance
+        Mechanical instance.
 
     Returns
     -------
     dict[str, str | dict[str, Any]]
-        Dictionary containing Mechanical information
+        Dictionary containing Mechanical information.
     """
     info: dict[str, str | dict[str, Any]] = {}
 

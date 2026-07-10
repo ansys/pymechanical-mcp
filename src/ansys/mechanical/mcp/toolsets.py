@@ -14,18 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Toolset definitions for PyAnsysMCPService discovery.
+"""Toolset definitions for conductor service discovery.
 
 Exposes the ``toolsets://definition`` MCP resource that groups every tool
 registered on the PyMechanical MCP server into logical, user-facing
-categories. Each toolset entry follows the schema agreed across the Ansys
+categories. Each toolset entry follows the schema agreed to across the Ansys
 MCP family:
 
 ``{"name": str, "description": str, "skill": str, "tools": list[str]}``
 
-The catalogue is a pure discovery aid; it does not affect tool visibility,
+The catalog is a pure discovery aid. It does not affect tool visibility,
 gating, or runtime behavior. Visibility is still controlled by the existing
-``REQUIRES_MECHANICAL_TAG`` / ``aali`` / ``locked_connection`` tags applied
+``REQUIRES_MECHANICAL_TAG``, ``aali``, and ``locked_connection`` tags applied
 in :mod:`ansys.mechanical.mcp.tools`.
 """
 
@@ -67,32 +67,28 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "Python snippets against the live Mechanical session."
         ),
         "skill": (
-            "Use run_python_code to execute an inline snippet, "
-            "run_python_script to execute an inline Mechanical script "
-            "string against ExtAPI, run_python_script_from_file to execute "
-            "a .py file uploaded to the Mechanical working directory, and "
-            "run_multiple_scripts to execute several scripts in one round "
-            "trip. All script tools share the same persistent ExtAPI session."
+            "Use run_python_code to execute an inline snippet in the "
+            "persistent external Python session, and run_python_script to "
+            "execute a Mechanical script against ExtAPI. Provide "
+            "run_python_script with either an inline ``script`` string or "
+            "a ``file_path`` pointing to a local ``.py`` file."
         ),
         "tools": [
             "run_python_code",
             "run_python_script",
-            "run_python_script_from_file",
-            "run_multiple_scripts",
         ],
     },
     "project-management": {
-        "description": ("Tools for saving, opening, and locating Mechanical project files."),
+        "description": ("Tools for saving and opening Mechanical project files."),
         "skill": (
             "Use save_project to persist the current project (optionally "
-            "save-as a new path), open_project to load a .mechdb file, and "
-            "get_project_directory to retrieve the working directory used "
-            "by the active session."
+            "save-as a new path) and open_project to load a .mechdb file. "
+            "Read the ``files://mechanical/working_directory`` resource to "
+            "discover the active session working directory."
         ),
         "tools": [
             "save_project",
             "open_project",
-            "get_project_directory",
         ],
     },
     "file-management": {
@@ -176,7 +172,7 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
 
 
 def _build_toolsets() -> list[dict[str, Any]]:
-    """Return the toolset catalogue as the list[dict] payload expected by clients."""
+    """Return the toolset catalog as the list[dict] payload expected by clients."""
     return [
         {
             "name": name,
@@ -191,9 +187,9 @@ def _build_toolsets() -> list[dict[str, Any]]:
 @app.resource(
     "toolsets://definition",
     name="toolsets_definition",
-    description="Toolset definitions for PyAnsysMCPService discovery.",
+    description="Toolset definitions for conductor service discovery.",
     mime_type="application/json",
 )
 def get_toolsets() -> list[dict[str, Any]]:
-    """Return toolset definitions for PyAnsysMCPService discovery."""
+    """Return toolset definitions for conductor service discovery."""
     return _build_toolsets()

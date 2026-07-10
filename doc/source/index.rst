@@ -1,8 +1,8 @@
-.. _ref_index:
+.. title:: Welcome to PyMechanical-MCP
 
-================
-PyMechanical-MCP
-================
+.. meta::
+   :keywords: pymechanical, mechanical, mcp, ai, llm, simulation, finite elements, python
+   :description: Welcome to PyMechanical-MCP documentation.
 
 .. toctree::
     :hidden:
@@ -12,11 +12,34 @@ PyMechanical-MCP
     user_guide/index
     api/index
     examples/index
+    contributing/index
     changelog
 
-Welcome to the PyMechanical-MCP documentation. PyMechanical-MCP is a Model Context Protocol
-(MCP) server that provides seamless integration between AI assistants and
-Ansys Mechanical through PyAnsys.
+.. image:: _static/logo-dark.png
+    :class: only-dark
+    :width: 800
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+.. image:: _static/logo-light.png
+    :class: only-light
+    :width: 800
+    :alt: PyMechanical-MCP logo
+    :align: center
+
+.. vale off
+
+.. vale off
+
+**Welcome to the PyMechanical-MCP documentation!** PyMechanical-MCP is a Model Context Protocol
+(MCP) server that provides seamless integration between AI assistants and Ansys Mechanical through
+PyMechanical.
+
+.. vale on
+
+.. vale on
+
+**What do you want to do?**
 
 .. grid:: 2 2 3 3
     :gutter: 1 2 3 3
@@ -34,6 +57,12 @@ Ansys Mechanical through PyAnsys.
 
         Install PyMechanical-MCP and get your first MCP server running.
 
+    .. grid-item-card:: :fa:`cogs` Configure your IDE
+        :link: getting_started/ide_configuration
+        :link-type: doc
+
+        Set up PyMechanical-MCP with Claude Code, Visual Studio Code, or Claude Desktop.
+
     .. grid-item-card:: :fa:`book-open-reader` Use the API reference
         :link: api/index
         :link-type: doc
@@ -46,8 +75,32 @@ Ansys Mechanical through PyAnsys.
 
         Review tool availability, capability groups, and workflow examples.
 
+    .. grid-item-card:: :fa:`book` Learn best practices
+        :link: user_guide/best_practices
+        :link-type: doc
+
+        Discover practical workflow recommendations to avoid common setup and solve issues.
+
+    .. grid-item-card:: :fa:`code` Browse examples
+        :link: examples/index
+        :link-type: doc
+
+        Explore practical Mechanical workflows that can be adapted for MCP-assisted analysis.
+
+    .. grid-item-card:: :fa:`external-link-alt` Access PyMechanical documentation
+        :link: https://mechanical.docs.pyansys.com/
+        :link-type: url
+
+        Access the PyMechanical documentation for product-level details.
+
     .. grid-item-card:: :fa:`question` Find help or report issues
         :link: https://github.com/ansys/pymechanical-mcp/discussions
         :link-type: url
 
         Ask questions or report issues on the GitHub Discussions page.
+
+    .. grid-item-card:: :fa:`users` Contribute to the project
+        :link: contributing/index
+        :link-type: doc
+
+        Learn how to contribute code, documentation, and examples to PyMechanical-MCP.

@@ -14,10 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""PyMechanical MCP Server - Model Context Protocol server for Ansys Mechanical.
+"""PyMechanical-MCP is a Model Context Protocol (MCP) server for Ansys Mechanical.
 
-This package provides a Model Context Protocol (MCP) server that enables
-AI assistants to interact with Ansys Mechanical through PyMechanical.
+This package allows AI assistants to interact with Ansys Mechanical through PyMechanical.
 It leverages the Mechanical scripting API to perform structural analysis,
 preprocessing, solving, and postprocessing tasks.
 
