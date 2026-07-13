@@ -175,7 +175,7 @@ Edit the ``~/Library/Application Support/Claude/claude_desktop_config.json`` fil
            "ansys-mechanical-mcp"
          ],
          "description": "MCP server for Ansys Mechanical through PyMechanical",
-         "version": "0.1.0",
+         "version": "0.1.1",
          "language": "python"
        }
      }
