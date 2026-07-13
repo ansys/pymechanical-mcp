@@ -22,13 +22,15 @@ preprocessing, solving, and postprocessing tasks.
 
 """
 
-__version__ = "0.1.0"
-
+import importlib.metadata as importlib_metadata
 
 from ansys.mechanical.mcp.server import (
     app,
     launcher,
 )
+
+__version__ = importlib_metadata.version(__name__.replace(".", "-"))
+"""PyMechanical MCP version."""
 
 __all__ = [
     "app",
