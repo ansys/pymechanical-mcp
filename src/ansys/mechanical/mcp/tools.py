@@ -17,6 +17,7 @@
 """List of tools in PyMechanical-MCP."""
 
 import base64
+import inspect
 import json
 import os
 from pathlib import Path
@@ -48,6 +49,48 @@ logger = get_logger(__name__)
 # These tools are disabled at startup (before Mechanical is connected) and enabled
 # once a connection is established via connect_to_mechanical or launch_mechanical.
 REQUIRES_MECHANICAL_TAG = "requires_mechanical"
+
+
+async def _resolve_launch_batch_mode(ctx: Context, batch: bool | None) -> bool:
+    """Resolve the Mechanical launch mode.
+
+    When the caller omits ``batch``, try to elicit a GUI-vs-batch choice from
+    the MCP client. If elicitation is unavailable or the user declines, default
+    to GUI mode for interactive workflows.
+    """
+    if batch is not None:
+        return bool(batch)
+
+    elicit = getattr(ctx, "elicit", None)
+    if elicit is None or not inspect.iscoroutinefunction(elicit):
+        return False
+
+    try:
+        result = await elicit(
+            (
+                "Choose how to launch Mechanical. GUI mode opens a visible "
+                "Mechanical window and is recommended for interactive MCP "
+                "workflows. Batch mode runs in the background without a visible UI."
+            ),
+            {
+                "gui": {"title": "GUI (recommended)"},
+                "batch": {"title": "Batch / background"},
+            },
+            response_title="Launch mode",
+            response_description="Select how the Mechanical gRPC session should be started.",
+        )
+    except Exception as exc:
+        logger.info(
+            "Launch-mode elicitation unavailable; defaulting to GUI mode: %s",
+            exc,
+        )
+        return False
+
+    if result.action == "accept":
+        selection = str(result.data)
+        return selection == "batch"
+
+    return False
 
 
 # Access type-safe lifespan context in tools
@@ -252,7 +295,7 @@ async def launch_mechanical(
     ctx: Context,
     exec_file: str | None = None,
     port: int | None = None,
-    batch: bool = True,
+    batch: bool | None = None,
     version: str | None = None,
     transport_mode: str | None = None,
 ) -> str:
@@ -273,8 +316,10 @@ async def launch_mechanical(
         to find the executable automatically.
     port : int, default: None
         gRPC port for Mechanical to listen on. If ``None``, ``10000`` is used.
-    batch : bool, default: True
-        Whether to launch Mechanical in batch mode.
+    batch : bool | None, default: None
+        Whether to launch Mechanical in batch mode. When omitted, PyMechanical-MCP
+        tries to ask the client to choose between GUI and batch mode and falls back
+        to GUI mode if elicitation is unavailable.
     version : str, default: None
         Mechanical version to run (such as "252" for 2025 R2). If ``None``, the
         latest installed version is used.
@@ -320,9 +365,11 @@ async def launch_mechanical(
             certs_dir=effective_certs,
         )
 
+        resolved_batch = await _resolve_launch_batch_mode(ctx, batch)
+
         # Launch new Mechanical instance
         kwargs: dict[str, Any] = {
-            "batch": batch,
+            "batch": resolved_batch,
             "loglevel": "INFO",
             "cleanup_on_exit": True,
             "start_timeout": 300,  # 5 minutes for graphical mode launches

@@ -17,7 +17,7 @@
 """Tests for MCP tools functionality."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp.types import TextContent
 import pytest
@@ -557,6 +557,9 @@ class TestLaunchMechanical:
                 return_value=(None, None),
             ),
         ):
+            mock_context_no_mechanical.elicit = AsyncMock(
+                side_effect=RuntimeError("elicitation unavailable")
+            )
             result = await launch_mechanical(mock_context_no_mechanical)
 
             # Verify successful launch
@@ -566,7 +569,7 @@ class TestLaunchMechanical:
 
             # Verify launch_mechanical was called with correct parameters
             mock_launch.assert_called_once_with(
-                batch=True,
+                batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
@@ -585,6 +588,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
+        mock_context_no_mechanical.elicit = AsyncMock(
+            side_effect=RuntimeError("elicitation unavailable")
+        )
+
         with (
             patch(
                 "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
@@ -602,7 +609,7 @@ class TestLaunchMechanical:
 
             # Verify launch_mechanical was called with correct port
             mock_launch.assert_called_once_with(
-                batch=True,
+                batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
@@ -615,6 +622,10 @@ class TestLaunchMechanical:
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2025 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
+
+        mock_context_no_mechanical.elicit = AsyncMock(
+            side_effect=RuntimeError("elicitation unavailable")
+        )
 
         with (
             patch(
@@ -634,11 +645,42 @@ class TestLaunchMechanical:
 
             # Verify launch_mechanical was called with version
             mock_launch.assert_called_once_with(
-                batch=True,
+                batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
                 version="252",
+            )
+
+    @pytest.mark.asyncio
+    async def test_launch_uses_prompted_batch_choice(self, mock_context_no_mechanical):
+        """Test launching Mechanical in batch mode when the client selects it."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
+
+        mock_context_no_mechanical.elicit = AsyncMock(
+            return_value=MagicMock(action="accept", data="batch")
+        )
+
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
+            result = await launch_mechanical(mock_context_no_mechanical)
+
+            assert "Successfully launched Mechanical" in result
+            mock_launch.assert_called_once_with(
+                batch=True,
+                loglevel="INFO",
+                cleanup_on_exit=True,
+                start_timeout=300,
             )
 
     @pytest.mark.asyncio
@@ -776,6 +818,10 @@ class TestLaunchMechanical:
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
 
+        mock_context_no_mechanical.elicit = AsyncMock(
+            side_effect=RuntimeError("elicitation unavailable")
+        )
+
         with (
             patch(
                 "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
@@ -794,7 +840,7 @@ class TestLaunchMechanical:
 
             # Verify launch_mechanical was called with port
             mock_launch.assert_called_once_with(
-                batch=True,
+                batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,

@@ -30,7 +30,7 @@ Always available (before connection)
    * - ``list_mechanical_instances``
      - List running Mechanical processes.
    * - ``launch_mechanical``
-     - Start a new Mechanical session.
+     - Start a new Mechanical session. GUI is preferred by default, and batch mode remains available.
    * - ``connect_to_mechanical``
      - Attach to an existing Mechanical instance.
    * - ``get_guidelines_for``
@@ -80,6 +80,12 @@ Available after connection
   When you run with ``--connect-on-startup``, PyMechanical-MCP disables
   the ``launch_mechanical``, ``connect_to_mechanical``, and
   ``disconnect_from_mechanical`` tools by design.
+
+.. note::
+  PyMechanical-MCP uses PyMechanical remote-session mode over gRPC, not
+  embedding mode. When ``launch_mechanical`` is called without a ``batch``
+  value, the server prefers a visible GUI session and can ask the client to
+  choose GUI or batch mode when elicitation is supported.
 
 Guideline topics
 ----------------

@@ -47,6 +47,29 @@ Use Streamable HTTP transport for remote or server-style deployments:
 
    ansys-mechanical-mcp --transport http --http-host 127.0.0.1 --http-port 8080
 
+PyMechanical mode and launch behavior
+-------------------------------------
+
+PyMechanical-MCP uses PyMechanical remote-session mode over gRPC. It does not
+use PyMechanical embedding mode.
+
+When you call ``launch_mechanical`` without specifying ``batch``,
+PyMechanical-MCP prefers a visible GUI session. If the MCP client supports
+elicitation, the server can ask the user to choose between GUI and batch mode
+at launch time. Use ``batch=true`` to force a background launch.
+
+Launch Mechanical manually with gRPC
+------------------------------------
+
+If you want to attach PyMechanical-MCP to a Mechanical session that you start
+yourself, launch Mechanical with gRPC enabled first. Example PowerShell command:
+
+.. code-block:: powershell
+
+   & "C:\Program Files\ANSYS Inc\v252\aisol\bin\winx64\AnsysWBU.exe" -DSApplet -AppModeMech -grpc 50053
+
+Then call ``connect_to_mechanical`` with ``ip=127.0.0.1`` and ``port=50053``.
+
 Connect on startup (optional)
 -----------------------------
 

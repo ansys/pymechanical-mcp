@@ -15,6 +15,9 @@ server that enables AI assistants to interact with Ansys Mechanical through
 [PyMechanical](https://mechanical.docs.pyansys.com/). Use natural language to set up,
 solve, and postprocess structural, thermal, and multiphysics simulations.
 
+PyMechanical-MCP uses PyMechanical's remote-session mode over gRPC. It does not
+use PyMechanical embedding mode.
+
 ## Overview
 
 Key features:
@@ -75,6 +78,11 @@ MCP-compatible clients, see
 [IDE and client configuration](https://mechanical-mcp.docs.pyansys.com/version/stable/getting_started/ide_configuration.html)
 in the documentation.
 
+When you call `launch_mechanical` without specifying `batch`, PyMechanical-MCP
+prefers a visible GUI session. If the MCP client supports elicitation, the
+server can ask the user to choose between GUI and batch mode at launch time.
+Use `batch=true` to force a background launch.
+
 ## Configuration
 
 Use STDIO for local MCP clients. Use HTTP transport for remote access in trusted
@@ -91,6 +99,15 @@ Run with HTTP transport:
 ```bash
 ansys-mechanical-mcp --transport http --http-host 127.0.0.1 --http-port 8080
 ```
+
+To connect to a Mechanical instance that was started manually, launch
+Mechanical with gRPC enabled first. Example PowerShell command:
+
+```powershell
+& "C:\Program Files\ANSYS Inc\v252\aisol\bin\winx64\AnsysWBU.exe" -DSApplet -AppModeMech -grpc 50053
+```
+
+Then use `connect_to_mechanical` with `ip=127.0.0.1` and `port=50053`.
 
 Common configuration options:
 

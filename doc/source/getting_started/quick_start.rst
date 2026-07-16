@@ -36,9 +36,23 @@ There are three common ways to begin once the server is running.
 
 Ask your assistant to call ``launch_mechanical``.
 
+PyMechanical-MCP uses PyMechanical remote-session mode over gRPC. By default,
+``launch_mechanical`` prefers a visible GUI session. If the MCP client supports
+elicitation, it can ask whether to launch in GUI or batch mode. Use
+``batch=true`` to force a background launch.
+
 **Option 2: Connect to an existing Mechanical session.**
 
 Ask your assistant to call ``connect_to_mechanical`` with the host and port.
+
+The existing Mechanical session must already be running with gRPC enabled. For
+example, on Windows PowerShell:
+
+.. code-block:: powershell
+
+   & "C:\Program Files\ANSYS Inc\v252\aisol\bin\winx64\AnsysWBU.exe" -DSApplet -AppModeMech -grpc 50053
+
+Then connect with ``ip=127.0.0.1`` and ``port=50053``.
 
 **Option 3: Connect on startup.**
 
