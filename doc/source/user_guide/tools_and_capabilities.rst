@@ -81,12 +81,6 @@ Available after connection
   the ``launch_mechanical``, ``connect_to_mechanical``, and
   ``disconnect_from_mechanical`` tools by design.
 
-.. note::
-  PyMechanical-MCP uses PyMechanical remote-session mode over gRPC, not
-  embedding mode. When ``launch_mechanical`` is called without a ``batch``
-  value, the server prefers a visible GUI session and can ask the client to
-  choose GUI or batch mode when elicitation is supported.
-
 Guideline topics
 ----------------
 

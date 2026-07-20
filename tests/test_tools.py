@@ -684,6 +684,100 @@ class TestLaunchMechanical:
             )
 
     @pytest.mark.asyncio
+    async def test_launch_uses_prompted_gui_choice(self, mock_context_no_mechanical):
+        """Test launching Mechanical in GUI mode when the client selects it."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
+
+        mock_context_no_mechanical.elicit = AsyncMock(
+            return_value=MagicMock(action="accept", data="gui")
+        )
+
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
+            result = await launch_mechanical(mock_context_no_mechanical)
+
+            assert "Successfully launched Mechanical" in result
+            mock_launch.assert_called_once_with(
+                batch=False,
+                loglevel="INFO",
+                cleanup_on_exit=True,
+                start_timeout=300,
+            )
+
+    @pytest.mark.parametrize("action", ["decline", "cancel"])
+    @pytest.mark.asyncio
+    async def test_launch_defaults_to_gui_when_prompt_not_accepted(
+        self, mock_context_no_mechanical, action
+    ):
+        """Test launching Mechanical in GUI mode when the client declines or cancels."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
+
+        mock_context_no_mechanical.elicit = AsyncMock(
+            return_value=MagicMock(action=action, data=None)
+        )
+
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
+            result = await launch_mechanical(mock_context_no_mechanical)
+
+            assert "Successfully launched Mechanical" in result
+            mock_launch.assert_called_once_with(
+                batch=False,
+                loglevel="INFO",
+                cleanup_on_exit=True,
+                start_timeout=300,
+            )
+
+    @pytest.mark.asyncio
+    async def test_launch_explicit_batch_true_skips_prompt(self, mock_context_no_mechanical):
+        """Test launching Mechanical in batch mode when explicitly requested."""
+        mock_mechanical = MagicMock()
+        mock_mechanical.version = "2024 R2"
+        mock_mechanical.project_directory = "/tmp/ansys_mechanical_1234"
+        mock_context_no_mechanical.elicit = AsyncMock()
+
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ) as mock_launch,
+            patch(
+                "ansys.mechanical.mcp.tools.resolve_transport_mode",
+                return_value=(None, None),
+            ),
+        ):
+            result = await launch_mechanical(mock_context_no_mechanical, batch=True)
+
+            assert "Successfully launched Mechanical" in result
+            mock_context_no_mechanical.elicit.assert_not_awaited()
+            mock_launch.assert_called_once_with(
+                batch=True,
+                loglevel="INFO",
+                cleanup_on_exit=True,
+                start_timeout=300,
+            )
+
+    @pytest.mark.asyncio
     async def test_launch_all_custom_parameters(self, mock_context_no_mechanical):
         """Test launching Mechanical with all custom parameters."""
         mock_mechanical = MagicMock()

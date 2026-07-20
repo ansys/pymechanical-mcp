@@ -36,10 +36,9 @@ There are three common ways to begin once the server is running.
 
 Ask your assistant to call ``launch_mechanical``.
 
-PyMechanical-MCP uses PyMechanical remote-session mode over gRPC. By default,
-``launch_mechanical`` prefers a visible GUI session. If the MCP client supports
-elicitation, it can ask whether to launch in GUI or batch mode. Use
-``batch=true`` to force a background launch.
+By default, ``launch_mechanical`` prefers a visible GUI session. If the MCP
+client supports elicitation, it can ask whether to launch in GUI or batch mode.
+Use ``batch=true`` to force a background launch.
 
 **Option 2: Connect to an existing Mechanical session.**
 
