@@ -321,7 +321,7 @@ async def launch_mechanical(
         tries to ask the client to choose between GUI and batch mode and falls back
         to GUI mode if elicitation is unavailable.
     version : str, default: None
-        Mechanical version to run (such as "252" for 2025 R2). If ``None``, the
+        Mechanical version to run (such as "261" for 2026 R1). If ``None``, the
         latest installed version is used.
     transport_mode : str, default: None
         gRPC transport mode for the launched instance. Options are ``auto``,

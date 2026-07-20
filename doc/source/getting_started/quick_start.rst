@@ -49,7 +49,7 @@ example, on Windows PowerShell:
 
 .. code-block:: powershell
 
-   & "C:\Program Files\ANSYS Inc\v252\aisol\bin\winx64\AnsysWBU.exe" -DSApplet -AppModeMech -grpc 50053
+   & "C:\Program Files\ANSYS Inc\v261\aisol\bin\winx64\AnsysWBU.exe" -DSApplet -AppModeMech -grpc 50053
 
 Then connect with ``ip=127.0.0.1`` and ``port=50053``.
 
