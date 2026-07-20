@@ -923,7 +923,7 @@ graphics = ExtAPI.Graphics
 
 # Try different export approaches for version compatibility
 try:
-    # Approach 1: Use GraphicsImageExportFormat enum (2025 R2+)
+    # Approach 1: Use GraphicsImageExportFormat enum when available.
     settings = Ansys.Mechanical.Graphics.GraphicsImageExportSettings()
     settings.Resolution = GraphicsResolutionType.EnhancedResolution
     settings.Width = 1920
