@@ -2,7 +2,7 @@
 
 This example demonstrates a complete Mechanical FEA workflow using the
 pymechanical-mcp tools. All steps were validated live against
-ANSYS Mechanical 2025 R2 on April 21, 2026.
+ANSYS Mechanical 2026 R1 on April 21, 2026.
 
 > **GUI Mode:** Launch Mechanical with `batch=false` so the GUI is visible
 > and you can see geometry, mesh, and result contour plots interactively.
@@ -44,7 +44,7 @@ Response: Mechanical is installed on this system.
 ```
 Response:
   Successfully launched Mechanical
-  Version: 252
+  Version: 261
   Project Directory: C:\Users\...\Project_Mech_Files\
 ```
 
@@ -55,16 +55,16 @@ Response:
 ```json
 {
   "connection": {
-    "version": "252",
+    "version": "261",
     "is_alive": true,
     "busy": false
   },
   "product_info": {
-    "raw": "Ansys Mechanical [Ansys Mechanical Enterprise]\nProduct Version:252"
+    "raw": "Ansys Mechanical [Ansys Mechanical Enterprise]\nProduct Version:261"
   },
   "model": {
     "model_name": "Model",
-    "product_version": "2025 R2"
+    "product_version": "2026 R1"
   }
 }
 ```
@@ -144,7 +144,7 @@ Response: Mesh generated. Nodes: 1424, Elements: 667
   "geometry": { "body_count": 1 },
   "mesh": { "node_count": 1424, "element_count": 667 },
   "analyses_count": 1,
-  "project": { "product_version": "2025 R2", "name": "Project" },
+  "project": { "product_version": "2026 R1", "name": "Project" },
   "model": { "name": "Model" }
 }
 ```
@@ -309,10 +309,10 @@ Response: Successfully disconnected from Mechanical
 
 ## Important Notes
 
-1. **GUI Mode:** Always use `batch=false` in `launch_mechanical` to see results
-   interactively. The default is `batch=true` (headless/batch mode).
-2. **Use `.format()` instead of f-strings**: Mechanical 2025 R2 uses IronPython 2.7
-   which does not support f-string syntax.
+1. **GUI Mode:** `launch_mechanical` prefers a visible GUI session by default.
+  Use `batch=true` only when you explicitly want headless/batch mode.
+2. **Use `.format()` instead of f-strings**: Mechanical versions before 2026 R1
+  use IronPython 2.7, which does not support f-string syntax.
 3. **Script return values:** The last expression in a `run_python_script` call is
    returned as the result. Do NOT assign to `result =`; instead end with a bare
    string expression like `"message: {0}".format(value)`.

@@ -75,6 +75,9 @@ MCP-compatible clients, see
 [IDE and client configuration](https://mechanical-mcp.docs.pyansys.com/version/stable/getting_started/ide_configuration.html)
 in the documentation.
 
+For launch and connect workflows, including GUI and batch mode behavior, see
+[Quick start](https://mechanical-mcp.docs.pyansys.com/version/stable/getting_started/quick_start.html).
+
 ## Configuration
 
 Use STDIO for local MCP clients. Use HTTP transport for remote access in trusted

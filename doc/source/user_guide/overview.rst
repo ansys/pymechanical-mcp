@@ -25,8 +25,16 @@ PyMechanical-MCP runs a FastMCP server and exposes a set of tools that map
 to Mechanical operations. A client (Visual Studio Code, Claude Code, Claude Desktop,
 or a custom MCP client) invokes tools over STDIO or Streamable HTTP transport.
 
+PyMechanical-MCP uses PyMechanical remote-session mode over gRPC. It does not
+use PyMechanical embedding mode.
+
 The server maintains a persistent app context that stores connection
 state and execution session data across tool calls.
+
+When you call ``launch_mechanical`` without specifying ``batch``,
+PyMechanical-MCP prefers a visible GUI session. If the MCP client supports
+elicitation, it can ask the user to choose between GUI and batch mode before
+launching. Use ``batch=true`` to force a background launch.
 
 Connection-aware tool visibility
 --------------------------------

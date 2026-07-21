@@ -30,7 +30,7 @@ Always available (before connection)
    * - ``list_mechanical_instances``
      - List running Mechanical processes.
    * - ``launch_mechanical``
-     - Start a new Mechanical session.
+     - Start a new Mechanical session. GUI is preferred by default, and batch mode remains available.
    * - ``connect_to_mechanical``
      - Attach to an existing Mechanical instance.
    * - ``get_guidelines_for``
