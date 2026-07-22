@@ -51,7 +51,7 @@ dependencies = [
 [project.optional-dependencies]
 tests = [
     "ansys-common-mcp==0.3.2",
-    "ansys-mechanical-core==0.12.10",
+    "ansys-mechanical-core==0.12.11",
     "matplotlib==3.11.0",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
@@ -62,7 +62,7 @@ tests = [
 
 doc = [
     "ansys-common-mcp==0.3.2",
-    "ansys-mechanical-core==0.12.10",
+    "ansys-mechanical-core==0.12.11",
     "ansys-sphinx-theme[autoapi,changelog]==1.9.0",
     "matplotlib==3.11.0",
     "numpydoc==1.10.0",
