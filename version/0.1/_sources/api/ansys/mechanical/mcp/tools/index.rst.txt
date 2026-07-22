@@ -1,0 +1,1041 @@
+
+
+
+
+
+
+The ``tools.py`` module
+=======================
+
+.. py:module:: ansys.mechanical.mcp.tools
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: tools
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~check_mechanical_status`
+            - Check the status of Mechanical initialization.
+
+
+          * - :py:obj:`~check_mechanical_installed`
+            - Check if Mechanical is installed on the system.
+
+
+          * - :py:obj:`~run_python_script`
+            - Execute a Python script inside Mechanical.
+
+
+          * - :py:obj:`~launch_mechanical`
+            - Launch a new Mechanical instance.
+
+
+          * - :py:obj:`~connect_to_mechanical`
+            - Connect to an existing Mechanical instance.
+
+
+          * - :py:obj:`~disconnect_from_mechanical`
+            - Disconnect from the connected Mechanical instance.
+
+
+          * - :py:obj:`~list_mechanical_instances`
+            - List all Mechanical instances running on the local machine.
+
+
+          * - :py:obj:`~list_files`
+            - List files in the Mechanical working directory.
+
+
+          * - :py:obj:`~upload_file`
+            - Upload a file to the Mechanical instance.
+
+
+          * - :py:obj:`~download_file`
+            - Download a file from the Mechanical instance.
+
+
+          * - :py:obj:`~clear_mechanical`
+            - Clear the Mechanical database.
+
+
+          * - :py:obj:`~mechanical_working_directory`
+            - Return the working directory of the connected Mechanical instance.
+
+
+          * - :py:obj:`~get_model_info`
+            - Get information about the current model in Mechanical.
+
+
+          * - :py:obj:`~screenshot`
+            - Capture a screenshot of the current Mechanical view.
+
+
+          * - :py:obj:`~run_python_code`
+            - Execute Python code in the persistent Python session for data processing.
+
+
+          * - :py:obj:`~create_custom_plot`
+            - Create a custom plot using Matplotlib in the persistent Python session.
+
+
+          * - :py:obj:`~save_project`
+            - Save the current Mechanical project.
+
+
+          * - :py:obj:`~open_project`
+            - Open an existing Mechanical project file.
+
+
+          * - :py:obj:`~solve_analysis`
+            - Solve the specified analysis in Mechanical.
+
+
+          * - :py:obj:`~export_results`
+            - Export results from the solved analysis.
+
+
+          * - :py:obj:`~get_mechanical_logs`
+            - Return recent log entries from the connected Mechanical instance.
+
+
+
+    .. tab-item:: Attributes
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~logger`
+            - 
+
+
+
+    .. tab-item:: Constants
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~REQUIRES_MECHANICAL_TAG`
+            - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+List of tools in PyMechanical-MCP.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: check_mechanical_status(ctx: fastmcp.server.Context) -> str
+
+   
+   Check the status of Mechanical initialization.
+
+   This tool retrieves comprehensive information from the connected Mechanical
+   instance including version, project directory, and connection status.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           JSON string containing comprehensive Mechanical status information including:
+           
+           - connection: Basic connection information (version, project_directory, is_alive)
+           - product_info: Product version and build information
+           
+           Returns an error message if Mechanical is not available or has exited.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: check_mechanical_installed(ctx: fastmcp.server.Context) -> str
+
+   
+   Check if Mechanical is installed on the system.
+
+   This tool checks whether Ansys Mechanical is properly installed and
+   available on the system by inspecting standard installation paths.
+
+   .. note::
+
+      When PyMechanical-MCP runs inside a Docker container, the host
+      filesystem is not accessible.  In this case, the tool probes the
+      configured gRPC endpoint instead and reports whether a Mechanical
+      server is reachable.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Status message indicating whether Mechanical is installed or reachable.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: run_python_script(ctx: fastmcp.server.Context, script: str | None = None, file_path: str | None = None) -> str
+
+   
+   Execute a Python script inside Mechanical.
+
+   This tool runs a Python script block inside the connected Mechanical instance
+   using Mechanical's scripting API. The script has access to Mechanical's
+   ``ExtAPI``, ``DataModel``, ``Model``, ``Tree``, and ``Graphics`` entry points.
+
+   Provide either an inline ``script`` string or a ``file_path`` pointing to a
+   local Python file. When ``file_path`` is given, its contents are read and
+   executed inside Mechanical.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **script** : :class:`python:str`, :obj:`optional`
+           The Python script to execute inside Mechanical. Required when
+           ``file_path`` is not provided.
+
+       **file_path** : :class:`python:str`, :obj:`optional`
+           Path to a local Python script file whose contents are executed inside
+           Mechanical. Takes precedence over ``script`` when both are provided.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Script execution result. Returns the string value of the last executed
+           statement, or an empty string if the value cannot be returned as a string.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: launch_mechanical(ctx: fastmcp.server.Context, exec_file: str | None = None, port: int | None = None, batch: bool = True, version: str | None = None, transport_mode: str | None = None) -> str
+   :async:
+
+
+   
+   Launch a new Mechanical instance.
+
+   This tool starts a new Mechanical instance using PyMechanical's ``launch_mechanical``
+   function. The launched instance will be automatically connected and stored in
+   the context for subsequent operations. Once connected, additional tools become
+   available to interact with it (including ``run_python_script``, ``screenshot``,
+   and ``save_project``).
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **exec_file** : :class:`python:str`, default: :data:`python:None`
+           path to the Mechanical executable. If ``None``, PyMechanical attempts
+           to find the executable automatically.
+
+       **port** : :class:`python:int`, default: :data:`python:None`
+           gRPC port for Mechanical to listen on. If ``None``, ``10000`` is used.
+
+       **batch** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:True`
+           Whether to launch Mechanical in batch mode.
+
+       **version** : :class:`python:str`, default: :data:`python:None`
+           Mechanical version to run (such as "252" for 2025 R2). If ``None``, the
+           latest installed version is used.
+
+       **transport_mode** : :class:`python:str`, default: :data:`python:None`
+           gRPC transport mode for the launched instance. Options are ``auto``,
+           ``insecure``, ``mtls``, and ``wnua``. When ``None`` or ``auto``,
+           PyMechanical applies the platform default.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Launch status message with Mechanical version and connection information.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: connect_to_mechanical(ctx: fastmcp.server.Context, port: int = 10000, ip: str = '127.0.0.1', transport_mode: str | None = None) -> str
+   :async:
+
+
+   
+   Connect to an existing Mechanical instance.
+
+   This tool establishes a connection to a running Mechanical instance using the
+   provided port and IP address. The connection is stored for subsequent
+   operations and can be closed using the ``disconnect_from_mechanical`` tool. Once
+   connected, additional tools become available to interact with it
+   (including ``run_python_script``, ``screenshot``, and ``save_project``).
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **port** : :class:`python:int`, default: 10000
+           gRPC port where Mechanical is listening.
+
+       **ip** : :class:`python:str`, default: "127.0.0.1"
+           IP address where Mechanical is running.
+
+       **transport_mode** : :class:`python:str`, default: :data:`python:None`
+           gRPC transport mode. Options are ``"auto"``, ``"insecure"``, ``"mtls"``,
+           and ``"wnua"``. When ``None`` or ``"auto"``, the mode is determined automatically.
+           On Windows, it defers to PyMechanical's default ( ``"wnua"``). On Linux/Docker,
+           it uses ``"mtls"`` if certificates are found. Otherwise it uses ``"insecure"``.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Connection status message with Mechanical version information.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: disconnect_from_mechanical(ctx: fastmcp.server.Context) -> str
+   :async:
+
+
+   
+   Disconnect from the connected Mechanical instance.
+
+   This tool closes the connection to the Mechanical instance and releases
+   the associated resources.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Disconnection status message.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: list_mechanical_instances() -> str
+
+   
+   List all Mechanical instances running on the local machine.
+
+   This tool discovers Mechanical instances running on the machine by
+   scanning for active gRPC servers and their associated metadata.
+
+   .. note::
+
+      When the MCP server runs inside a Docker container, host process
+      scanning is not available.  In this case, the tool probes the
+      configured gRPC endpoint and reports its reachability.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Formatted table of Mechanical instances, or reachability status
+           when running in Docker.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: list_files(ctx: fastmcp.server.Context) -> str
+
+   
+   List files in the Mechanical working directory.
+
+   This tool lists all files in the working directory of the connected
+   Mechanical instance.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           List of files in the working directory.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: upload_file(ctx: fastmcp.server.Context, file_path: str) -> str
+
+   
+   Upload a file to the Mechanical instance.
+
+   This tool uploads a local file to the Mechanical instance's working directory.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **file_path** : :class:`python:str`
+           Path to the local file to upload.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Upload status message.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: download_file(ctx: fastmcp.server.Context, file_name: str, target_dir: str | None = None) -> str
+
+   
+   Download a file from the Mechanical instance.
+
+   This tool downloads a file from the Mechanical instance's working directory
+   to the local filesystem.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **file_name** : :class:`python:str`
+           Name of the file to download from the Mechanical working directory.
+
+       **target_dir** : :class:`python:str`, :obj:`optional`
+           Local directory to save the downloaded file. If ``None``, the current directory is used.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Download status message with local file path.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: clear_mechanical(ctx: fastmcp.server.Context) -> str
+
+   
+   Clear the Mechanical database.
+
+   This tool clears the current database in the Mechanical instance,
+   providing a fresh start for a new analysis.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Clear status message.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: mechanical_working_directory() -> str
+
+   
+   Return the working directory of the connected Mechanical instance.
+
+   This resource provides the absolute path to the active project directory
+   used by the connected Mechanical instance. The value is resolved lazily
+   each time the resource is read.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Absolute path to the Mechanical project directory, or a message
+           indicating that Mechanical is not connected.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_model_info(ctx: fastmcp.server.Context) -> str
+
+   
+   Get information about the current model in Mechanical.
+
+   This tool retrieves information about the current model including
+   geometry, mesh, and analysis settings by executing a script inside
+   Mechanical.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           JSON string containing model information.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: screenshot(ctx: fastmcp.server.Context, view_type: str = 'model') -> list[mcp.types.TextContent | mcp.types.ImageContent]
+
+   
+   Capture a screenshot of the current Mechanical view.
+
+   This tool captures the current graphics view from Mechanical as an image.
+   It can capture model views, mesh views, or result contour plots.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **view_type** : :class:`python:str`, default: ``"model"``
+           Type of view to capture. Options are ``"model"``, ``"mesh"``, and ``"result"``.
+
+
+
+   :Returns:
+
+       :class:`python:list`\[:obj:`TextContent` | :obj:`ImageContent`]
+           A list containing:
+           
+           - TextContent with the screenshot file path
+           - ImageContent with the base64-encoded image data
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: run_python_code(ctx: fastmcp.server.Context, code: str, timeout: int = 60) -> str
+
+   
+   Execute Python code in the persistent Python session for data processing.
+
+   **IMPORTANT:** This tool runs in a separate Python process and does NOT have access
+   to the Mechanical gRPC connection. Use this tool for:
+
+   - Custom data processing and analysis (NumPy, Pandas, and SciPy)
+   - Creating Matplotlib plots and visualizations
+   - Postprocessing results exported from Mechanical
+   - General Python computations
+
+   For code that needs to run inside Mechanical (such as IronPython with ``ExtAPI`` or ``Model``),
+   use the 'run_python_script' tool instead.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **code** : :class:`python:str`
+           Python code to execute. You should use standard Python libraries.
+           This tool does NOT have access to Mechanical's ``ExtAPI``, ``Model``,
+           or other internal objects.
+
+       **timeout** : :class:`python:int`, default: 60
+           Maximum time in seconds to allow for code execution.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Execution result or error message. Returns JSON for structured output.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: create_custom_plot(ctx: fastmcp.server.Context, plot_code: str, plot_type: str = 'matplotlib', timeout: int = 60) -> list[mcp.types.TextContent | mcp.types.ImageContent] | str
+
+   
+   Create a custom plot using Matplotlib in the persistent Python session.
+
+   IMPORTANT: This tool runs in a separate Python process and does not have access
+   to the Mechanical gRPC connection. Use this to:
+
+   - Visualize data that was exported/saved from Mechanical.
+   - Create plots from result files (such as CSV and TXT).
+   - Perform postprocessing visualizations.
+
+   For plots that need data directly from Mechanical, first use ``run_python_script``
+   to export the data to a file. Then use this tool to create the visualization.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **plot_code** : :class:`python:str`
+           Python code to create the plot. You should use ``matplotlib.pyplot``.
+           For Matplotlib, the code should create the figure or plot but not call ``plt.show()``.
+           Use the ``save_matplotlib_plot()`` helper function to return the plot.
+
+       **plot_type** : :class:`python:str`, default:``"matplotlib"``
+           Type of plot. Options are ``"matplotlib"`` and ``"pyvista"``.
+
+       **timeout** : :class:`python:int`, default: 60
+           Maximum time in seconds for plot generation.
+
+
+
+   :Returns:
+
+       :class:`python:list`\[:obj:`TextContent` | :obj:`ImageContent`]
+           A list containing:
+           
+           - TextContent with the plot creation status message
+           - ImageContent with the base64-encoded image data if successful
+           
+           Or, a JSON string with error details if failed.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: save_project(ctx: fastmcp.server.Context, file_path: str | None = None) -> str
+
+   
+   Save the current Mechanical project.
+
+   This tool saves the current project to disk. If ``file_path`` is provided,
+   the project is saved to that location (Save As). Otherwise, the project
+   is saved in place.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **file_path** : :class:`python:str`, default: :data:`python:None`
+           Full path for saving the project (Save As). The path should end with
+           a ``.mechdb`` extension. If ``None``, the project is savedin the current location.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Save status message with the project file path.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: open_project(ctx: fastmcp.server.Context, file_path: str) -> str
+
+   
+   Open an existing Mechanical project file.
+
+   This tool opens a MECHDB project file in the connected Mechanical instance.
+   Any unsaved work in the current project is lost.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **file_path** : :class:`python:str`
+           Full path to the MECHDB file to open.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Open status message with project information.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: solve_analysis(ctx: fastmcp.server.Context, analysis_index: int = 0, wait: bool = True) -> str
+
+   
+   Solve the specified analysis in Mechanical.
+
+   This tool runs the solver for the specified analysis and returns the
+   solution status. It checks for common issues and provides diagnostic
+   information if the solve fails.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **analysis_index** : :class:`python:int`, default: 0
+           Index of the analysis to solve (0-based). The default, ``0``,
+           corresponds to the first analysis.
+
+       **wait** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:True`
+           Whether to wait for the solution to complete.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           JSON string with solution status, timing, and result summary.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: export_results(ctx: fastmcp.server.Context, result_type: str = 'all', export_format: str = 'png', output_dir: str | None = None) -> str
+
+   
+   Export results from the solved analysis.
+
+   This tool exports result images (contour plots) and/or data from the
+   current solution. It can export individual result types or all available
+   results at once.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **result_type** : :class:`python:str`, default: ``"all"``
+           Type of result to export. Options are ``"all"``, ``"deformation"``, ``"stress"``,
+            ``"strain"``, or a specific result object name.
+
+       **export_format** : :class:`python:str`, default: ``"png"``
+           Export format. Use ``"png"`` for images, ``"txt"`` for text data, or ``"both"`` for
+           images and text.
+
+       **output_dir** : :class:`python:str`, default: :data:`python:None`
+           Directory to save exported files. If ``None``, uses the project directory.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           JSON string with export status and file paths.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_mechanical_logs(ctx: fastmcp.server.Context, source: str = 'messages', tail_lines: int = 200, contains: str | None = None, max_chars: int = 40000) -> str
+
+   
+   Return recent log entries from the connected Mechanical instance.
+
+   This tool provides visibility into Mechanical session activity by reading
+   either the application message list or solver output log file.
+
+   :Parameters:
+
+       **ctx** : :obj:`Context`
+           MCP context containing the server session and application context.
+
+       **source** : :class:`python:str`, :obj:`optional`
+           Log source to read. Options are:
+           
+           - ``"messages"`` (default): Application messages (errors, warnings,
+             info) from ``ExtAPI.Application.Messages``.
+           - ``"solve_log"``: Raw solver transcript from ``solve.out`` in the
+             project directory.
+
+       **tail_lines** : :class:`python:int`, default: 200
+           Number of most recent lines to return.
+
+       **contains** : :class:`python:str`, :obj:`optional`
+           Case-insensitive substring filter applied to each line.
+
+       **max_chars** : :class:`python:int`, default: 40000
+           Maximum character count for the returned log text.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           JSON string with log metadata and selected log text.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: REQUIRES_MECHANICAL_TAG
+   :value: 'requires_mechanical'
+
+
+.. py:data:: logger
+
+
+

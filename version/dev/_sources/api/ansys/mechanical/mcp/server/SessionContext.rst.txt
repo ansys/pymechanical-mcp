@@ -1,0 +1,124 @@
+
+
+
+
+
+
+:class:`SessionContext`
+=======================
+
+
+.. py:class:: ansys.mechanical.mcp.server.SessionContext
+
+   
+   Session context for storing CLI options.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: SessionContext
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+
+   .. tab-item:: Properties
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~locked_connection`
+            - Whether to lock the connection on startup.
+
+
+   .. tab-item:: Attributes
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~connect_on_startup`
+            - 
+          * - :py:attr:`~on_aali`
+            - 
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.server import SessionContext
+
+Property detail
+---------------
+
+.. py:property:: locked_connection
+   :type: bool
+
+
+   
+   Whether to lock the connection on startup.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
+Attribute detail
+----------------
+
+.. py:attribute:: connect_on_startup
+   :type:  bool
+   :value: False
+
+
+.. py:attribute:: on_aali
+   :type:  bool
+   :value: False
+
+
+
+
+
+

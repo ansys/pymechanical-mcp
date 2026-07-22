@@ -1,0 +1,110 @@
+
+
+
+
+
+
+The ``toolsets.py`` module
+==========================
+
+.. py:module:: ansys.mechanical.mcp.toolsets
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: toolsets
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~get_toolsets`
+            - Return toolset definitions for conductor service discovery.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+Toolset definitions for conductor service discovery.
+
+Exposes the ``toolsets://definition`` MCP resource that groups every tool
+registered on the PyMechanical MCP server into logical, user-facing
+categories. Each toolset entry follows the schema agreed to across the Ansys
+MCP family:
+
+``{"name": str, "description": str, "skill": str, "tools": list[str]}``
+
+The catalog is a pure discovery aid. It does not affect tool visibility,
+gating, or runtime behavior. Visibility is still controlled by the existing
+``REQUIRES_MECHANICAL_TAG``, ``aali``, and ``locked_connection`` tags applied
+in :mod:`ansys.mechanical.mcp.tools`.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: get_toolsets() -> list[dict[str, Any]]
+
+   
+   Return toolset definitions for conductor service discovery.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
