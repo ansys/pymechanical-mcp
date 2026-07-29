@@ -140,7 +140,7 @@ jobs:
         python-version: ["3.12", "3.13", "3.14"]
     steps:
       - name: "Run unit tests"
-        uses: ansys/actions/tests-pytest@a5b0351dc277d68c2dc1beca2d2674c7dfa4fc55 #v10.3.3
+        uses: ansys/actions/tests-pytest@84b6533ae76f5dde69a1df26c18682160a8121cf #v10.3.5
         with:
           python-version: ${{ matrix.python-version }}
           pytest-markers: '-m "not integration"'
@@ -185,7 +185,7 @@ jobs:
           LICENSE_SERVER: ${{ secrets.LICENSE_SERVER }}
 
       - name: "Run integration tests"
-        uses: ansys/actions/tests-pytest@a5b0351dc277d68c2dc1beca2d2674c7dfa4fc55 #v10.3.3
+        uses: ansys/actions/tests-pytest@84b6533ae76f5dde69a1df26c18682160a8121cf #v10.3.5
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
           pytest-markers: '-m "integration"'
