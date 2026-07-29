@@ -4,10 +4,10 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "ansys-mechanical-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Model Context Protocol (MCP) server for Ansys Mechanical through PyMechanical"
 readme = "README.md"
-requires-python = ">=3.11,<4"
+requires-python = ">=3.12,<4"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [
@@ -33,7 +33,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -44,15 +43,15 @@ classifiers = [
 dependencies = [
     "ansys-mechanical-core>=0.12.0",
     "ansys-common-mcp>=0.3.0",
-    "matplotlib==3.11.0",
+    "matplotlib==3.11.1",
     "tabulate==0.10.0",
 ]
 
 [project.optional-dependencies]
 tests = [
-    "ansys-common-mcp==0.3.2",
-    "ansys-mechanical-core==0.12.10",
-    "matplotlib==3.11.0",
+    "ansys-common-mcp==0.3.3",
+    "ansys-mechanical-core==0.12.12",
+    "matplotlib==3.11.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
@@ -61,10 +60,10 @@ tests = [
 ]
 
 doc = [
-    "ansys-common-mcp==0.3.2",
-    "ansys-mechanical-core==0.12.10",
+    "ansys-common-mcp==0.3.3",
+    "ansys-mechanical-core==0.12.12",
     "ansys-sphinx-theme[autoapi,changelog]==1.9.0",
-    "matplotlib==3.11.0",
+    "matplotlib==3.11.1",
     "numpydoc==1.10.0",
     "sphinx-autodoc-typehints==3.6.1",
     "sphinx-design==0.7.0",
