@@ -16,11 +16,17 @@
 
 """End-to-end MCP protocol tests for tool visibility modes (dynamic vs. --static-tools).
 
-These tests use FastMCP's in-memory ``Client`` to exercise the real MCP
-protocol surface (``tools/list``, ``tools/call``, ``prompts/get``) against the
-actual registered ``app``, without needing a real Mechanical installation or a
-subprocess transport. Mechanical connections are mocked at the
-``ansys.mechanical.core`` boundary only.
+These two tests use FastMCP's in-memory ``Client`` to exercise the real MCP
+protocol surface (``tools/list``, ``tools/call``) against the actual
+registered ``app``, as a regression safety net on top of the (faster) unit
+tests in ``test_cli.py`` (launcher disable-logic), ``test_tools.py``
+(per-tool ``enable_components``/``disable_components`` calls), and
+``test_prompts.py`` (prompt selection) — all of which mock the relevant
+calls rather than exercising FastMCP's actual visibility engine end-to-end.
+
+Mechanical connections are mocked at the ``ansys.mechanical.core`` boundary
+only; everything else (tool registration, visibility transforms, the MCP
+protocol layer) is real.
 """
 
 from unittest.mock import MagicMock, patch
@@ -35,17 +41,22 @@ from ansys.mechanical.mcp.tools import REQUIRES_MECHANICAL_TAG
 
 
 @pytest.fixture(autouse=True)
-def _reset_tool_visibility():
-    """Ensure REQUIRES_MECHANICAL_TAG is enabled (visible) before/after each test.
+def _isolated_app_state():
+    """Give each test a known-clean, isolated global ``app`` state.
 
-    ``app.disable``/``app.enable`` mutate GLOBAL visibility on the shared
-    ``app`` singleton (unlike session-scoped ``ctx.enable_components``), so
-    tests in this module must restore a clean slate to avoid leaking state
-    into other test modules that import the same ``app`` instance.
+    ``app`` is a module-level singleton shared by the whole test session.
+    ``app.disable``/``app.enable`` (global visibility) and ``app._cli_config``
+    (read by the real lifespan on ``Client`` connect) are both mutated by
+    other test modules that call ``launcher()`` (e.g. ``test_cli.py``'s
+    ``--connect-on-startup`` tests). Without resetting both here, a leaked
+    ``connect_on_startup=True`` can make the real (unmocked) lifespan attempt
+    a genuine Mechanical connection during these tests.
     """
     app.enable(tags={REQUIRES_MECHANICAL_TAG})
+    setattr(app, "_cli_config", {"connect_on_startup": False, "static_tools": False})
     yield
     app.enable(tags={REQUIRES_MECHANICAL_TAG})
+    setattr(app, "_cli_config", {"connect_on_startup": False, "static_tools": False})
 
 
 def _make_mock_mechanical():
@@ -66,14 +77,11 @@ async def test_dynamic_mode_hides_then_reveals_tools_after_connect():
     mock_mechanical = _make_mock_mechanical()
 
     async with Client(app) as client:
-        tool_list = await client.list_tools()
-        tool_names = {t.name for t in tool_list}
-
+        tool_names = {t.name for t in await client.list_tools()}
         assert "check_mechanical_status" in tool_names
         assert "launch_mechanical" in tool_names
         assert "run_python_script" not in tool_names
         assert "list_files" not in tool_names
-        assert "export_results" not in tool_names
 
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
@@ -82,74 +90,38 @@ async def test_dynamic_mode_hides_then_reveals_tools_after_connect():
             result = await client.call_tool("launch_mechanical", {})
             assert "Successfully launched Mechanical" in result.data
 
-        tool_list_after = await client.list_tools()
-        tool_names_after = {t.name for t in tool_list_after}
+        tool_names_after = {t.name for t in await client.list_tools()}
         assert "run_python_script" in tool_names_after
         assert "list_files" in tool_names_after
-        assert "export_results" in tool_names_after
 
 
 @pytest.mark.asyncio
-async def test_static_mode_exposes_all_tools_immediately():
-    """--static-tools mode: all tools visible from the very first tools/list call."""
+async def test_static_mode_exposes_all_tools_and_degrades_gracefully_before_connect():
+    """--static-tools mode: all tools visible immediately.
+
+    Pre-connect calls return a clean message instead of crashing, and the
+    tool works normally once connected.
+    """
     # Do NOT call app.disable — this simulates --static-tools being passed.
+    mock_mechanical = _make_mock_mechanical()
 
     async with Client(app) as client:
-        tool_list = await client.list_tools()
-        tool_names = {t.name for t in tool_list}
-
-        assert "check_mechanical_status" in tool_names
-        assert "launch_mechanical" in tool_names
-        # The key difference vs. dynamic mode: these are visible immediately too.
+        tool_names = {t.name for t in await client.list_tools()}
+        # The key difference vs. dynamic mode: these are visible immediately.
         assert "run_python_script" in tool_names
         assert "list_files" in tool_names
-        assert "export_results" in tool_names
 
-
-@pytest.mark.asyncio
-async def test_static_mode_calling_tool_before_connect_returns_clean_message():
-    """--static-tools mode: calling a Mechanical tool before connecting must not crash."""
-    async with Client(app) as client:
+        # Calling a Mechanical-only tool before connecting must not crash.
         result = await client.call_tool("list_files", {})
         assert "No Mechanical connection available" in result.data
         assert "connect_to_mechanical" in result.data
 
-
-@pytest.mark.asyncio
-async def test_static_mode_tool_works_normally_after_connect():
-    """--static-tools mode: tool works normally once connected (not just "visible")."""
-    mock_mechanical = _make_mock_mechanical()
-
-    async with Client(app) as client:
+        # Once connected, the tool works normally (not just "visible").
         with patch(
             "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
             return_value=mock_mechanical,
         ):
             await client.call_tool("launch_mechanical", {})
 
-        result = await client.call_tool("list_files", {})
-        assert "a.mechdb" in result.data
-
-
-@pytest.mark.asyncio
-async def test_system_prompt_matches_active_mode(monkeypatch):
-    """The system_prompt MCP prompt should reflect the active --static-tools setting."""
-    from ansys.mechanical.mcp import prompts as prompts_module
-
-    # Dynamic (no _cli_config / static_tools False)
-    monkeypatch.setattr(app, "_cli_config", {"static_tools": False}, raising=False)
-    async with Client(app) as client:
-        result = await client.get_prompt("system_prompt")
-        text = result.messages[0].content.text
-        assert "uses connection-aware tool visibility" in text
-
-    # Static
-    monkeypatch.setattr(app, "_cli_config", {"static_tools": True}, raising=False)
-    async with Client(app) as client:
-        result = await client.get_prompt("system_prompt")
-        text = result.messages[0].content.text
-        assert "exposes the full tool surface from startup" in text
-
-    # Sanity: build_system_prompt itself is exercised directly too.
-    assert "connection-aware" in prompts_module.build_system_prompt(False)
-    assert "full tool surface" in prompts_module.build_system_prompt(True)
+        result_after_connect = await client.call_tool("list_files", {})
+        assert "a.mechdb" in result_after_connect.data

@@ -30,83 +30,28 @@ References
 
 from ansys.mechanical.mcp import app
 
-DYNAMIC_SYSTEM_PROMPT = """\
+_IDENTITY = """\
 You are an expert Ansys Mechanical simulation assistant powered by PyMechanical.
 You help engineers set up, solve, and post-process structural, thermal, and
 coupled-field FEA simulations through Mechanical's scripting interface.
-
-## Tool availability
-
-PyMechanical-MCP uses connection-aware tool visibility. Tools that need a live
-Mechanical session (such as `run_python_script`, `solve_analysis`, and
-`export_results`) stay hidden until `launch_mechanical` or
-`connect_to_mechanical` succeeds, then unlock automatically.
-
-## MANDATORY: Call guideline tools before generating code
-
-You have `get_guidelines_for_*` tools that return ExtAPI scripting patterns and
-code examples. **Always call the relevant guideline(s) before writing any
-Mechanical script.** Call multiple guidelines for multi-step workflows.
-
-| Task area | Guideline tool |
-|---|---|
-| Overall workflow / getting started | `get_guidelines_for_workflow_overview` |
-| CAD import (STEP, IGES, Parasolid…) | `get_guidelines_for_geometry_import` |
-| Material assignment | `get_guidelines_for_materials` |
-| Meshing & sizing controls | `get_guidelines_for_meshing` |
-| Analysis type configuration | `get_guidelines_for_analysis_setup` |
-| Loads & supports | `get_guidelines_for_boundary_conditions` |
-| Solving | `get_guidelines_for_solution` |
-| Results extraction & export | `get_guidelines_for_postprocessing` |
-| Named Selections | `get_guidelines_for_named_selections` |
-| Scripting rules & best practices | `get_guidelines_for_general_rules` |
-
-## Core scripting concepts
-
-**Execution model**: All automation uses `run_python_script` (or the other
-script execution tools). Scripts run *inside* Mechanical and access these
-built-in entry points directly (no imports needed):
-- `ExtAPI`: root API entry point
-- `DataModel`: CAD, mesh entities, and Outline objects
-- `Model`: the Model object from the Outline
-- `Tree`: the Outline tree
-- `Graphics`: 3D graphics engine
-
-**Units**: Always use `Quantity("value [unit]")` with square brackets:
-`Quantity("1000 [N]")`, `Quantity("5 [mm]")`, `Quantity("100 [C]")`
-
-**Performance**: Wrap bulk modifications in `with Transaction(): …`
-
-**Scoping**: Always prefer Named Selections over direct geometry picks for
-boundary conditions, loads, and results.
-
-## Workflow
-
-1. Verify connection: call `check_mechanical_status` first.
-2. If no Mechanical instance is running, call `launch_mechanical` to start one.
-3. Import geometry → assign materials → mesh → set up analysis →
-   apply BCs/loads → solve → add & evaluate result objects → export.
-4. After adding any result object, call `EvaluateAllResults()` before reading
-   values.
-5. If a solve fails: check mesh quality, verify BCs prevent rigid-body motion,
-   review solver messages, enable large deflection if needed.
 """
 
-STATIC_SYSTEM_PROMPT = """\
-You are an expert Ansys Mechanical simulation assistant powered by PyMechanical.
-You help engineers set up, solve, and post-process structural, thermal, and
-coupled-field FEA simulations through Mechanical's scripting interface.
-
+# Only shown in static mode: in dynamic mode the LLM never sees hidden tools in
+# the first place, so no extra explanation is needed there (the existing
+# "Workflow" section below already tells it to verify/establish a connection
+# first, regardless of visibility mode).
+_STATIC_TOOL_AVAILABILITY = """\
 ## Tool availability
 
 PyMechanical-MCP exposes the full tool surface from startup (``--static-tools``).
 Some tools require an active Mechanical connection, but they remain visible so
-you can plan workflows before connecting. Call `launch_mechanical` or
-`connect_to_mechanical` first. If you call a connection-dependent tool before
-one succeeds, it returns a clear "No Mechanical connection available" message
-instead of failing unexpectedly — treat that as a signal to connect first and
-retry, not as a fatal error.
+you can plan workflows before connecting. If you call a connection-dependent
+tool before one succeeds, it returns a clear
+"No Mechanical connection available" message instead of failing unexpectedly
+— treat that as a signal to connect first and retry, not as a fatal error.
+"""
 
+_PROMPT_BODY = """\
 ## MANDATORY: Call guideline tools before generating code
 
 You have `get_guidelines_for_*` tools that return ExtAPI scripting patterns and
@@ -156,6 +101,12 @@ boundary conditions, loads, and results.
 5. If a solve fails: check mesh quality, verify BCs prevent rigid-body motion,
    review solver messages, enable large deflection if needed.
 """
+
+# Identical to the pre-existing (pre-``--static-tools``) system prompt: no
+# added token cost for the default, already-shipping dynamic-discovery mode.
+DYNAMIC_SYSTEM_PROMPT = _IDENTITY + "\n" + _PROMPT_BODY
+
+STATIC_SYSTEM_PROMPT = _IDENTITY + "\n" + _STATIC_TOOL_AVAILABILITY + "\n" + _PROMPT_BODY
 
 
 def build_system_prompt(static_tools: bool = False) -> str:

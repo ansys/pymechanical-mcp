@@ -20,19 +20,25 @@ import pytest
 
 
 @pytest.mark.unit
-def test_build_system_prompt_defaults_to_dynamic_discovery_language():
-    """Default prompt should describe connection-aware (dynamic) tool visibility."""
-    from ansys.mechanical.mcp.prompts import build_system_prompt
+def test_build_system_prompt_defaults_to_original_prompt():
+    """Default (dynamic) prompt is unchanged from the pre-``--static-tools`` prompt.
+
+    Dynamic mode is the existing, already-shipped default: hidden tools are
+    simply absent from the client's tool list, so no extra "tool
+    availability" explanation is needed (or added) for this mode.
+    """
+    from ansys.mechanical.mcp.prompts import DYNAMIC_SYSTEM_PROMPT, build_system_prompt
 
     prompt = build_system_prompt()
 
-    assert "uses connection-aware tool visibility" in prompt
-    assert "exposes the full tool surface from startup" not in prompt
+    assert prompt == DYNAMIC_SYSTEM_PROMPT
+    assert "## Tool availability" not in prompt
+    assert "MANDATORY: Call guideline tools" in prompt
 
 
 @pytest.mark.unit
 def test_build_system_prompt_static_tools_language():
-    """Static-tools prompt should describe the always-visible tool surface."""
+    """Static-tools prompt adds a short tool-availability note, nothing else changes."""
     from ansys.mechanical.mcp.prompts import build_system_prompt
 
     prompt = build_system_prompt(static_tools=True)
@@ -40,7 +46,16 @@ def test_build_system_prompt_static_tools_language():
     assert "exposes the full tool surface from startup" in prompt
     assert "--static-tools" in prompt
     assert "No Mechanical connection available" in prompt
-    assert "uses connection-aware tool visibility" not in prompt
+    assert "MANDATORY: Call guideline tools" in prompt
+
+
+@pytest.mark.unit
+def test_static_and_dynamic_prompts_share_identical_body():
+    """The guideline table / workflow body must not be duplicated-and-diverged."""
+    from ansys.mechanical.mcp.prompts import _PROMPT_BODY, build_system_prompt
+
+    assert build_system_prompt(static_tools=False).endswith(_PROMPT_BODY)
+    assert build_system_prompt(static_tools=True).endswith(_PROMPT_BODY)
 
 
 @pytest.mark.unit
@@ -52,7 +67,7 @@ def test_system_prompt_handler_reads_cli_config(monkeypatch):
     # No _cli_config set: defaults to dynamic prompt.
     if hasattr(app, "_cli_config"):
         monkeypatch.delattr(app, "_cli_config")
-    assert "uses connection-aware tool visibility" in system_prompt()
+    assert "## Tool availability" not in system_prompt()
 
     # With static_tools True in _cli_config: static prompt.
     monkeypatch.setattr(app, "_cli_config", {"static_tools": True}, raising=False)
