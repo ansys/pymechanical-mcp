@@ -123,8 +123,8 @@ Features:
 Configure HTTP transport
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For remote access or server-style deployments, start the server separately and then
-point Visual Studio Code at it:
+For remote access or server-style deployments, start the server separately,
+and then point Visual Studio Code at it:
 
 .. code-block:: bash
 
