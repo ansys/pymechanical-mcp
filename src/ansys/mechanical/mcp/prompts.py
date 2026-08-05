@@ -54,22 +54,23 @@ tool before one succeeds, it returns a clear
 _PROMPT_BODY = """\
 ## MANDATORY: Call guideline tools before generating code
 
-You have `get_guidelines_for_*` tools that return ExtAPI scripting patterns and
-code examples. **Always call the relevant guideline(s) before writing any
-Mechanical script.** Call multiple guidelines for multi-step workflows.
+You have a `get_guidelines_for` tool that returns ExtAPI scripting patterns and
+code examples for a requested topic. **Always call the relevant guideline(s)
+before writing any Mechanical script.** Call it multiple times for multi-step
+workflows when you need more than one topic.
 
 | Task area | Guideline tool |
 |---|---|
-| Overall workflow / getting started | `get_guidelines_for_workflow_overview` |
-| CAD import (STEP, IGES, Parasolid…) | `get_guidelines_for_geometry_import` |
-| Material assignment | `get_guidelines_for_materials` |
-| Meshing & sizing controls | `get_guidelines_for_meshing` |
-| Analysis type configuration | `get_guidelines_for_analysis_setup` |
-| Loads & supports | `get_guidelines_for_boundary_conditions` |
-| Solving | `get_guidelines_for_solution` |
-| Results extraction & export | `get_guidelines_for_postprocessing` |
-| Named Selections | `get_guidelines_for_named_selections` |
-| Scripting rules & best practices | `get_guidelines_for_general_rules` |
+| Overall workflow / getting started | `get_guidelines_for(content="workflow")` |
+| CAD import (STEP, IGES, Parasolid…) | `get_guidelines_for(content="geometry")` |
+| Material assignment | `get_guidelines_for(content="materials")` |
+| Meshing & sizing controls | `get_guidelines_for(content="meshing")` |
+| Analysis type configuration | `get_guidelines_for(content="analysis_setup")` |
+| Loads & supports | `get_guidelines_for(content="boundary_conditions")` |
+| Solving | `get_guidelines_for(content="solution")` |
+| Results extraction & export | `get_guidelines_for(content="postprocessing")` |
+| Named Selections | `get_guidelines_for(content="named_selections")` |
+| Scripting rules & best practices | `get_guidelines_for(content="general")` |
 
 ## Core scripting concepts
 
