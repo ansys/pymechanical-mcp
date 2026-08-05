@@ -20,6 +20,9 @@ Command-line tool startup flags
      - Mechanical endpoint for ``connect_to_mechanical`` and ``--connect-on-startup``.
    * - ``--connect-on-startup``
      - Connection to Mechanical on startup. Locks lifecycle tools.
+   * - ``--static-tools``
+     - Expose all tools from startup instead of dynamically hiding tools
+       that require a Mechanical connection. See `Static tool exposure`_.
    * - ``--transport-mode``
      - gRPC mode: ``auto``, ``insecure``, ``mtls``, or ``wnua``.
    * - ``--certs-dir``
@@ -60,6 +63,23 @@ during startup and then disables:
 
 This keeps the active session stable for clients that expect a fixed
 connection lifecycle.
+
+Static tool exposure
+---------------------
+
+By default, PyMechanical-MCP dynamically hides tools tagged
+``requires_mechanical`` (see :doc:`tools_and_capabilities`) until
+``launch_mechanical`` or ``connect_to_mechanical`` succeeds. Some MCP clients
+do not reliably refresh their tool list when the server notifies them of a
+change, which can make newly enabled tools appear unavailable until you send
+another message or manually refresh the client's tool list.
+
+Pass ``--static-tools`` to expose the full tool surface from startup instead.
+Mechanical-only tools remain visible the whole time; calling one before a
+connection exists returns a clear "No Mechanical connection available"
+message rather than hiding the tool. This trades a small amount of prompt
+size (all tool schemas are sent up front) for avoiding client-side tool list
+refresh issues. ``--static-tools`` can be combined with ``--connect-on-startup``.
 
 Next steps
 ----------
