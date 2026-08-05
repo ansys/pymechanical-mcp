@@ -80,7 +80,10 @@ def test_main_accepts_static_tools_flag():
     from ansys.mechanical.mcp import app as package_mcp
     from ansys.mechanical.mcp.server import launcher
 
-    with patch.object(asyncio, "run"):
+    with (
+        patch.object(asyncio, "run"),
+        patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())),
+    ):
         launcher(["--static-tools"])
 
     cfg = getattr(package_mcp, "_cli_config", None)
@@ -96,6 +99,7 @@ def test_launcher_disables_requires_mechanical_tag_by_default():
     with (
         patch.object(app, "disable") as mock_disable,
         patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
     ):
         launcher([])
 
@@ -111,6 +115,7 @@ def test_launcher_keeps_tools_visible_with_static_tools_flag():
     with (
         patch.object(app, "disable") as mock_disable,
         patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
     ):
         launcher(["--static-tools"])
 
@@ -131,6 +136,7 @@ def test_launcher_keeps_tools_visible_with_connect_on_startup():
     with (
         patch.object(app, "disable") as mock_disable,
         patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
     ):
         launcher(["--connect-on-startup"])
 
