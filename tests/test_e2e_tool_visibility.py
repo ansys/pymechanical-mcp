@@ -29,6 +29,7 @@ only; everything else (tool registration, visibility transforms, the MCP
 protocol layer) is real.
 """
 
+import asyncio
 from unittest.mock import MagicMock, patch
 
 from fastmcp import Client
@@ -68,6 +69,25 @@ def _make_mock_mechanical():
     return mechanical
 
 
+async def _tool_names_eventually_include(client: Client, expected_name: str) -> set[str]:
+    """Poll ``list_tools`` until ``expected_name`` appears or a short timeout elapses.
+
+    Session-scoped visibility changes (``ctx.enable_components``) are applied
+    via an async state write plus a ``notifications/tools/list_changed``
+    message. On some platforms this can take a beat longer than a single
+    ``await`` to become visible to an immediately-following ``list_tools()``
+    call on the same client/session, so we poll briefly instead of asserting
+    on a single snapshot.
+    """
+    tool_names: set[str] = set()
+    for _ in range(20):
+        tool_names = {t.name for t in await client.list_tools()}
+        if expected_name in tool_names:
+            break
+        await asyncio.sleep(0.05)
+    return tool_names
+
+
 @pytest.mark.asyncio
 async def test_dynamic_mode_hides_then_reveals_tools_after_connect():
     """Default (dynamic) mode: Mechanical tools hidden until launch_mechanical succeeds."""
@@ -90,7 +110,7 @@ async def test_dynamic_mode_hides_then_reveals_tools_after_connect():
             result = await client.call_tool("launch_mechanical", {})
             assert "Successfully launched Mechanical" in result.data
 
-        tool_names_after = {t.name for t in await client.list_tools()}
+        tool_names_after = await _tool_names_eventually_include(client, "run_python_script")
         assert "run_python_script" in tool_names_after
         assert "list_files" in tool_names_after
 
