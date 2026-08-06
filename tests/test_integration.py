@@ -84,6 +84,30 @@ def real_context(mock_mechanical):
     return context
 
 
+@pytest.fixture(scope="class")
+def real_mechanical():
+    """Connect to a real Mechanical instance for integration tests.
+
+    This requires Mechanical to be running on localhost:10000.
+    Skip these tests if Mechanical is not available locally.
+    """
+    try:
+        mechanical, externally_managed = _get_real_mechanical_connection()
+
+        yield mechanical
+
+        # Only terminate when this test launched the process locally.
+        if not externally_managed:
+            mechanical.exit()
+
+    except Exception as e:
+        # Fail hard in CI, skip locally when Mechanical is unavailable.
+        if ON_CI:
+            raise e
+        else:
+            pytest.skip(f"Mechanical not available: {e}")
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 class TestMechanicalIntegration:
@@ -92,30 +116,6 @@ class TestMechanicalIntegration:
     This class combines all basic Mechanical integration tests to share a single
     Mechanical instance, reducing test execution time.
     """
-
-    @pytest.fixture(scope="class")
-    def real_mechanical(self):
-        """
-        Fixture to connect to a real Mechanical instance.
-
-        This requires Mechanical to be running on localhost:10000.
-        Skip these tests if Mechanical is not available.
-        """
-        try:
-            mechanical, externally_managed = _get_real_mechanical_connection()
-
-            yield mechanical
-
-            # Only terminate when this test launched the process locally.
-            if not externally_managed:
-                mechanical.exit()
-
-        except Exception as e:
-            # Fail hard in CI, skip locally when Mechanical is unavailable.
-            if ON_CI:
-                raise e
-            else:
-                pytest.skip(f"Mechanical not available: {e}")
 
     @pytest.fixture()
     def mechanical(self, real_mechanical):
@@ -230,7 +230,7 @@ class TestLaunchMechanicalIntegration:
             # Test launching when already connected
             result2 = await launch_mechanical(clean_context)
             assert "Already connected to a Mechanical instance" in result2
-            assert "disconnect first" in result2
+            assert "disconnect first" in result2.lower()
 
         finally:
             # Clean up
@@ -271,28 +271,6 @@ class TestLaunchMechanicalIntegration:
 @pytest.mark.slow
 class TestPythonPersistentSessionIntegration:
     """Integration tests for connecting to Mechanical in persistent Python session."""
-
-    @pytest.fixture(scope="class")
-    def real_mechanical(self):
-        """
-        Fixture to connect to a real Mechanical instance.
-
-        This requires Mechanical to be running on localhost:10000.
-        Skip these tests if Mechanical is not available.
-        """
-        try:
-            mechanical, externally_managed = _get_real_mechanical_connection()
-
-            yield mechanical
-
-            if not externally_managed:
-                mechanical.exit()
-
-        except Exception as e:
-            if ON_CI:
-                raise e
-            else:
-                pytest.skip(f"Mechanical not available: {e}")
 
     @pytest.fixture
     def persistent_real_context(self, real_mechanical):
