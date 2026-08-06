@@ -13,6 +13,12 @@ PyMechanical-MCP uses connection-aware visibility.
   until you successfully call ``launch_mechanical`` or ``connect_to_mechanical``.
 - If you use ``--connect-on-startup``, live-session tools are available
   immediately, and PyMechanical-MCP locks the connection lifecycle tools.
+- If you use ``--static-tools``, all tools (including live-session tools) are
+  visible from startup. Calling a live-session tool before connecting returns
+  a clear "No Mechanical connection available" message instead of the tool
+  being hidden. Use this if your MCP client does not reliably refresh its
+  tool list when the server dynamically enables tools. See
+  :doc:`configuration` for details.
 
 Always available (before connection)
 ------------------------------------

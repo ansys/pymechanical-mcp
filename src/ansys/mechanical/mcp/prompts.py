@@ -30,29 +30,47 @@ References
 
 from ansys.mechanical.mcp import app
 
-SYSTEM_PROMPT = """\
+_IDENTITY = """\
 You are an expert Ansys Mechanical simulation assistant powered by PyMechanical.
 You help engineers set up, solve, and post-process structural, thermal, and
 coupled-field FEA simulations through Mechanical's scripting interface.
+"""
 
+# Only shown in static mode: in dynamic mode the LLM never sees hidden tools in
+# the first place, so no extra explanation is needed there (the existing
+# "Workflow" section below already tells it to verify/establish a connection
+# first, regardless of visibility mode).
+_STATIC_TOOL_AVAILABILITY = """\
+## Tool availability
+
+PyMechanical-MCP exposes the full tool surface from startup (``--static-tools``).
+Some tools require an active Mechanical connection, but they remain visible so
+you can plan workflows before connecting. If you call a connection-dependent
+tool before one succeeds, it returns a clear
+"No Mechanical connection available" message instead of failing unexpectedly
+— treat that as a signal to connect first and retry, not as a fatal error.
+"""
+
+_PROMPT_BODY = """\
 ## MANDATORY: Call guideline tools before generating code
 
-You have `get_guidelines_for_*` tools that return ExtAPI scripting patterns and
-code examples. **Always call the relevant guideline(s) before writing any
-Mechanical script.** Call multiple guidelines for multi-step workflows.
+You have a `get_guidelines_for` tool that returns ExtAPI scripting patterns and
+code examples for a requested topic. **Always call the relevant guideline(s)
+before writing any Mechanical script.** Call it multiple times for multi-step
+workflows when you need more than one topic.
 
 | Task area | Guideline tool |
 |---|---|
-| Overall workflow / getting started | `get_guidelines_for_workflow_overview` |
-| CAD import (STEP, IGES, Parasolid…) | `get_guidelines_for_geometry_import` |
-| Material assignment | `get_guidelines_for_materials` |
-| Meshing & sizing controls | `get_guidelines_for_meshing` |
-| Analysis type configuration | `get_guidelines_for_analysis_setup` |
-| Loads & supports | `get_guidelines_for_boundary_conditions` |
-| Solving | `get_guidelines_for_solution` |
-| Results extraction & export | `get_guidelines_for_postprocessing` |
-| Named Selections | `get_guidelines_for_named_selections` |
-| Scripting rules & best practices | `get_guidelines_for_general_rules` |
+| Overall workflow / getting started | `get_guidelines_for(content="workflow")` |
+| CAD import (STEP, IGES, Parasolid…) | `get_guidelines_for(content="geometry")` |
+| Material assignment | `get_guidelines_for(content="materials")` |
+| Meshing & sizing controls | `get_guidelines_for(content="meshing")` |
+| Analysis type configuration | `get_guidelines_for(content="analysis_setup")` |
+| Loads & supports | `get_guidelines_for(content="boundary_conditions")` |
+| Solving | `get_guidelines_for(content="solution")` |
+| Results extraction & export | `get_guidelines_for(content="postprocessing")` |
+| Named Selections | `get_guidelines_for(content="named_selections")` |
+| Scripting rules & best practices | `get_guidelines_for(content="general")` |
 
 ## Core scripting concepts
 
@@ -85,6 +103,36 @@ boundary conditions, loads, and results.
    review solver messages, enable large deflection if needed.
 """
 
+# Identical to the pre-existing (pre-``--static-tools``) system prompt: no
+# added token cost for the default, already-shipping dynamic-discovery mode.
+DYNAMIC_SYSTEM_PROMPT = _IDENTITY + "\n" + _PROMPT_BODY
+
+STATIC_SYSTEM_PROMPT = _IDENTITY + "\n" + _STATIC_TOOL_AVAILABILITY + "\n" + _PROMPT_BODY
+
+
+def build_system_prompt(static_tools: bool = False) -> str:
+    """Return the system prompt text for the configured tool visibility mode.
+
+    Parameters
+    ----------
+    static_tools : bool, default: False
+        Whether the server was started with ``--static-tools`` (all tools
+        visible from startup). When ``False`` (default), the dynamic
+        connection-aware prompt is returned instead.
+
+    Returns
+    -------
+    str
+        System prompt text matching the active tool visibility mode.
+    """
+    if static_tools:
+        return STATIC_SYSTEM_PROMPT
+    return DYNAMIC_SYSTEM_PROMPT
+
+
+# Backward-compatible default (dynamic tool discovery is still PyMechanical-MCP's default).
+SYSTEM_PROMPT = build_system_prompt()
+
 
 @app.prompt(
     name="system_prompt",
@@ -98,6 +146,8 @@ def system_prompt() -> str:
     Returns
     -------
     str
-        System prompt text.
+        System prompt text matching the currently configured tool
+        visibility mode (``--static-tools`` or the dynamic default).
     """
-    return SYSTEM_PROMPT
+    cli_cfg = getattr(app, "_cli_config", None) or {}
+    return build_system_prompt(bool(cli_cfg.get("static_tools", False)))

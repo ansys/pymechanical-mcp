@@ -48,6 +48,11 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         Port number for Mechanical connection.
     connect_on_startup : bool
         Whether to attempt Mechanical connection on PyMechanical-MCP startup.
+    static_tools : bool
+        Whether to expose all tools from startup instead of dynamically hiding
+        tools that require an active Mechanical connection. When ``False``
+        (default), tools tagged ``requires_mechanical`` stay hidden until
+        ``launch_mechanical`` or ``connect_to_mechanical`` succeeds.
     http_host : str
         Host address for HTTP transport.
     http_port : int
@@ -69,6 +74,7 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     mechanical_ip: str | None = None
     mechanical_port: int | None = None
     connect_on_startup: bool = False
+    static_tools: bool = False
     http_host: str = "127.0.0.1"
     http_port: int = 8080
     cors_origins: list[str] | None = None
@@ -129,6 +135,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
             context.connect_on_startup = cli_cfg.get(
                 "connect_on_startup", context.connect_on_startup
             )
+            context.static_tools = cli_cfg.get("static_tools", context.static_tools)
             context.http_host = cli_cfg.get("http_host", context.http_host)
             context.http_port = cli_cfg.get("http_port", context.http_port)
             context.cors_origins = cli_cfg.get("cors_origins", context.cors_origins)
@@ -262,6 +269,16 @@ def launcher(argv: list[str] | None = None) -> None:
         help="Attempt to connect to Mechanical during MCP startup",
     )
     parser.add_argument(
+        "--static-tools",
+        dest="static_tools",
+        action="store_true",
+        help=(
+            "Expose all tools from startup instead of dynamically hiding "
+            "tools that require an active Mechanical connection until "
+            "launch_mechanical or connect_to_mechanical succeeds."
+        ),
+    )
+    parser.add_argument(
         "--http-host",
         dest="http_host",
         default="127.0.0.1",
@@ -342,6 +359,13 @@ def launcher(argv: list[str] | None = None) -> None:
             "'disconnect_from_mechanical' will be disabled."
         )
 
+    if args.static_tools:
+        logger.info(
+            "Static tool exposure enabled (--static-tools): all tools will be "
+            "visible from startup instead of being hidden until a Mechanical "
+            "connection is established."
+        )
+
     setattr(
         app,
         "_cli_config",
@@ -350,6 +374,7 @@ def launcher(argv: list[str] | None = None) -> None:
             "mechanical_ip": args.mechanical_ip,
             "mechanical_port": args.mechanical_port,
             "connect_on_startup": session.connect_on_startup,
+            "static_tools": bool(args.static_tools),
             "http_host": args.http_host,
             "http_port": args.http_port,
             "cors_origins": cors_origins,
@@ -372,12 +397,13 @@ def launcher(argv: list[str] | None = None) -> None:
     )
 
     # Guarantee the system prompt is delivered during the MCP initialize handshake
-    app.instructions = prompts.SYSTEM_PROMPT
+    app.instructions = prompts.build_system_prompt(bool(args.static_tools))
 
     # Disable tools that require an active Mechanical connection until one is established.
     # When connect_on_startup is True, Mechanical is connected during PyMechanical-MCP startup,
-    # so these tools are available immediately and should not be disabled here.
-    if not session.connect_on_startup:
+    # so these tools are available immediately and should not be disabled here. Likewise,
+    # when static_tools is True, the full tool surface stays visible from startup by request.
+    if not session.connect_on_startup and not args.static_tools:
         from ansys.mechanical.mcp.tools import REQUIRES_MECHANICAL_TAG
 
         app.disable(tags={REQUIRES_MECHANICAL_TAG})

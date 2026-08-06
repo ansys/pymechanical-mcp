@@ -123,8 +123,8 @@ Features:
 Configure HTTP transport
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-For remote access or server-style deployments, start the server separately and then
-point Visual Studio Code at it:
+For remote access or server-style deployments, start the server separately,
+and then point Visual Studio Code at it:
 
 .. code-block:: bash
 
@@ -154,7 +154,7 @@ Enable MCP in Visual Studio Code
 4. Restart Visual Studio Code for the changes to take effect.
 
 For more information, see `Add and manage MCP servers in VS Code
-<https://code.visualstudio.com/docs/copilot/customization/mcp-servers>`_
+<https://code.visualstudio.com/docs/agent-customization/mcp-servers>`_
 in the Visual Studio Code documentation.
 
 Claude Desktop

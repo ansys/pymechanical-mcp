@@ -41,6 +41,7 @@ def test_main_parses_defaults(monkeypatch):
     assert cfg["mechanical_ip"] == "127.0.0.1"
     assert cfg["mechanical_port"] == 10000
     assert cfg["connect_on_startup"] is False
+    assert cfg["static_tools"] is False
     assert cfg["http_host"] == "127.0.0.1"
     assert cfg["http_port"] == 8080
     assert cfg["cors_origins"] is None
@@ -71,6 +72,76 @@ def test_main_invalid_port_raises():
 
     with pytest.raises(SystemExit):
         launcher(["--port", "70000"])  # out of 1-65535 should exit
+
+
+@pytest.mark.unit
+def test_main_accepts_static_tools_flag():
+    """Test that --static-tools is captured in CLI config."""
+    from ansys.mechanical.mcp import app as package_mcp
+    from ansys.mechanical.mcp.server import launcher
+
+    with (
+        patch.object(asyncio, "run"),
+        patch.object(package_mcp, "run_stdio_async", new=Mock(return_value=object())),
+    ):
+        launcher(["--static-tools"])
+
+    cfg = getattr(package_mcp, "_cli_config", None)
+    assert cfg is not None
+    assert cfg["static_tools"] is True
+
+
+@pytest.mark.unit
+def test_launcher_disables_requires_mechanical_tag_by_default():
+    """Default startup should still hide Mechanical-only tools (unchanged behavior)."""
+    from ansys.mechanical.mcp.server import app, launcher
+
+    with (
+        patch.object(app, "disable") as mock_disable,
+        patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
+    ):
+        launcher([])
+
+    disable_calls = [c.kwargs.get("tags") for c in mock_disable.call_args_list]
+    assert {"requires_mechanical"} in disable_calls
+
+
+@pytest.mark.unit
+def test_launcher_keeps_tools_visible_with_static_tools_flag():
+    """Opt-in --static-tools should skip hiding Mechanical-only tools."""
+    from ansys.mechanical.mcp.server import app, launcher
+
+    with (
+        patch.object(app, "disable") as mock_disable,
+        patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
+    ):
+        launcher(["--static-tools"])
+
+    disable_calls = [c.kwargs.get("tags") for c in mock_disable.call_args_list]
+    assert {"requires_mechanical"} not in disable_calls
+
+
+@pytest.mark.unit
+def test_launcher_keeps_tools_visible_with_connect_on_startup():
+    """--connect-on-startup should also skip hiding Mechanical-only tools (existing behavior).
+
+    Note: ``asyncio.run`` is patched out, so the lifespan (and thus the actual
+    Mechanical connection attempt in ``product_startup``) never executes here.
+    This test only verifies the synchronous ``launcher()``-level disable logic.
+    """
+    from ansys.mechanical.mcp.server import app, launcher
+
+    with (
+        patch.object(app, "disable") as mock_disable,
+        patch.object(asyncio, "run"),
+        patch.object(app, "run_stdio_async", new=Mock(return_value=object())),
+    ):
+        launcher(["--connect-on-startup"])
+
+    disable_calls = [c.kwargs.get("tags") for c in mock_disable.call_args_list]
+    assert {"requires_mechanical"} not in disable_calls
 
 
 def test_product_startup_attempts_connect_on_startup():
