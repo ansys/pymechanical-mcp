@@ -230,7 +230,7 @@ class TestLaunchMechanicalIntegration:
             # Test launching when already connected
             result2 = await launch_mechanical(clean_context)
             assert "Already connected to a Mechanical instance" in result2
-            assert "disconnect first" in result2
+            assert "disconnect first" in result2.lower()
 
         finally:
             # Clean up
