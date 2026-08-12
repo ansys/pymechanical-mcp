@@ -9,6 +9,72 @@ This section contains the release notes for PyMechanical-MCP.
 
 .. towncrier release notes start
 
+`1.1.0 <https://github.com/ansys/pymechanical-mcp/releases/tag/v1.1.0>`_ - August 12, 2026
+==========================================================================================
+
+.. tab-set::
+
+
+  .. tab-item:: Added
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Add --static-tools flag to expose all tools from startup
+          - `#69 <https://github.com/ansys/pymechanical-mcp/pull/69>`_
+
+
+  .. tab-item:: Dependencies
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Bump the pip-deps group with 2 updates
+          - `#62 <https://github.com/ansys/pymechanical-mcp/pull/62>`_
+
+        * - Bump the pre-commit group with 3 updates
+          - `#64 <https://github.com/ansys/pymechanical-mcp/pull/64>`_
+
+        * - Bump the actions group across 1 directory with 13 updates
+          - `#66 <https://github.com/ansys/pymechanical-mcp/pull/66>`_
+
+        * - Bump https://github.com/crate-ci/typos from v1.48.0 to 5.0.7 in the pre-commit group
+          - `#67 <https://github.com/ansys/pymechanical-mcp/pull/67>`_
+
+        * - Bump https://github.com/astral-sh/ruff-pre-commit from v0.16.0 to 0.16.1 in the pre-commit group
+          - `#72 <https://github.com/ansys/pymechanical-mcp/pull/72>`_
+
+        * - Bump the pip-deps group with 4 updates
+          - `#73 <https://github.com/ansys/pymechanical-mcp/pull/73>`_
+
+        * - Bump the actions group with 2 updates
+          - `#74 <https://github.com/ansys/pymechanical-mcp/pull/74>`_
+
+
+  .. tab-item:: Maintenance
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Update CHANGELOG for v0.1.2
+          - `#60 <https://github.com/ansys/pymechanical-mcp/pull/60>`_
+
+        * - Group dependabot updates and track pre-commit hooks
+          - `#61 <https://github.com/ansys/pymechanical-mcp/pull/61>`_
+
+        * - Bump check-vulnerabilities action to v10.3.6 to fix flaky vulnerability scan
+          - `#65 <https://github.com/ansys/pymechanical-mcp/pull/65>`_
+
+        * - Prepare v1.1.0 (static-tools + post-merge fixes)
+          - `#70 <https://github.com/ansys/pymechanical-mcp/pull/70>`_
+
+        * - Update missing or outdated files
+          - `#71 <https://github.com/ansys/pymechanical-mcp/pull/71>`_
+
+
 `0.1.2 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.1.2>`_ - 2026-07-29
 =====================================================================================
 
