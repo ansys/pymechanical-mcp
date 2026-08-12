@@ -1,5 +1,5 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
+requires = ["flit_core >=3.2,<5"]
 build-backend = "flit_core.buildapi"
 
 [project]
@@ -50,7 +50,7 @@ dependencies = [
 [project.optional-dependencies]
 tests = [
     "ansys-common-mcp==0.3.3",
-    "ansys-mechanical-core==0.13.0",
+    "ansys-mechanical-core==0.13.1",
     "matplotlib==3.11.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
@@ -61,11 +61,11 @@ tests = [
 
 doc = [
     "ansys-common-mcp==0.3.3",
-    "ansys-mechanical-core==0.13.0",
-    "ansys-sphinx-theme[autoapi,changelog]==1.9.0",
+    "ansys-mechanical-core==0.13.1",
+    "ansys-sphinx-theme[autoapi,changelog]==1.10.0",
     "matplotlib==3.11.1",
     "numpydoc==1.10.0",
-    "sphinx-autodoc-typehints==3.13.0",
+    "sphinx-autodoc-typehints==3.13.2",
     "sphinx-design==0.7.0",
     "sphinx-notfound-page==1.1.0",
     "tabulate==0.10.0",
