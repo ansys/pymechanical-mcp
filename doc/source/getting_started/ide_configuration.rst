@@ -175,7 +175,7 @@ Edit the ``~/Library/Application Support/Claude/claude_desktop_config.json`` fil
            "ansys-mechanical-mcp"
          ],
          "description": "MCP server for Ansys Mechanical through PyMechanical",
-         "version": "0.1.0",
+        "version": "0.2.0",
          "language": "python"
        }
      }
@@ -293,6 +293,41 @@ Edit the ``.vscode/mcp.json`` file:
 
 Enable debug logging
 ~~~~~~~~~~~~~~~~~~~~~
+
+Expose all tools from startup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your MCP client does not reliably refresh dynamic tool updates, pass
+``--static-tools`` so all tools are visible from startup.
+
+**Visual Studio Code:**
+
+.. code-block:: json
+
+   {
+     "servers": {
+       "pymechanical-mcp": {
+         "type": "stdio",
+         "command": "uvx",
+         "args": [
+           "--index-strategy", "unsafe-best-match",
+           "--from", "git+https://github.com/ansys/pymechanical-mcp",
+           "ansys-mechanical-mcp",
+           "--static-tools"
+         ]
+       }
+     }
+   }
+
+**Claude Code:**
+
+.. code-block:: bash
+
+   claude mcp add --transport stdio pymechanical-mcp -- \
+     uvx --index-strategy unsafe-best-match \
+     --from git+https://github.com/ansys/pymechanical-mcp \
+     ansys-mechanical-mcp \
+     --static-tools
 
 **Visual Studio Code**
 
