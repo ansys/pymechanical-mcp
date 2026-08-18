@@ -25,11 +25,12 @@ import re
 import tempfile
 from typing import Any
 
+# Import Mechanical at module level to avoid import during tool execution
+# The import happens during server startup, before STDIO transport is active
+from ansys.common.mcp.tools import execute_python_code
 from fastmcp.server import Context
 from fastmcp.server.server import get_logger
 
-# Import Mechanical at module level to avoid import during tool execution
-# The import happens during server startup, before STDIO transport is active
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
 from ansys.mechanical.mcp import app
 from ansys.mechanical.mcp.helpers import (
@@ -982,7 +983,7 @@ r"{temp_path}"
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def run_python_code(
+async def run_python_code(
     ctx: Context,
     code: str,
     timeout: int = 60,
@@ -1016,85 +1017,7 @@ def run_python_code(
     str
         Execution result or error message. Returns JSON for structured output.
     """
-    session = ctx.request_context.lifespan_context.python_session
-
-    if session is None:
-        return json.dumps(
-            {
-                "success": False,
-                "error": (
-                    "No Python session available. "
-                    "The persistent Python session was not initialized."
-                ),
-            },
-            ensure_ascii=False,
-        )
-
-    try:
-        # Sanitize the input code
-        sanitized_code = _sanitize_output(code)
-
-        logger.info(f"Executing Python code in persistent session:\n{sanitized_code}")
-
-        # Execute code in persistent session
-        result = session.execute(sanitized_code, timeout=timeout)
-
-        # Parse the result
-        if isinstance(result, dict):
-            stdout = _sanitize_output(result.get("stdout", ""))
-            stderr = _sanitize_output(result.get("stderr", ""))
-
-            if result.get("success"):
-                return json.dumps(
-                    {
-                        "success": True,
-                        "stdout": stdout,
-                        "stderr": stderr,
-                        "message": "Python code executed successfully",
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            else:
-                error_msg = result.get("error", "Unknown error occurred")
-                error_msg = _sanitize_output(error_msg)
-                return json.dumps(
-                    {
-                        "success": False,
-                        "stdout": stdout,
-                        "stderr": stderr,
-                        "error": error_msg,
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-        else:
-            return json.dumps(
-                {
-                    "success": True,
-                    "stdout": _sanitize_output(str(result)) if result else "",
-                    "stderr": "",
-                    "message": "Python code executed successfully",
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-
-    except TimeoutError:
-        error_dict = {
-            "success": False,
-            "error": f"Python code execution timed out after {timeout} seconds",
-        }
-        logger.error(error_dict["error"])
-        return json.dumps(error_dict, ensure_ascii=False)
-
-    except Exception as e:
-        error_dict = {
-            "success": False,
-            "error": f"Error executing Python code: {str(e)}",
-        }
-        logger.error(error_dict["error"])
-        return json.dumps(error_dict, ensure_ascii=False)
+    return await execute_python_code(ctx=ctx, code=code, timeout=timeout)  # type: ignore[no-any-return]
 
 
 @app.tool(tags={"aali", REQUIRES_MECHANICAL_TAG})
