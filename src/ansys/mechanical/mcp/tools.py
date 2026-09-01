@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
-from typing import Any
+from typing import Any, cast
 
 # Import Mechanical at module level to avoid import during tool execution
 # The import happens during server startup, before STDIO transport is active
@@ -33,6 +33,7 @@ from fastmcp.server.server import get_logger
 
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
 from ansys.mechanical.mcp import app
+from ansys.mechanical.mcp.errors import InvalidArgumentsError, NotConnectedError, UpstreamError
 from ansys.mechanical.mcp.helpers import (
     _is_docker,
     _probe_grpc_endpoint,
@@ -50,6 +51,47 @@ logger = get_logger(__name__)
 # These tools are disabled at startup (before Mechanical is connected) and enabled
 # once a connection is established via connect_to_mechanical or launch_mechanical.
 REQUIRES_MECHANICAL_TAG = "requires_mechanical"
+
+
+def _structured_error(error: NotConnectedError | InvalidArgumentsError | UpstreamError) -> str:
+    """Serialize a known tool error for clients that can handle structured results."""
+    logger.info("%s: %s", error.error_code, error.message)
+    return json.dumps(error.to_dict(), ensure_ascii=False)
+
+
+def _mechanical_or_error(ctx: Context) -> tuple[Any | None, str | None]:
+    """Return the active Mechanical session or a consistent structured error."""
+    mechanical = ctx.request_context.lifespan_context.mechanical
+    if mechanical is None:
+        return None, _structured_error(
+            NotConnectedError(
+                "No Mechanical connection available. Use connect_to_mechanical "
+                "to establish a connection."
+            )
+        )
+    return mechanical, None
+
+
+def _python_session_status(python_session: Any | None) -> dict[str, Any]:
+    """Return safe persistent-session state without allowing diagnostics to fail."""
+    if python_session is None:
+        return {"available": False, "running": False, "python_executable": None}
+
+    try:
+        running = bool(python_session.is_running())
+    except Exception as exc:
+        return {
+            "available": True,
+            "running": False,
+            "python_executable": getattr(python_session, "python_executable", None),
+            "error": str(exc),
+        }
+
+    return {
+        "available": True,
+        "running": running,
+        "python_executable": getattr(python_session, "python_executable", None),
+    }
 
 
 async def _resolve_launch_batch_mode(ctx: Context, batch: bool | None) -> bool:
@@ -117,13 +159,10 @@ def check_mechanical_status(ctx: Context) -> str:
 
         Returns an error message if Mechanical is not available or has exited.
     """
-    mechanical = ctx.request_context.lifespan_context.mechanical
-
-    if mechanical is None:
-        return (
-            "No Mechanical connection available. "
-            "Use connect_to_mechanical tool to establish a connection."
-        )
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+    mechanical = cast(Any, mechanical)
 
     try:
         # Check if Mechanical has exited
@@ -131,14 +170,40 @@ def check_mechanical_status(ctx: Context) -> str:
             return "Mechanical instance has exited. Reconnect or launch a new instance."
 
         info = get_info(mechanical)
+        python_session = ctx.request_context.lifespan_context.python_session
+        info["python_session"] = _python_session_status(python_session)
 
         # Return as formatted JSON
-        return json.dumps(info, indent=2)
+        return json.dumps(info, indent=2, default=str)
 
     except Exception as e:
         error_msg = f"Error checking Mechanical status: {str(e)}"
         logger.error(error_msg)
         return error_msg
+
+
+@app.tool()
+def get_session_diagnostics(ctx: Context) -> str:
+    """Return safe connection and persistent-Python-session diagnostics.
+
+    This tool intentionally excludes environment variables, command histories,
+    tokens, and certificate paths. Use it when diagnosing an MCP setup issue
+    before sharing logs with a maintainer.
+    """
+    context = ctx.request_context.lifespan_context
+    python_session = context.python_session
+    mechanical = context.mechanical
+    return json.dumps(
+        {
+            "mechanical_connected": mechanical is not None,
+            "mechanical_alive": (
+                bool(getattr(mechanical, "is_alive", False)) if mechanical is not None else False
+            ),
+            "grpc_transport_mode": context.grpc_transport_mode,
+            "persistent_python": _python_session_status(python_session),
+        },
+        indent=2,
+    )
 
 
 @app.tool(tags={"aali"})
@@ -719,6 +784,56 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
         error_msg = f"Error downloading file: {str(e)}"
         logger.error(error_msg)
         return error_msg
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
+def download_project(
+    ctx: Context,
+    extensions: list[str] | None = None,
+    target_dir: str | None = None,
+) -> str:
+    """Download the connected Mechanical project's files as one operation.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the connected Mechanical instance.
+    extensions : list[str] | None, optional
+        Optional file extensions to include, such as ``["mechdb", "png"]``.
+        When omitted, downloads all project files supported by PyMechanical.
+    target_dir : str | None, optional
+        Local directory to receive the downloaded files. Uses the current
+        directory when omitted.
+
+    Returns
+    -------
+    str
+        JSON result containing the downloaded local paths or a structured error.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+    mechanical = cast(Any, mechanical)
+
+    if extensions is not None and any(not extension.strip() for extension in extensions):
+        return _structured_error(
+            InvalidArgumentsError("extensions must contain non-empty file-extension strings.")
+        )
+
+    try:
+        paths = mechanical.download_project(
+            extensions=extensions or [], target_dir=target_dir, progress_bar=False
+        )
+        return json.dumps(
+            {
+                "success": True,
+                "downloaded_files": [str(path) for path in paths],
+                "file_count": len(paths),
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return _structured_error(UpstreamError(f"Error downloading project: {exc}"))
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
