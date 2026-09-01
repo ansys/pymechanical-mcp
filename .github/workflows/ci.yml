@@ -168,11 +168,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: "Pull Mechanical image with retry"
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="ghcr.io/ansys/mechanical:26.1.0"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if docker pull "${image}"; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq 8 ]; then
+              echo "Unable to pull ${image} after ${attempt} attempts." >&2
+              exit 1
+            fi
+            delay=$((15 * (2 ** (attempt - 1))))
+            if [ "${delay}" -gt 120 ]; then
+              delay=120
+            fi
+            echo "Pull attempt ${attempt} failed; retrying in ${delay} seconds." >&2
+            sleep "${delay}"
+          done
+
       - name: "Launch Mechanical instance"
         shell: bash
         run: |
           set -euo pipefail
           docker run -d \
+            --pull=never \
             --name mechanical-remote \
             -e ANSYSLMD_LICENSE_FILE="1055@${LICENSE_SERVER}" \
             -p ${PYMECHANICAL_PORT}:${PYMECHANICAL_PORT} \
