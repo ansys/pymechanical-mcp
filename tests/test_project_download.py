@@ -4,6 +4,7 @@
 """Tests for project download tool behavior."""
 
 import json
+from unittest.mock import ANY
 
 from ansys.mechanical.mcp.tools import download_project
 
@@ -30,6 +31,25 @@ def test_download_project_requires_connection(mock_context_no_mechanical):
     result = json.loads(download_project(mock_context_no_mechanical))
 
     assert result["error_code"] == "not_connected"
+
+
+def test_download_project_defaults_target_dir_to_cwd(mock_context):
+    """Mechanical.download_project() raises AttributeError when target_dir is None.
+
+    Regression test: the tool must resolve a concrete local directory before
+    calling the underlying PyMechanical API instead of forwarding ``None``.
+    """
+    mechanical = mock_context.request_context.lifespan_context.mechanical
+    mechanical.download_project.return_value = ["C:/cwd/project.mechdb"]
+
+    result = json.loads(download_project(mock_context))
+
+    assert result["success"] is True
+    mechanical.download_project.assert_called_once_with(
+        extensions=[], target_dir=ANY, progress_bar=False
+    )
+    called_target_dir = mechanical.download_project.call_args.kwargs["target_dir"]
+    assert called_target_dir is not None
 
 
 def test_download_project_rejects_empty_extension(mock_context):

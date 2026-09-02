@@ -820,9 +820,15 @@ def download_project(
             InvalidArgumentsError("extensions must contain non-empty file-extension strings.")
         )
 
+    # Unlike Mechanical.download(), Mechanical.download_project() calls
+    # target_dir.rstrip(...) unconditionally and raises AttributeError when
+    # target_dir is None. Default to the current working directory to match
+    # the documented "uses the current directory when omitted" behavior.
+    resolved_target_dir = target_dir if target_dir is not None else str(Path.cwd())
+
     try:
         paths = mechanical.download_project(
-            extensions=extensions or [], target_dir=target_dir, progress_bar=False
+            extensions=extensions or [], target_dir=resolved_target_dir, progress_bar=False
         )
         return json.dumps(
             {
