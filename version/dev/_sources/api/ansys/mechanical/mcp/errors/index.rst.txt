@@ -1,0 +1,93 @@
+
+
+
+
+
+
+The ``errors.py`` module
+========================
+
+.. py:module:: ansys.mechanical.mcp.errors
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: errors
+.. tab-set::
+
+
+
+
+
+
+    .. tab-item:: Exceptions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.errors.MechanicalMCPError`
+            - Base error carrying a stable machine-readable error code.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.errors.NotConnectedError`
+            - Raised when an operation requires an active Mechanical connection.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.errors.InvalidArgumentsError`
+            - Raised when tool arguments are invalid or unusable.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.errors.UpstreamError`
+            - Raised when Mechanical or a dependent service cannot complete an operation.
+
+
+
+
+
+
+
+
+
+
+
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :hidden:
+
+    <span class="nf nf-md-lightning_bolt"></span> MechanicalMCPError</api/ansys/mechanical/mcp/errors/MechanicalMCPError>
+    <span class="nf nf-md-lightning_bolt"></span> NotConnectedError</api/ansys/mechanical/mcp/errors/NotConnectedError>
+    <span class="nf nf-md-lightning_bolt"></span> InvalidArgumentsError</api/ansys/mechanical/mcp/errors/InvalidArgumentsError>
+    <span class="nf nf-md-lightning_bolt"></span> UpstreamError</api/ansys/mechanical/mcp/errors/UpstreamError>
+
+
+
+
+
+
+
+Description
+-----------
+
+Structured errors returned by PyMechanical MCP tools.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+
