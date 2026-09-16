@@ -260,8 +260,7 @@ for i in range(solution.Children.Count):
         es = c
 
 "Solved! Deformation Max: {0}, Stress Max: {1}".format(
-    str(td.Maximum) if td else "N/A",
-    str(es.Maximum) if es else "N/A"
+    str(td.Maximum) if td else "N/A", str(es.Maximum) if es else "N/A"
 )
 ```
 
