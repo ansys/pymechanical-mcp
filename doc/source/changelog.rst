@@ -62,6 +62,9 @@ This section contains the release notes for PyMechanical-MCP.
         :header-rows: 0
         :widths: auto
 
+        * - Prepare v0.2.1 (including Ruff 0.16.5)
+          - `#113 <https://github.com/ansys/pymechanical-mcp/pull/113>`_
+
         * - Update CHANGELOG for v0.2.0
           - `#81 <https://github.com/ansys/pymechanical-mcp/pull/81>`_
 
