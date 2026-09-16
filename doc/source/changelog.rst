@@ -9,6 +9,73 @@ This section contains the release notes for PyMechanical-MCP.
 
 .. towncrier release notes start
 
+`0.2.1 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.2.1>`_ - 2026-09-16
+=====================================================================================
+
+.. tab-set::
+
+
+  .. tab-item:: Fixed
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Improve MCP startup diagnostics and reliability
+          - `#88 <https://github.com/ansys/pymechanical-mcp/pull/88>`_
+
+
+  .. tab-item:: Dependencies
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Bump ansys-mechanical-core from 0.13.1 to 0.13.2 in the pip-deps group
+          - `#82 <https://github.com/ansys/pymechanical-mcp/pull/82>`_
+
+        * - Bump the pre-commit group across 1 directory with 2 updates
+          - `#86 <https://github.com/ansys/pymechanical-mcp/pull/86>`_
+
+        * - Bump the actions group across 1 directory with 15 updates
+          - `#87 <https://github.com/ansys/pymechanical-mcp/pull/87>`_
+
+        * - Bump sphinx-autodoc-typehints from 3.13.2 to 3.13.4 in the pip-deps group across 1 directory
+          - `#89 <https://github.com/ansys/pymechanical-mcp/pull/89>`_
+
+        * - Bump https://github.com/astral-sh/ruff-pre-commit from v0.16.3 to 0.16.4 in the pre-commit group
+          - `#90 <https://github.com/ansys/pymechanical-mcp/pull/90>`_
+
+        * - Bump the actions group with 15 updates
+          - `#91 <https://github.com/ansys/pymechanical-mcp/pull/91>`_, `#111 <https://github.com/ansys/pymechanical-mcp/pull/111>`_
+
+        * - Bump the pip-deps group across 1 directory with 3 updates
+          - `#112 <https://github.com/ansys/pymechanical-mcp/pull/112>`_
+
+        * - Bump ruff-pre-commit to 0.16.5
+          - `#113 <https://github.com/ansys/pymechanical-mcp/pull/113>`_
+
+
+  .. tab-item:: Maintenance
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Update CHANGELOG for v0.2.0
+          - `#81 <https://github.com/ansys/pymechanical-mcp/pull/81>`_
+
+
+  .. tab-item:: Miscellaneous
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Use shared execute_python_code helper for run_python_code
+          - `#85 <https://github.com/ansys/pymechanical-mcp/pull/85>`_
+
+
 `0.2.0 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.2.0>`_ - August 12, 2026
 ==========================================================================================
 
