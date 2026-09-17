@@ -1,0 +1,125 @@
+
+
+
+
+
+
+:class:`MechanicalMCPError`
+===========================
+
+
+.. py:exception:: ansys.mechanical.mcp.errors.MechanicalMCPError(message: str, *, details: dict[str, Any] | None = None)
+
+   Bases: :py:obj:`Exception`
+
+
+   
+   Base error carrying a stable machine-readable error code.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: MechanicalMCPError
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+   .. tab-item:: Methods
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~to_dict`
+            - Return a JSON-serializable error payload.
+
+
+
+   .. tab-item:: Attributes
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~error_code`
+            - 
+          * - :py:attr:`~message`
+            - 
+          * - :py:attr:`~details`
+            - 
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.errors import MechanicalMCPError
+
+
+Attribute detail
+----------------
+
+.. py:attribute:: error_code
+   :value: 'internal_error'
+
+
+.. py:attribute:: message
+
+.. py:attribute:: details
+
+
+
+Method detail
+-------------
+
+.. py:method:: to_dict() -> dict[str, Any]
+
+   
+   Return a JSON-serializable error payload.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
+
