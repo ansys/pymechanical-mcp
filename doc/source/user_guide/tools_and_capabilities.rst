@@ -78,7 +78,12 @@ Available after connection
    * - ``solve_analysis``
      - Solve active analysis system.
    * - ``get_model_info``
-     - Return a structured model summary (geometry, mesh, analyses, results).
+     - Return a structured model summary: geometry and mesh counts, active mesh
+       metric, named selections, materials, unit system, analyses, and boundary
+       conditions.
+   * - ``get_results_summary``
+     - Return solved result minima, maxima, and averages with units, without
+       exporting files.
    * - ``screenshot``
      - Capture current Mechanical view.
    * - ``get_mechanical_logs``
