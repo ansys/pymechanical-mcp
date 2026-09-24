@@ -6,6 +6,27 @@ IDE and client configuration
 PyMechanical-MCP works with any MCP-compatible client. This page covers
 common integrations: Claude Code, Visual Studio Code, and Claude Desktop.
 
+Prerequisite: install uv and Git
+--------------------------------
+
+Install uv, which provides ``uvx``, and `Git <https://git-scm.com/downloads>`_
+before using the ``uvx`` examples on this page. Git is required because ``uvx``
+downloads and runs PyMechanical-MCP directly from this repository without
+cloning it. Follow the `uv installation instructions
+<https://docs.astral.sh/uv/getting-started/installation/>`_.
+
+For example, on Windows:
+
+.. code-block:: bash
+
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+On macOS and Linux:
+
+.. code-block:: bash
+
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
 Claude Code
 -----------
 

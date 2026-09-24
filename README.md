@@ -54,7 +54,11 @@ Install the latest release with:
 pip install ansys-mechanical-mcp
 ```
 
-Or run directly without installing by using [`uvx`](https://docs.astral.sh/uv/):
+Or run directly without installing by using `uvx`. Install
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[Git](https://git-scm.com/downloads) first. `uv` provides `uvx`, and Git is required
+because `uvx` downloads and runs PyMechanical-MCP directly from this repository
+without cloning it.
 
 ```bash
 uvx --index-strategy unsafe-best-match --from git+https://github.com/ansys/pymechanical-mcp ansys-mechanical-mcp
