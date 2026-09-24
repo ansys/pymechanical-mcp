@@ -11,6 +11,9 @@ Prerequisites
 - Ansys Mechanical installation (local or remote) with an available gRPC endpoint
 - Python 3.12 through 3.14
 - Network access between PyMechanical-MCP and the Mechanical server
+- `uv <https://docs.astral.sh/uv/getting-started/installation/>`_ and
+  `Git <https://git-scm.com/downloads>`_ to run PyMechanical-MCP directly from
+  this repository with ``uvx``
 
 Install from PyPI
 -----------------
