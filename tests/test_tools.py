@@ -1452,6 +1452,34 @@ class TestGetModelInfo:
 
         assert "Error getting model info" in result
 
+    def test_get_model_info_collects_scoping_context(self, mock_context):
+        """The script must gather the context needed to scope loads and results."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = "{}"
+
+        get_model_info(mock_context)
+
+        script = mechanical.run_python_script.call_args[0][0]
+        for key in (
+            "named_selections",
+            "materials",
+            "unit_system",
+            "boundary_conditions",
+            "analyses",
+        ):
+            assert f"model_info['{key}']" in script
+
+    def test_get_model_info_does_not_mutate_mesh_metric(self, mock_context):
+        """Reading model info must never assign MeshMetric, which would edit the model."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = "{}"
+
+        get_model_info(mock_context)
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert "mesh.MeshMetric =" not in script
+        assert "str(mesh.MeshMetric)" in script
+
 
 @pytest.mark.unit
 class TestScreenshot:
@@ -1816,6 +1844,105 @@ class TestExportResults:
         data = json.loads(result)
         assert data["success"] is False
         assert "Export error" in data["error"]
+
+
+@pytest.mark.unit
+class TestGetResultsSummary:
+    """Tests for the get_results_summary tool."""
+
+    def test_no_mechanical(self, mock_context_no_mechanical):
+        """Without a connection a structured not_connected error is returned."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        data = json.loads(get_results_summary(mock_context_no_mechanical))
+        assert data["success"] is False
+        assert data["error_code"] == "not_connected"
+
+    def test_returns_result_values(self, mock_context):
+        """Result extrema are returned to the caller instead of file paths."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        payload = {
+            "success": True,
+            "analysis_count": 1,
+            "analyses": [
+                {
+                    "analysis_index": 0,
+                    "analysis_name": "Static Structural",
+                    "solution_status": "Done",
+                    "result_count": 1,
+                    "results": [
+                        {
+                            "name": "Equivalent Stress",
+                            "type": "EquivalentStress",
+                            "maximum": {"value": 213.7, "unit": "MPa"},
+                        }
+                    ],
+                }
+            ],
+        }
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps(payload)
+
+        data = json.loads(get_results_summary(mock_context))
+
+        assert data["analyses"][0]["results"][0]["maximum"]["value"] == 213.7
+
+    def test_all_analyses_by_default(self, mock_context):
+        """Omitting analysis_index reports every analysis."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        get_results_summary(mock_context)
+
+        assert "analysis_filter = None" in mechanical.run_python_script.call_args[0][0]
+
+    def test_filters_by_analysis_index(self, mock_context):
+        """A supplied analysis_index is injected as an int literal."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        get_results_summary(mock_context, analysis_index=2)
+
+        assert "analysis_filter = 2" in mechanical.run_python_script.call_args[0][0]
+
+    def test_rejects_negative_index(self, mock_context):
+        """A negative index is rejected before reaching Mechanical."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+
+        data = json.loads(get_results_summary(mock_context, analysis_index=-1))
+
+        assert data["error_code"] == "invalid_arguments"
+        mechanical.run_python_script.assert_not_called()
+
+    def test_empty_response(self, mock_context):
+        """An empty response is reported as an upstream error."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.return_value = ""
+
+        data = json.loads(get_results_summary(mock_context))
+
+        assert data["error_code"] == "upstream_error"
+
+    def test_exception(self, mock_context):
+        """Errors from Mechanical are surfaced as structured errors."""
+        from ansys.mechanical.mcp.tools import get_results_summary
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("gRPC connection lost")
+        )
+
+        data = json.loads(get_results_summary(mock_context))
+
+        assert data["error_code"] == "upstream_error"
+        assert "gRPC connection lost" in data["error"]
 
 
 @pytest.mark.unit
