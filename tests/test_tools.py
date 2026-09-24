@@ -1500,6 +1500,35 @@ class TestScreenshot:
         # Should handle error gracefully
         assert len(result) >= 1
 
+    @pytest.mark.parametrize(
+        ("view_type", "expected_call"),
+        [
+            ("model", "Model.Geometry.Activate()"),
+            ("mesh", "Model.Mesh.Activate()"),
+            ("result", "_child.Activate()"),
+        ],
+    )
+    def test_screenshot_activates_requested_view(self, mock_context, view_type, expected_call):
+        """view_type must activate the matching object instead of being ignored."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = "{}"
+
+        with patch("tempfile.mkstemp", return_value=(0, "shot.png")), patch("os.close"):
+            screenshot(mock_context, view_type=view_type)
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert f'requested_view = "{view_type}"' in script
+        assert expected_call in script
+
+    def test_screenshot_rejects_invalid_view_type(self, mock_context):
+        """An unsupported view_type must fail fast without contacting Mechanical."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+
+        result = screenshot(mock_context, view_type="not-a-view")
+
+        assert "Invalid view_type" in result[0].text
+        mechanical.run_python_script.assert_not_called()
+
 
 @pytest.mark.unit
 class TestSaveProject:
@@ -1705,6 +1734,31 @@ class TestSolveAnalysis:
         assert data["success"] is False
         assert "gRPC connection lost" in data["error"]
 
+    @pytest.mark.parametrize("wait", [True, False])
+    def test_solve_honors_wait(self, mock_context, wait):
+        """The wait argument must reach Analysis.Solve instead of being ignored."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        solve_analysis(mock_context, wait=wait)
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert f"analysis.Solve({wait})" in script
+        assert f'"waited": {wait}' in script
+
+    def test_solve_script_uses_requested_analysis(self, mock_context):
+        """The analysis index must be embedded in the generated script."""
+        from ansys.mechanical.mcp.tools import solve_analysis
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        solve_analysis(mock_context, analysis_index=2)
+
+        assert "Model.Analyses[2]" in mechanical.run_python_script.call_args[0][0]
+
 
 @pytest.mark.unit
 class TestExportResults:
@@ -1816,6 +1870,33 @@ class TestExportResults:
         data = json.loads(result)
         assert data["success"] is False
         assert "Export error" in data["error"]
+
+    def test_export_uses_requested_analysis(self, mock_context, tmp_path):
+        """Results must come from the analysis the caller solved, not always index 0."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        export_results(mock_context, analysis_index=2, output_dir=str(tmp_path))
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert "analysis_index = 2" in script
+        assert "Model.Analyses[analysis_index].Solution" in script
+        assert "Model.Analyses[0].Solution" not in script
+
+    def test_export_script_guards_out_of_range_index(self, mock_context, tmp_path):
+        """An out-of-range index must be reported rather than raising inside Mechanical."""
+        from ansys.mechanical.mcp.tools import export_results
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = json.dumps({"success": True})
+
+        export_results(mock_context, analysis_index=99, output_dir=str(tmp_path))
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert "is out of range" in script
+        assert "index_error" in script
 
 
 @pytest.mark.unit
