@@ -76,15 +76,17 @@ Available after connection
    * - ``list_files``
      - List files in working directory.
    * - ``solve_analysis``
-     - Solve active analysis system.
+     - Solve the analysis selected by ``analysis_index``. Set ``wait=False`` to
+       return as soon as the solve starts.
    * - ``get_model_info``
      - Return a structured model summary (geometry, mesh, analyses, results).
    * - ``screenshot``
-     - Capture current Mechanical view.
+     - Capture the ``model``, ``mesh``, or ``result`` view.
    * - ``get_mechanical_logs``
      - Retrieve Mechanical logs for diagnostics.
    * - ``export_results``
-     - Export result objects and artifacts.
+     - Export result objects and artifacts for the analysis selected by
+       ``analysis_index``.
 
 .. note::
   When you run with ``--connect-on-startup``, PyMechanical-MCP disables
