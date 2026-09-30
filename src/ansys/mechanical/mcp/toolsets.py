@@ -129,10 +129,12 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
         ),
         "skill": (
             "Use get_model_info to retrieve a structured summary of the "
-            "active model (geometry, mesh, materials, analyses, BCs, "
-            "results). Use screenshot to capture the current 3D view as a "
-            "PNG for the user. Use get_mechanical_logs to read application "
-            "messages or solver output for diagnostics."
+            "active model: geometry and mesh counts, the active mesh metric, "
+            "named selections, materials, unit system, analyses, and "
+            "boundary conditions. Scope boundary conditions and results to "
+            "the named selections it reports. Use screenshot to capture the "
+            "current 3D view as a PNG for the user. Use get_mechanical_logs "
+            "to read application messages or solver output for diagnostics."
         ),
         "tools": [
             "get_model_info",
@@ -143,12 +145,15 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
     "results": {
         "description": ("Tools for extracting and exporting Mechanical solver results."),
         "skill": (
-            "Use export_results after a successful solve_analysis call to "
-            "write result objects to disk. Use create_custom_plot to render "
-            "user-defined post-processing plots (contour, vector, or "
-            "user-supplied expression) on the solved mesh."
+            "Use get_results_summary after a successful solve_analysis call to "
+            "read result minima, maxima, and averages with units directly, "
+            "without exporting files. Use export_results to write result "
+            "objects to disk. Use create_custom_plot to render user-defined "
+            "post-processing plots (contour, vector, or user-supplied "
+            "expression) on the solved mesh."
         ),
         "tools": [
+            "get_results_summary",
             "export_results",
             "create_custom_plot",
         ],
