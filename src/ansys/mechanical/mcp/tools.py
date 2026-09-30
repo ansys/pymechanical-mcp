@@ -52,6 +52,9 @@ logger = get_logger(__name__)
 # once a connection is established via connect_to_mechanical or launch_mechanical.
 REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
+#: Views that ``screenshot`` can activate before exporting the image.
+_SCREENSHOT_VIEW_TYPES = ("model", "mesh", "result")
+
 
 def _structured_error(error: NotConnectedError | InvalidArgumentsError | UpstreamError) -> str:
     """Serialize a known tool error for clients that can handle structured results."""
@@ -1005,8 +1008,9 @@ def screenshot(
     ctx : Context
         MCP context containing the server session and application context.
     view_type : str, default: ``"model"``
-        Type of view to capture. Options are ``"model"``, ``"mesh"``, and ``"result"``.
-
+        View to activate before capturing. Options are ``"model"`` (geometry),
+        ``"mesh"``, and ``"result"`` (the first evaluated result object). If the
+        requested view cannot be activated, the current view is captured instead.
 
     Returns
     -------
@@ -1029,6 +1033,17 @@ def screenshot(
             )
         ]
 
+    if view_type not in _SCREENSHOT_VIEW_TYPES:
+        return [
+            TextContent(
+                type="text",
+                text=(
+                    f"Invalid view_type '{view_type}'. "
+                    f"Choose one of: {', '.join(_SCREENSHOT_VIEW_TYPES)}."
+                ),
+            )
+        ]
+
     try:
         logger.info(f"Capturing Mechanical screenshot (type: {view_type})...")
 
@@ -1038,7 +1053,32 @@ def screenshot(
 
         # Script to capture screenshot using Mechanical's Graphics API
         script = f"""
-import os
+import json
+
+requested_view = {json.dumps(view_type)}
+activated = "current"
+
+# Activate the requested view so the export reflects view_type.
+try:
+    if requested_view == "mesh":
+        Model.Mesh.Activate()
+        activated = "mesh"
+    elif requested_view == "result":
+        for _ai in range(Model.Analyses.Count):
+            _solution = Model.Analyses[_ai].Solution
+            for _ci in range(_solution.Children.Count):
+                _child = _solution.Children[_ci]
+                if hasattr(_child, 'Maximum'):
+                    _child.Activate()
+                    activated = "result"
+                    break
+            if activated == "result":
+                break
+    else:
+        Model.Geometry.Activate()
+        activated = "model"
+except:
+    activated = "current"
 
 # Get the Graphics object
 graphics = ExtAPI.Graphics
@@ -1055,7 +1095,7 @@ except:
     # Approach 2: Simpler export (older versions)
     graphics.ExportImage(r"{temp_path}")
 
-r"{temp_path}"
+json.dumps({{"path": r"{temp_path}", "activated": activated}})
 """
         try:
             result = mechanical.run_python_script(script)
@@ -1063,6 +1103,14 @@ r"{temp_path}"
         except Exception as e:
             logger.warning(f"Graphics export failed: {e}")
             return [TextContent(type="text", text=f"Screenshot capture failed: {str(e)}")]
+
+        # The script reports the view it managed to activate, which can differ from
+        # view_type when the requested object is unavailable (for example, no results yet).
+        activated_view = view_type
+        try:
+            activated_view = str(json.loads(str(result))["activated"])
+        except (ValueError, TypeError, KeyError):
+            pass
 
         # Verify file was created
         image_path = Path(temp_path)
@@ -1089,7 +1137,9 @@ r"{temp_path}"
 
         # Return both text (file path) and image content
         return [
-            TextContent(type="text", text="Screenshot captured successfully."),
+            TextContent(
+                type="text", text=f"Screenshot captured successfully (view: {activated_view})."
+            ),
             ImageContent(type="image", data=base64_data, mimeType=mime_type),
         ]
 
@@ -1423,7 +1473,9 @@ def solve_analysis(
         Index of the analysis to solve (0-based). The default, ``0``,
         corresponds to the first analysis.
     wait : bool, default: True
-        Whether to wait for the solution to complete.
+        Whether to block until the solve finishes. When ``False``, the solve is
+        started and the tool returns immediately. The reported ``status`` then
+        reflects the solver state at that moment rather than the final outcome.
 
     Returns
     -------
@@ -1463,9 +1515,9 @@ else:
     if mesh is None or mesh.Elements == 0:
         warnings.append("No mesh is generated. Mesh must be generated before solving.")
 
-    # Solve (always wait - background solve not supported with local solve config)
+    # Solve, honoring the caller's wait preference
     start_time = time.time()
-    analysis.Solve(True)
+    analysis.Solve({wait})
     elapsed = time.time() - start_time
 
     # Get solution status
@@ -1474,7 +1526,8 @@ else:
 
     # Build result
     solve_result = {{
-        "success": status == "Done",
+        "success": (status == "Done") if {wait} else True,
+        "waited": {wait},
         "status": status,
         "analysis_name": analysis.Name,
         "analysis_type": str(analysis.AnalysisType),
@@ -1511,6 +1564,7 @@ result
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def export_results(
     ctx: Context,
+    analysis_index: int = 0,
     result_type: str = "all",
     export_format: str = "png",
     output_dir: str | None = None,
@@ -1525,6 +1579,9 @@ def export_results(
     ----------
     ctx : Context
         MCP context containing the server session and application context.
+    analysis_index : int, default: 0
+        Index of the analysis to export results from (0-based). Use the same
+        index that was passed to ``solve_analysis``.
     result_type : str, default: ``"all"``
         Type of result to export. Options are ``"all"``, ``"deformation"``, ``"stress"``,
          ``"strain"``, or a specific result object name.
@@ -1565,10 +1622,24 @@ import os
 output_dir = {json.dumps(output_dir)}
 result_type = {json.dumps(result_type)}
 export_format = {json.dumps(export_format)}
+analysis_index = {analysis_index}
 
-solution = Model.Analyses[0].Solution if Model.Analyses.Count > 0 else None
+# Resolve the requested analysis before exporting so the results match the
+# analysis the caller solved.
+index_error = None
+if Model.Analyses.Count == 0:
+    solution = None
+elif analysis_index >= Model.Analyses.Count:
+    solution = None
+    index_error = (
+        "Analysis index {{0}} is out of range. Model has {{1}} analyses."
+    ).format(analysis_index, Model.Analyses.Count)
+else:
+    solution = Model.Analyses[analysis_index].Solution
 
-if solution is None:
+if index_error is not None:
+    result = json.dumps({{"success": False, "error": index_error}})
+elif solution is None:
     result = json.dumps({{"success": False, "error": "No analysis found in the model"}})
 elif str(solution.Status) != "Done":
     result = json.dumps({{
