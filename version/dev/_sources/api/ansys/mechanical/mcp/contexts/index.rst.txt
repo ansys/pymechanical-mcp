@@ -1,0 +1,461 @@
+
+
+
+
+
+
+The ``contexts.py`` module
+==========================
+
+.. py:module:: ansys.mechanical.mcp.contexts
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: contexts
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~get_guidelines_for_workflow_overview`
+            - Get general simulation workflow guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_geometry_import`
+            - Get geometry import guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_materials`
+            - Get material definition guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_meshing`
+            - Get mesh generation guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_analysis_setup`
+            - Get analysis setup guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_boundary_conditions`
+            - Get boundary condition and load guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_solution`
+            - Get solution phase guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_postprocessing`
+            - Get postprocessing guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_named_selections`
+            - Get named selection guidelines for Mechanical.
+
+
+          * - :py:obj:`~get_guidelines_for_general_rules`
+            - Get general rules and best practices for Mechanical workflows.
+
+
+          * - :py:obj:`~get_guidelines_for`
+            - Get Mechanical simulation guidelines for a specific topic.
+
+
+
+    .. tab-item:: Attributes
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~GuidelinesContent`
+            - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+Context tools for PyMechanical-MCP.
+
+This module defines MCP tools that provide context and guidance for
+PyMechanical and Ansys Mechanical workflows. These tools return context
+information that can be accessed by the LLM to get help with various
+aspects of Mechanical simulations.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: get_guidelines_for_workflow_overview() -> str
+
+   
+   Get general simulation workflow guidelines for Mechanical.
+
+   Use this tool when explaining or generating PyMechanical or Ansys Mechanical workflows.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Overview of the general simulation process for all Mechanical analysis types.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_geometry_import() -> str
+
+   
+   Get geometry import guidelines for Mechanical.
+
+   Use this tool when explaining or generating geometry import operations.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for importing a geometry in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_materials() -> str
+
+   
+   Get material definition guidelines for Mechanical.
+
+   Use this tool when explaining or generating material definitions.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for defining and assigning materials in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_meshing() -> str
+
+   
+   Get mesh generation guidelines for Mechanical.
+
+   Use this tool when explaining or generating mesh operations.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for generating meshes in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_analysis_setup() -> str
+
+   
+   Get analysis setup guidelines for Mechanical.
+
+   Use this tool when setting up structural, modal, or thermal analyses.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for setting up analyses in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_boundary_conditions() -> str
+
+   
+   Get boundary condition and load guidelines for Mechanical.
+
+   Use this tool when applying supports, constraints, and loads.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for applying boundary conditions and loads in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_solution() -> str
+
+   
+   Get solution phase guidelines for Mechanical.
+
+   Use this tool when running solutions in Mechanical.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for solving analyses in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_postprocessing() -> str
+
+   
+   Get postprocessing guidelines for Mechanical.
+
+   Use this tool when extracting and visualizing results.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for postprocessing in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_named_selections() -> str
+
+   
+   Get named selection guidelines for Mechanical.
+
+   Use this tool when working with named selections.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guidelines for creating and using named selections in Mechanical.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_general_rules() -> str
+
+   
+   Get general rules and best practices for Mechanical workflows.
+
+   Use this tool when working with Mechanical simulations.
+
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           General rules and best practices for Mechanical simulations.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for(content: GuidelinesContent) -> str
+
+   
+   Get Mechanical simulation guidelines for a specific topic.
+
+   Use this tool before writing PyMechanical or Ansys Mechanical scripting
+   code to retrieve the relevant guidelines for the workflow step you are
+   about to implement. Call it once per topic needed. You should call it
+   before every code-generation task.
+
+   :Parameters:
+
+       **content** : :class:`python:str`
+           The guideline topic to retrieve. options are:
+           
+           - ``"workflow"``: Mechanical simulation workflow overview.
+           - ``"geometry"``: Geometry import (CAD files, units, and scoping).
+           - ``"materials"``: Material assignment and engineering data.
+           - ``"meshing"``: Mesh controls, sizing, and quality.
+           - ``"analysis_setup"``: Analysis system creation
+             (such as static structural, modal, or thermal).
+           - ``"boundary_conditions"``: Supports, constraints, loads
+             (forces, pressures, and temperatures).
+           - ``"solution"``: Solver configuration and execution.
+           - ``"postprocessing"``: Result objects, evaluation, and exports.
+           - ``"named_selections"``: Creating and using named selections.
+           - ``"general"``: General Mechanical rules and best practices.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Guideline text for the requested topic.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: GuidelinesContent
+
+
+

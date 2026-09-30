@@ -1,0 +1,154 @@
+
+
+
+
+
+
+:class:`PyMechanicalMCP`
+========================
+
+
+.. py:class:: ansys.mechanical.mcp.server.PyMechanicalMCP(name: str = 'PyMechanical MCP Server', *args, **kwargs)
+
+   Bases: :py:obj:`ansys.common.mcp.PyAnsysBaseMCP`
+
+
+   
+   FastMCP server for managing Mechanical instances.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: PyMechanicalMCP
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+   .. tab-item:: Methods
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~create_context`
+            - Create a new application context.
+          * - :py:attr:`~product_startup`
+            - Allow PyMechanical-MCP specific startup actions.
+          * - :py:attr:`~product_cleanup`
+            - Perform cleanup actions for Mechanical instances on shutdown.
+
+
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.server import PyMechanicalMCP
+
+
+
+Method detail
+-------------
+
+.. py:method:: create_context() -> PyMechanicalAppContext
+
+   
+   Create a new application context.
+
+
+
+
+
+   :Returns:
+
+       :obj:`PyMechanicalAppContext`
+           Application context for managing Mechanical instances.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:method:: product_startup()
+
+   
+   Allow PyMechanical-MCP specific startup actions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:method:: product_cleanup()
+
+   
+   Perform cleanup actions for Mechanical instances on shutdown.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
+
