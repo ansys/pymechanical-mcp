@@ -52,6 +52,39 @@ logger = get_logger(__name__)
 # once a connection is established via connect_to_mechanical or launch_mechanical.
 REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
+#: Views that ``screenshot`` can activate before exporting the image.
+_SCREENSHOT_VIEW_TYPES = ("model", "mesh", "result")
+
+# Helpers prepended to the introspection scripts that run inside Mechanical.
+# Mechanical before 2026 R1 uses IronPython 2.7, so this stays f-string free and
+# every accessor is guarded: a missing property must degrade, never raise.
+_SCRIPT_HELPERS = """
+import json
+
+
+def _quantity(value):
+    # Normalize a Mechanical Quantity to value/unit, tolerating plain numbers.
+    if value is None:
+        return None
+    try:
+        return {'value': float(value.Value), 'unit': str(value.Unit)}
+    except:
+        pass
+    try:
+        return {'value': float(value), 'unit': None}
+    except:
+        return {'display': str(value)}
+
+
+def _category(obj):
+    # Return the Mechanical object category, for example EquivalentStress.
+    try:
+        return str(obj.DataModelObjectCategory)
+    except:
+        return 'Unknown'
+
+"""
+
 
 def _structured_error(error: NotConnectedError | InvalidArgumentsError | UpstreamError) -> str:
     """Serialize a known tool error for clients that can handle structured results."""
@@ -917,7 +950,10 @@ def get_model_info(ctx: Context) -> str:
     Returns
     -------
     str
-        JSON string containing model information.
+        JSON string containing model information. Includes ``project``,
+        ``model``, ``geometry``, ``mesh`` (counts plus the active mesh metric),
+        ``analyses_count``, ``named_selections``, ``materials``, ``unit_system``,
+        ``analyses``, and ``boundary_conditions``.
     """
     mechanical = ctx.request_context.lifespan_context.mechanical
 
@@ -929,9 +965,9 @@ def get_model_info(ctx: Context) -> str:
 
     try:
         # Script to gather model information
-        script = """
-import json
-
+        script = (
+            _SCRIPT_HELPERS
+            + """
 model_info = {}
 
 # Get Project info
@@ -980,8 +1016,77 @@ if hasattr(model, 'Analyses') and model.Analyses is not None:
 else:
     model_info['analyses_count'] = 0
 
+# Active mesh metric. Read-only: the metric is not changed, so a model that has
+# no metric selected reports None rather than being mutated by an info call.
+try:
+    metric_name = str(mesh.MeshMetric)
+    if metric_name and metric_name.lower() != 'none':
+        model_info['mesh']['metric'] = {
+            'name': metric_name,
+            'minimum': _quantity(mesh.Minimum),
+            'maximum': _quantity(mesh.Maximum),
+            'average': _quantity(mesh.Average),
+            'standard_deviation': _quantity(mesh.StandardDeviation),
+        }
+    else:
+        model_info['mesh']['metric'] = None
+except:
+    model_info['mesh']['metric'] = None
+
+# Named selections are the recommended scoping target, so expose their names.
+try:
+    model_info['named_selections'] = [
+        child.Name for child in Model.NamedSelections.Children
+    ]
+except:
+    model_info['named_selections'] = []
+
+try:
+    model_info['materials'] = [child.Name for child in Model.Materials.Children]
+except:
+    model_info['materials'] = []
+
+try:
+    model_info['unit_system'] = str(ExtAPI.Application.ActiveUnitSystem)
+except:
+    model_info['unit_system'] = None
+
+# Per-analysis detail, including everything scoped under each analysis that is
+# not an analysis-settings or solution folder (loads, supports, conditions).
+analyses = []
+boundary_conditions = []
+try:
+    for analysis_idx in range(Model.Analyses.Count):
+        analysis = Model.Analyses[analysis_idx]
+        try:
+            solution_status = str(analysis.Solution.Status)
+        except:
+            solution_status = 'Unknown'
+        analyses.append({
+            'index': analysis_idx,
+            'name': analysis.Name,
+            'type': str(analysis.AnalysisType),
+            'solution_status': solution_status,
+        })
+        for child_idx in range(analysis.Children.Count):
+            child = analysis.Children[child_idx]
+            category = _category(child)
+            if category in ('AnalysisSettings', 'Solution'):
+                continue
+            boundary_conditions.append({
+                'analysis_index': analysis_idx,
+                'name': child.Name,
+                'type': category,
+            })
+except:
+    pass
+
+model_info['analyses'] = analyses
+model_info['boundary_conditions'] = boundary_conditions
+
 json.dumps(model_info)
 """
+        )
         result = mechanical.run_python_script(script)
         return str(result) if result else json.dumps({"error": "Could not retrieve model info"})
     except Exception as e:
@@ -1005,8 +1110,9 @@ def screenshot(
     ctx : Context
         MCP context containing the server session and application context.
     view_type : str, default: ``"model"``
-        Type of view to capture. Options are ``"model"``, ``"mesh"``, and ``"result"``.
-
+        View to activate before capturing. Options are ``"model"`` (geometry),
+        ``"mesh"``, and ``"result"`` (the first evaluated result object). If the
+        requested view cannot be activated, the current view is captured instead.
 
     Returns
     -------
@@ -1029,6 +1135,17 @@ def screenshot(
             )
         ]
 
+    if view_type not in _SCREENSHOT_VIEW_TYPES:
+        return [
+            TextContent(
+                type="text",
+                text=(
+                    f"Invalid view_type '{view_type}'. "
+                    f"Choose one of: {', '.join(_SCREENSHOT_VIEW_TYPES)}."
+                ),
+            )
+        ]
+
     try:
         logger.info(f"Capturing Mechanical screenshot (type: {view_type})...")
 
@@ -1038,7 +1155,32 @@ def screenshot(
 
         # Script to capture screenshot using Mechanical's Graphics API
         script = f"""
-import os
+import json
+
+requested_view = {json.dumps(view_type)}
+activated = "current"
+
+# Activate the requested view so the export reflects view_type.
+try:
+    if requested_view == "mesh":
+        Model.Mesh.Activate()
+        activated = "mesh"
+    elif requested_view == "result":
+        for _ai in range(Model.Analyses.Count):
+            _solution = Model.Analyses[_ai].Solution
+            for _ci in range(_solution.Children.Count):
+                _child = _solution.Children[_ci]
+                if hasattr(_child, 'Maximum'):
+                    _child.Activate()
+                    activated = "result"
+                    break
+            if activated == "result":
+                break
+    else:
+        Model.Geometry.Activate()
+        activated = "model"
+except:
+    activated = "current"
 
 # Get the Graphics object
 graphics = ExtAPI.Graphics
@@ -1055,7 +1197,7 @@ except:
     # Approach 2: Simpler export (older versions)
     graphics.ExportImage(r"{temp_path}")
 
-r"{temp_path}"
+json.dumps({{"path": r"{temp_path}", "activated": activated}})
 """
         try:
             result = mechanical.run_python_script(script)
@@ -1063,6 +1205,14 @@ r"{temp_path}"
         except Exception as e:
             logger.warning(f"Graphics export failed: {e}")
             return [TextContent(type="text", text=f"Screenshot capture failed: {str(e)}")]
+
+        # The script reports the view it managed to activate, which can differ from
+        # view_type when the requested object is unavailable (for example, no results yet).
+        activated_view = view_type
+        try:
+            activated_view = str(json.loads(str(result))["activated"])
+        except (ValueError, TypeError, KeyError):
+            pass
 
         # Verify file was created
         image_path = Path(temp_path)
@@ -1089,7 +1239,9 @@ r"{temp_path}"
 
         # Return both text (file path) and image content
         return [
-            TextContent(type="text", text="Screenshot captured successfully."),
+            TextContent(
+                type="text", text=f"Screenshot captured successfully (view: {activated_view})."
+            ),
             ImageContent(type="image", data=base64_data, mimeType=mime_type),
         ]
 
@@ -1423,7 +1575,9 @@ def solve_analysis(
         Index of the analysis to solve (0-based). The default, ``0``,
         corresponds to the first analysis.
     wait : bool, default: True
-        Whether to wait for the solution to complete.
+        Whether to block until the solve finishes. When ``False``, the solve is
+        started and the tool returns immediately. The reported ``status`` then
+        reflects the solver state at that moment rather than the final outcome.
 
     Returns
     -------
@@ -1463,9 +1617,9 @@ else:
     if mesh is None or mesh.Elements == 0:
         warnings.append("No mesh is generated. Mesh must be generated before solving.")
 
-    # Solve (always wait - background solve not supported with local solve config)
+    # Solve, honoring the caller's wait preference
     start_time = time.time()
-    analysis.Solve(True)
+    analysis.Solve({wait})
     elapsed = time.time() - start_time
 
     # Get solution status
@@ -1474,7 +1628,8 @@ else:
 
     # Build result
     solve_result = {{
-        "success": status == "Done",
+        "success": (status == "Done") if {wait} else True,
+        "waited": {wait},
         "status": status,
         "analysis_name": analysis.Name,
         "analysis_type": str(analysis.AnalysisType),
@@ -1511,6 +1666,7 @@ result
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
 def export_results(
     ctx: Context,
+    analysis_index: int = 0,
     result_type: str = "all",
     export_format: str = "png",
     output_dir: str | None = None,
@@ -1525,6 +1681,9 @@ def export_results(
     ----------
     ctx : Context
         MCP context containing the server session and application context.
+    analysis_index : int, default: 0
+        Index of the analysis to export results from (0-based). Use the same
+        index that was passed to ``solve_analysis``.
     result_type : str, default: ``"all"``
         Type of result to export. Options are ``"all"``, ``"deformation"``, ``"stress"``,
          ``"strain"``, or a specific result object name.
@@ -1565,10 +1724,24 @@ import os
 output_dir = {json.dumps(output_dir)}
 result_type = {json.dumps(result_type)}
 export_format = {json.dumps(export_format)}
+analysis_index = {analysis_index}
 
-solution = Model.Analyses[0].Solution if Model.Analyses.Count > 0 else None
+# Resolve the requested analysis before exporting so the results match the
+# analysis the caller solved.
+index_error = None
+if Model.Analyses.Count == 0:
+    solution = None
+elif analysis_index >= Model.Analyses.Count:
+    solution = None
+    index_error = (
+        "Analysis index {{0}} is out of range. Model has {{1}} analyses."
+    ).format(analysis_index, Model.Analyses.Count)
+else:
+    solution = Model.Analyses[analysis_index].Solution
 
-if solution is None:
+if index_error is not None:
+    result = json.dumps({{"success": False, "error": index_error}})
+elif solution is None:
     result = json.dumps({{"success": False, "error": "No analysis found in the model"}})
 elif str(solution.Status) != "Done":
     result = json.dumps({{
@@ -1646,6 +1819,119 @@ result
         error_msg = f"Error exporting results: {str(e)}"
         logger.error(error_msg)
         return json.dumps({"success": False, "error": error_msg})
+
+
+# Body of get_results_summary. The caller prepends ``analysis_filter``, set to
+# either None (all analyses) or a zero-based analysis index.
+_RESULTS_SUMMARY_SCRIPT = """
+if Model.Analyses.Count == 0:
+    summary = {'success': False, 'error': 'No analyses are defined in the model.'}
+elif analysis_filter is not None and analysis_filter >= Model.Analyses.Count:
+    summary = {
+        'success': False,
+        'error': 'Analysis index {0} is out of range. Model has {1} analyses.'.format(
+            analysis_filter, Model.Analyses.Count
+        ),
+    }
+else:
+    entries = []
+    for analysis_idx in range(Model.Analyses.Count):
+        if analysis_filter is not None and analysis_idx != analysis_filter:
+            continue
+
+        analysis = Model.Analyses[analysis_idx]
+        solution = analysis.Solution
+        try:
+            status = str(solution.Status)
+        except:
+            status = 'Unknown'
+
+        entry = {
+            'analysis_index': analysis_idx,
+            'analysis_name': analysis.Name,
+            'analysis_type': str(analysis.AnalysisType),
+            'solution_status': status,
+            'results': [],
+        }
+
+        # Extrema are only meaningful once the solve has finished.
+        if status == 'Done':
+            try:
+                solution.EvaluateAllResults()
+            except:
+                pass
+
+        for child_idx in range(solution.Children.Count):
+            child = solution.Children[child_idx]
+            # Result objects are the ones exposing extrema.
+            if not hasattr(child, 'Maximum'):
+                continue
+            item = {'name': child.Name, 'type': _category(child)}
+            for key, attr in (
+                ('minimum', 'Minimum'),
+                ('maximum', 'Maximum'),
+                ('average', 'Average'),
+            ):
+                try:
+                    item[key] = _quantity(getattr(child, attr))
+                except:
+                    item[key] = None
+            entry['results'].append(item)
+
+        entry['result_count'] = len(entry['results'])
+        entries.append(entry)
+
+    summary = {'success': True, 'analysis_count': len(entries), 'analyses': entries}
+
+json.dumps(summary)
+"""
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG})
+def get_results_summary(
+    ctx: Context,
+    analysis_index: int | None = None,
+) -> str:
+    """Return solved result values as structured data.
+
+    Use this after ``solve_analysis`` to read result extrema directly, instead of
+    exporting files and reading them back. Every evaluated result object is
+    reported generically, so custom and user-defined results are included without
+    needing a dedicated tool per result type.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    analysis_index : int, optional
+        Restrict the summary to a single analysis (0-based). When ``None``, every
+        analysis in the model is reported.
+
+    Returns
+    -------
+    str
+        JSON string with one entry per analysis, each listing its result objects
+        with their minimum, maximum, and average values and units.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+    mechanical = cast(Any, mechanical)
+
+    if analysis_index is not None and analysis_index < 0:
+        return _structured_error(InvalidArgumentsError("analysis_index must be zero or greater."))
+
+    # Coerced to an int literal, so the value cannot inject script content.
+    selector = "None" if analysis_index is None else str(int(analysis_index))
+
+    try:
+        script = f"{_SCRIPT_HELPERS}\nanalysis_filter = {selector}\n{_RESULTS_SUMMARY_SCRIPT}"
+        result = mechanical.run_python_script(script)
+        if not result:
+            return _structured_error(UpstreamError("No response from Mechanical."))
+        return str(result)
+    except Exception as exc:
+        return _structured_error(UpstreamError(f"Error reading results: {exc}"))
 
 
 ####################################################################################################

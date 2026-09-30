@@ -332,9 +332,10 @@ mesh = Model.Mesh
 # Generate mesh with default settings
 mesh.GenerateMesh()
 
-# Get mesh statistics
-print("Nodes: {0}".format(mesh.Nodes.Count if mesh.Nodes else 0))
-print("Elements: {0}".format(mesh.Elements.Count if mesh.Elements else 0))
+# Get mesh statistics. Mesh.Nodes and Mesh.Elements are integer counts,
+# so do not call .Count on them.
+print("Nodes: {0}".format(mesh.Nodes))
+print("Elements: {0}".format(mesh.Elements))
 '''
 mechanical.run_python_script(script)
 ```
