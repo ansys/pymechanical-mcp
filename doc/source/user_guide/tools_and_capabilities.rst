@@ -79,7 +79,12 @@ Available after connection
      - Solve the analysis selected by ``analysis_index``. Set ``wait=False`` to
        return as soon as the solve starts.
    * - ``get_model_info``
-     - Return a structured model summary (geometry, mesh, analyses, results).
+     - Return a structured model summary: geometry and mesh counts, active mesh
+       metric, named selections, materials, unit system, analyses, and boundary
+       conditions.
+   * - ``get_results_summary``
+     - Return solved result minima, maxima, and averages with units, without
+       exporting files.
    * - ``screenshot``
      - Capture the ``model``, ``mesh``, or ``result`` view.
    * - ``get_mechanical_logs``
