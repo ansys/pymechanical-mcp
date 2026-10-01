@@ -99,8 +99,8 @@ intersphinx_mapping = {
 numpydoc_show_class_members = False
 numpydoc_xref_param_type = True
 numpydoc_xref_aliases = {
-    "bool": "python:bool",
-    "boolean": "python:bool",
+    "bool": ":class:`python:bool`",
+    "boolean": ":class:`python:bool`",
 }
 autosectionlabel_prefix_document = True
 
