@@ -20,7 +20,7 @@ import base64
 import inspect
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import tempfile
 from typing import Any, cast
@@ -818,7 +818,7 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
             except Exception:
                 remote_files = []
             if file_name not in remote_files:
-                matches = [f for f in remote_files if Path(f).name == file_name]
+                matches = [f for f in remote_files if PureWindowsPath(f).name == file_name]
                 if len(matches) == 1:
                     resolved_name = matches[0]
                 elif len(matches) > 1:
