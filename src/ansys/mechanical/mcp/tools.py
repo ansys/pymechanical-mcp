@@ -786,7 +786,10 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
     ctx : Context
         MCP context containing the server session and application context.
     file_name : str
-        Name of the file to download from the Mechanical working directory.
+        Name of the file to download from the Mechanical working directory. A
+        bare file name (for example ``"beam.step"``) is matched by its base
+        name. Glob patterns (for example ``"*.png"``) and full paths returned
+        by ``list_files`` are also accepted.
     target_dir : str, optional
         Local directory to save the downloaded file. If ``None``, the current directory is used.
 
@@ -804,8 +807,29 @@ def download_file(ctx: Context, file_name: str, target_dir: str | None = None) -
         )
 
     try:
+        # PyMechanical's download() matches `file_name` either exactly against
+        # the full paths returned by list_files(), or as a glob pattern
+        # containing "*". A bare base name (the common case) matches neither,
+        # so resolve it to the corresponding full remote path first.
+        resolved_name = file_name
+        if "*" not in file_name:
+            try:
+                remote_files = mechanical.list_files()
+            except Exception:
+                remote_files = []
+            if file_name not in remote_files:
+                matches = [f for f in remote_files if Path(f).name == file_name]
+                if len(matches) == 1:
+                    resolved_name = matches[0]
+                elif len(matches) > 1:
+                    candidates = "\n".join(f"  - {m}" for m in matches)
+                    return (
+                        f"Multiple files named '{file_name}' exist in the working "
+                        f"directory. Specify the full path:\n{candidates}"
+                    )
+
         local_paths = mechanical.download(
-            file_name,
+            resolved_name,
             target_dir=target_dir,
             progress_bar=False,
         )
@@ -1434,8 +1458,8 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
     """Save the current Mechanical project.
 
     This tool saves the current project to disk. If ``file_path`` is provided,
-    the project is saved to that location (Save As). Otherwise, the project
-    is saved in place.
+    the project is saved to that location (Save As), overwriting an existing
+    file at that path. Otherwise, the project is saved in place.
 
     Parameters
     ----------
@@ -1443,7 +1467,9 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
         MCP context containing the server session and application context.
     file_path : str, default: None
         Full path for saving the project (Save As). The path should end with
-        a ``.mechdb`` extension. If ``None``, the project is savedin the current location.
+        a ``.mechdb`` extension. The path is resolved on the connected
+        Mechanical instance, which may be a different machine than the MCP
+        server. If ``None``, the project is saved in the current location.
 
     Returns
     -------
@@ -1464,16 +1490,13 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
             if not file_path.lower().endswith(".mechdb"):
                 file_path = file_path + ".mechdb"
 
-            # Ensure parent directory exists
-            parent = Path(file_path).parent
-            if not parent.exists():
-                return f"Directory does not exist: {parent}"
-
             # Save As: use scripting API. json.dumps() safely escapes the
             # path into a Python string literal so embedded quotes,
             # backslashes, or other special characters cannot break out of
-            # the script.
-            script = f"ExtAPI.DataModel.Project.SaveAs({json.dumps(file_path)})"
+            # the script. ``overwrite=True`` lets repeated saves to the same
+            # path succeed, matching the expected idempotent "save" behavior
+            # (Project.SaveAs otherwise raises if the file already exists).
+            script = f"ExtAPI.DataModel.Project.SaveAs({json.dumps(file_path)}, True)"
             mechanical.run_python_script(script)
             return f"Project saved to: {file_path}"
         else:
@@ -1485,6 +1508,16 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
             return f"Project saved successfully. Project directory: {proj_dir}"
 
     except Exception as e:
+        # Project.Save() raises this specific error when the project has
+        # never been saved before, since it has no destination path to infer.
+        # Surface a clear, actionable message instead of the raw gRPC/IronPython
+        # traceback.
+        if file_path is None and "never saved before" in str(e):
+            return (
+                "Project has not been saved yet, so it has no location to save "
+                "in place. Call save_project with a file_path to save it for "
+                "the first time (Save As)."
+            )
         error_msg = f"Error saving project: {str(e)}"
         logger.error(error_msg)
         return error_msg
@@ -1502,7 +1535,9 @@ def open_project(ctx: Context, file_path: str) -> str:
     ctx : Context
         MCP context containing the server session and application context.
     file_path : str
-        Full path to the MECHDB file to open.
+        Full path to the MECHDB file. The path is resolved on the connected
+        Mechanical instance, which may be a different machine than the MCP
+        server, so it is not required to exist on the local filesystem.
 
     Returns
     -------
@@ -1516,9 +1551,6 @@ def open_project(ctx: Context, file_path: str) -> str:
             "No Mechanical connection is available. "
             "Use connect_to_mechanical tool to establish a connection."
         )
-
-    if not Path(file_path).exists():
-        return f"Project file not found: {file_path}"
 
     if not file_path.lower().endswith(".mechdb"):
         return f"Invalid file type. Expected MECHDB file. Got: {file_path}"
@@ -1550,7 +1582,18 @@ json.dumps(info)
         return f"Project opened successfully: {file_path}\nProject info: {result}"
 
     except Exception as e:
-        error_msg = f"Error opening project: {str(e)}"
+        # The path is resolved on the (possibly remote) Mechanical instance, not
+        # on the MCP server, so only use the local filesystem to enrich a
+        # failure that has already occurred, never to pre-emptively block a
+        # path that may legitimately exist only on a remote Mechanical server.
+        hint = ""
+        if not Path(file_path).exists():
+            hint = (
+                " The path does not exist on the local MCP server filesystem; "
+                "if Mechanical is running on a different machine, verify the "
+                "path exists there instead."
+            )
+        error_msg = f"Error opening project: {str(e)}.{hint}"
         logger.error(error_msg)
         return error_msg
 
