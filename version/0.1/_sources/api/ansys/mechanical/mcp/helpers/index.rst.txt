@@ -1,0 +1,250 @@
+
+
+
+
+
+
+The ``helpers.py`` module
+=========================
+
+.. py:module:: ansys.mechanical.mcp.helpers
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: helpers
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~resolve_transport_mode`
+            - Determine the gRPC transport mode and certificate directory to use.
+
+
+          * - :py:obj:`~list_instances`
+            - List running Mechanical instances on the system.
+
+
+          * - :py:obj:`~get_info`
+            - Get information from the Mechanical instance.
+
+
+
+    .. tab-item:: Attributes
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~logger`
+            - 
+
+
+
+    .. tab-item:: Constants
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~VALID_TRANSPORT_MODES`
+            - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+Helper functions for PyMechanical-MCP.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: resolve_transport_mode(transport_mode: str | None = None, certs_dir: str | None = None) -> tuple[str | None, str | None]
+
+   
+   Determine the gRPC transport mode and certificate directory to use.
+
+   The resolution strategy follows:
+
+   1. **Explicit override**: If the caller (CLI flag, environment variable, or tool
+      parameter) supplies a concrete mode (``insecure``, ``mtls``, or
+      ``wnua``), honor it unconditionally.
+   2. **Auto-detect** (``transport_mode`` is ``None`` or ``"auto"``):
+        - On **Windows**: Return ``None`` so that PyMechanical applies its
+          own platform default (``wnua``).
+        - On **Linux / Docker**: Return ``"mtls"`` plus the resolved
+          certificate directory when mTLS certificate files are found.
+          Otherwise, return ``"insecure"`` (the only mode that can
+          succeed without certificates). WNUA is Windows-only.
+
+   :Parameters:
+
+       **transport_mode** : :class:`python:str` | :data:`python:None`
+           Transport mode requested by the user. Options are
+           ``"auto"`` (default), ``"insecure"``, ``"mtls"``, and ``"wnua"``.
+           ``None`` is treated identically to ``"auto"``.
+
+       **certs_dir** : :class:`python:str` | :data:`python:None`
+           Explicit path to a directory containing ``ca.crt``,
+           ``client.crt``, and ``client.key`` for mTLS.
+
+
+
+   :Returns:
+
+       :class:`python:tuple`\[:class:`python:str` | :data:`python:None`, :class:`python:str` | :data:`python:None`]
+           ``(resolved_transport_mode, resolved_certs_dir)``
+           
+           ``resolved_transport_mode`` is ``None`` when the caller should let
+           PyMechanical choose (for example, Windows auto-detect).
+           ``resolved_certs_dir`` is ``None`` unless mTLS is selected and
+           certificates were located.
+
+
+
+
+   :Raises:
+
+       :obj:`ValueError`
+           If ``transport_mode`` is not one of the accepted values.
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: list_instances(instances: bool = False, long: bool = False, cmd: bool = False, location: bool = False) -> str
+
+   
+   List running Mechanical instances on the system.
+
+   This function scans all running processes to identify Ansys Mechanical instances
+   that are using gRPC communication. It returns a formatted table with information
+   about each discovered instance.
+
+   :Parameters:
+
+       **instances** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:False`
+           If ``True``, only show main Mechanical instances (exclude child processes).
+           If ``False``, show all Mechanical-related processes.
+
+       **long** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:False`
+           If ``True``, enable verbose output including command line and working directory.
+           This automatically sets both ``cmd`` and ``location`` to ``True``.
+
+       **cmd** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:False`
+           If ``True``, include the command-line arguments in the output table.
+
+       **location** : :ref:`bool <python:bltin-boolean-values>`, default: :data:`python:False`
+           If ``True``, include the working directory path in the output table.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           A formatted table string containing information about Mechanical instances.
+           The table includes columns for process name, status, gRPC port, PID,
+           and optionally the command line and working directory based on the parameters.
+
+
+
+
+
+
+
+
+   .. rubric:: Notes
+
+   - This function identifies Mechanical processes by looking for ``AnsysWBU`` or
+     ``mechanical`` in the process name or command line.
+   - Only processes with status ``RUNNING``, ``IDLE``, or ``SLEEPING`` are considered valid.
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_info(mechanical: ansys.mechanical.core.Mechanical) -> dict[str, str | dict[str, Any]]
+
+   
+   Get information from the Mechanical instance.
+
+
+   :Parameters:
+
+       **mechanical** : :obj:`Mechanical`
+           Mechanical instance.
+
+
+
+   :Returns:
+
+       :class:`python:dict`\[:class:`python:str`, :class:`python:str` | :class:`python:dict`\[:class:`python:str`, :obj:`Any`]]
+           Dictionary containing Mechanical information.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: VALID_TRANSPORT_MODES
+
+.. py:data:: logger
+
+
+

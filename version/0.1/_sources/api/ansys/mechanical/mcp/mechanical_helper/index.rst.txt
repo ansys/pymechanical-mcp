@@ -1,0 +1,92 @@
+
+
+
+
+
+
+The ``mechanical_helper`` package
+=====================================
+
+.. py:module:: ansys.mechanical.mcp.mechanical_helper
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: mechanical_helper
+.. tab-set::
+
+
+    .. tab-item:: Submodules
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.mechanical_helper.startup_code`
+            - Startup code for PyMechanical persistent Python session.
+
+
+
+
+
+
+
+
+
+
+
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :hidden:
+
+    <span class="nf nf-fa-file"></span> startup_code</api/ansys/mechanical/mcp/mechanical_helper/startup_code/index>
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+
+Mechanical helper module for startup code and utilities.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+

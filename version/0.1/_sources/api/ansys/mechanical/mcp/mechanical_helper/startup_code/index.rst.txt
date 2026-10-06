@@ -1,0 +1,167 @@
+
+
+
+
+
+
+The ``startup_code.py`` module
+==============================
+
+.. py:module:: ansys.mechanical.mcp.mechanical_helper.startup_code
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: startup_code
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~save_plot`
+            - Save the PyVista plot to file and return as base64.
+
+
+          * - :py:obj:`~save_matplotlib_plot`
+            - Return the current Matplotlib plot as a base64-encoded PNG image.
+
+
+
+
+    .. tab-item:: Constants
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~MATPLOTLIB_AVAILABLE`
+            - 
+
+
+          * - :py:obj:`~PYVISTA_AVAILABLE`
+            - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+Startup code for PyMechanical persistent Python session.
+
+This module contains helper functions and configurations that are
+loaded when the persistent Python session starts.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: save_plot(plotter) -> str
+
+   
+   Save the PyVista plot to file and return as base64.
+
+
+   :Parameters:
+
+       **plotter** : :obj:`pv.Plotter`
+           PyVista plotter to save.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Base64 data URI of the plot.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: save_matplotlib_plot(dpi=150)
+
+   
+   Return the current Matplotlib plot as a base64-encoded PNG image.
+
+
+   :Parameters:
+
+       **dpi** : :class:`python:int`
+           Resolution in dots per inch.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Base64 data URI of the plot.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: MATPLOTLIB_AVAILABLE
+   :value: True
+
+
+.. py:data:: PYVISTA_AVAILABLE
+   :value: True
+
+
+
+
