@@ -1392,6 +1392,60 @@ class TestDownloadFile:
 
         assert "Error downloading file" in result
 
+    def test_download_file_resolves_bare_name_to_full_path(self, mock_context, tmp_path):
+        """A bare file name must resolve to the full path list_files() returns.
+
+        Mechanical.download() matches ``file_name`` exactly against list_files()
+        output (full paths) or as a glob; a bare base name matches neither.
+        """
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        full_path = r"C:\Work\AnsysMech1234\beam.step"
+        mechanical.list_files.return_value = [full_path]
+        mechanical.download.return_value = [str(tmp_path / "beam.step")]
+
+        result = download_file(mock_context, "beam.step", str(tmp_path))
+
+        assert "Successfully downloaded" in result
+        mechanical.download.assert_called_once_with(
+            full_path, target_dir=str(tmp_path), progress_bar=False
+        )
+
+    def test_download_file_exact_full_path_passes_through(self, mock_context, tmp_path):
+        """A caller-supplied full path that already matches must not be altered."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        full_path = r"C:\Work\AnsysMech1234\beam.step"
+        mechanical.list_files.return_value = [full_path]
+        mechanical.download.return_value = [str(tmp_path / "beam.step")]
+
+        download_file(mock_context, full_path, str(tmp_path))
+
+        mechanical.download.assert_called_once_with(
+            full_path, target_dir=str(tmp_path), progress_bar=False
+        )
+
+    def test_download_file_glob_pattern_passes_through(self, mock_context):
+        """A caller-supplied glob pattern must be forwarded unresolved."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.list_files.return_value = [r"C:\Work\AnsysMech1234\beam.step"]
+        mechanical.download.return_value = []
+
+        download_file(mock_context, "*.step")
+
+        mechanical.download.assert_called_once_with("*.step", target_dir=None, progress_bar=False)
+
+    def test_download_file_ambiguous_basename(self, mock_context):
+        """Multiple remote files sharing a base name must be reported, not guessed."""
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.list_files.return_value = [
+            r"C:\Work\A\beam.step",
+            r"C:\Work\B\beam.step",
+        ]
+
+        result = download_file(mock_context, "beam.step")
+
+        assert "Multiple files named" in result
+        mechanical.download.assert_not_called()
+
 
 @pytest.mark.unit
 class TestClearMechanical:
@@ -1592,6 +1646,19 @@ class TestSaveProject:
         assert "Project saved to" in result
         assert file_path in result
 
+    def test_save_project_as_new_path_overwrites(self, mock_context, tmp_path):
+        """SaveAs must pass overwrite=True so re-saving to the same path succeeds."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        file_path = str(tmp_path / "test_project.mechdb")
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = ""
+
+        save_project(mock_context, file_path=file_path)
+
+        script = mechanical.run_python_script.call_args[0][0]
+        assert script == f"ExtAPI.DataModel.Project.SaveAs({json.dumps(file_path)}, True)"
+
     def test_save_project_adds_extension(self, mock_context, tmp_path):
         """Test that .mechdb extension is added if missing."""
         from ansys.mechanical.mcp.tools import save_project
@@ -1603,12 +1670,36 @@ class TestSaveProject:
         assert "Project saved to" in result
         assert ".mechdb" in result
 
-    def test_save_project_invalid_directory(self, mock_context):
-        """Test saving project to non-existent directory."""
+    def test_save_project_does_not_require_local_directory(self, mock_context):
+        """The target path is resolved on Mechanical, which may be remote, so a
+        locally-nonexistent directory must not block the save.
+        """
         from ansys.mechanical.mcp.tools import save_project
 
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.return_value = ""
+
         result = save_project(mock_context, file_path="/nonexistent_xyz_dir/subdir/project.mechdb")
-        assert "Directory does not exist" in result
+
+        assert "Project saved to" in result
+        mechanical.run_python_script.assert_called_once()
+
+    def test_save_project_in_place_never_saved_gives_clear_message(self, mock_context):
+        """Project.Save() on a never-saved project must not leak a raw traceback."""
+        from ansys.mechanical.mcp.tools import save_project
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception(
+                "System.Exception: Project is never saved before, call 'SaveAs' "
+                "method with a filePath instead."
+            )
+        )
+
+        result = save_project(mock_context)
+
+        assert "has not been saved yet" in result
+        assert "Traceback" not in result
+        assert "IronPython" not in result
 
     def test_save_project_error(self, mock_context):
         """Test error handling during save."""
@@ -1634,12 +1725,35 @@ class TestOpenProject:
         result = open_project(mock_context_no_mechanical, "test.mechdb")
         assert "No Mechanical connection is available" in result
 
-    def test_open_project_file_not_found(self, mock_context):
-        """Test opening a non-existent project file."""
+    def test_open_project_attempts_remote_path_not_present_locally(self, mock_context):
+        """The path is resolved on Mechanical (possibly remote), so a path that
+        does not exist on the local MCP server filesystem must still be attempted.
+        """
         from ansys.mechanical.mcp.tools import open_project
 
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        mechanical.run_python_script.side_effect = [
+            "",
+            '{"name": "RemoteProject", "product_version": "2025 R2"}',
+        ]
+
         result = open_project(mock_context, "Z:\\nonexistent\\project.mechdb")
-        assert "Project file not found" in result
+
+        assert "Project opened successfully" in result
+        assert mechanical.run_python_script.call_count == 2
+
+    def test_open_project_failure_hints_when_path_missing_locally(self, mock_context):
+        """A failed open for a locally-absent path should hint at the remote-path cause."""
+        from ansys.mechanical.mcp.tools import open_project
+
+        mock_context.request_context.lifespan_context.mechanical.run_python_script.side_effect = (
+            Exception("File not found")
+        )
+
+        result = open_project(mock_context, "Z:\\nonexistent\\project.mechdb")
+
+        assert "Error opening project" in result
+        assert "different machine" in result
 
     def test_open_project_invalid_extension(self, mock_context, tmp_path):
         """Test opening a file with wrong extension."""
