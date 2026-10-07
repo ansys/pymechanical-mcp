@@ -49,23 +49,23 @@ dependencies = [
 
 [project.optional-dependencies]
 tests = [
-    "ansys-common-mcp==0.3.4",
+    "ansys-common-mcp==0.3.5",
     "ansys-mechanical-core==0.13.3",
     "matplotlib==3.11.2",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
-    "pytest-mock==3.15.1",
+    "pytest-mock==3.16.0",
     "tabulate==0.10.0",
 ]
 
 doc = [
-    "ansys-common-mcp==0.3.4",
+    "ansys-common-mcp==0.3.5",
     "ansys-mechanical-core==0.13.3",
     "ansys-sphinx-theme[autoapi,changelog]==1.11.0",
     "matplotlib==3.11.2",
     "numpydoc==1.11.0",
-    "sphinx-autodoc-typehints==3.13.7",
+    "sphinx-autodoc-typehints==3.13.8",
     "sphinx-design==0.7.0",
     "sphinx-notfound-page==1.1.0",
     "tabulate==0.10.0",
