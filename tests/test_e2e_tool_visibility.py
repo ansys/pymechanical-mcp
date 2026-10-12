@@ -72,11 +72,8 @@ def _make_mock_mechanical():
 async def test_dynamic_mode_hides_tools_by_default():
     """Default (dynamic) mode: Mechanical-only tools are hidden until connected.
 
-    Note: this only checks the initial ``tools/list`` snapshot. Whether
-    ``launch_mechanical``/``connect_to_mechanical`` actually re-enables the
-    tags afterwards is already covered directly (without going through the
-    MCP protocol layer) by ``test_tools.py::test_launch_enables_requires_mechanical_tools``
-    and ``test_disconnect_disables_requires_mechanical_tools``.
+    Note: this only checks the initial ``tools/list`` snapshot. Visibility after
+    launch, connect, and disconnect is covered by the protocol-level tests below.
     """
     # Simulate what launcher() does by default (--static-tools NOT passed).
     app.disable(tags={REQUIRES_MECHANICAL_TAG})
@@ -129,3 +126,67 @@ async def test_static_mode_exposes_all_tools_and_degrades_gracefully_before_conn
 
         result_after_connect = await client.call_tool("list_files", {})
         assert "a.mechdb" in result_after_connect.data
+
+
+async def _tool_names(client):
+    return {t.name for t in await client.list_tools()}
+
+
+@pytest.mark.asyncio
+async def test_dynamic_mode_reveals_tools_after_launch_and_hides_after_disconnect():
+    """Connection tools must appear on later requests, not only within the launch call."""
+    app.disable(tags={REQUIRES_MECHANICAL_TAG})
+    mock_mechanical = _make_mock_mechanical()
+
+    async with Client(app) as client:
+        assert "screenshot" not in await _tool_names(client)
+
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
+            await client.call_tool("launch_mechanical", {"batch": True})
+
+        names = await _tool_names(client)
+        assert {"screenshot", "run_python_script", "disconnect_from_mechanical"} <= names
+        assert "a.mechdb" in (await client.call_tool("list_files", {})).data
+
+        await client.call_tool("disconnect_from_mechanical", {})
+        mock_mechanical.exit.assert_called_once()
+        names = await _tool_names(client)
+        assert "screenshot" not in names
+        assert "launch_mechanical" in names
+
+
+@pytest.mark.asyncio
+async def test_dynamic_mode_reveals_tools_after_connect():
+    app.disable(tags={REQUIRES_MECHANICAL_TAG})
+    mock_mechanical = _make_mock_mechanical()
+
+    async with Client(app) as client:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=mock_mechanical,
+        ):
+            await client.call_tool("connect_to_mechanical", {"port": 10000})
+        assert "screenshot" in await _tool_names(client)
+
+        await client.call_tool("disconnect_from_mechanical", {})
+        # An attached instance is released, not shut down.
+        mock_mechanical.exit.assert_not_called()
+        assert "screenshot" not in await _tool_names(client)
+
+
+@pytest.mark.asyncio
+async def test_static_mode_keeps_tools_visible_after_disconnect():
+    setattr(app, "_cli_config", {"connect_on_startup": False, "static_tools": True})
+    mock_mechanical = _make_mock_mechanical()
+
+    async with Client(app) as client:
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=mock_mechanical,
+        ):
+            await client.call_tool("launch_mechanical", {"batch": True})
+        await client.call_tool("disconnect_from_mechanical", {})
+        assert "screenshot" in await _tool_names(client)

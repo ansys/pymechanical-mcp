@@ -17,7 +17,8 @@
 """Lifespan and CLI entry for PyMechanical-MCP server with startup options."""
 
 import argparse
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, field
 import os
 import sys
 from typing import Any, Optional
@@ -40,6 +41,12 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     ----------
     mechanical : Optional[Any]
         Mechanical instance connection.
+    owns_mechanical : bool
+        Whether this server launched the connected Mechanical instance. Only owned
+        instances are shut down on disconnect or server exit; attached instances
+        are released and left running.
+    lifecycle_lock : asyncio.Lock
+        Serializes launch, connect, and disconnect operations.
     transport_type : str
         Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
     mechanical_ip : Optional[str]
@@ -70,6 +77,8 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     """
 
     mechanical: Any | None = None
+    owns_mechanical: bool = False
+    lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     transport_type: str = "stdio"
     mechanical_ip: str | None = None
     mechanical_port: int | None = None
@@ -182,6 +191,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
                     connect_kwargs["certs_dir"] = resolved_certs
 
                 context.mechanical = connect_to_mechanical(**connect_kwargs)
+                context.owns_mechanical = False
                 logger.info("Successfully connected to Mechanical on startup.")
 
             except Exception as e:
@@ -194,14 +204,20 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
     def product_cleanup(self):
         """Perform cleanup actions for Mechanical instances on shutdown."""
         context = self.context
-        # Cleanup on shutdown
-        if context.mechanical is not None:
-            try:
-                logger.info("Disconnecting from Mechanical...")
+        if context.mechanical is None:
+            return
+        try:
+            if context.owns_mechanical:
+                logger.info("Shutting down the Mechanical instance launched by this server...")
                 context.mechanical.exit()
-                logger.info("Mechanical disconnect complete")
-            except Exception as e:
-                logger.error(f"Error during Mechanical disconnect: {e}")
+            else:
+                logger.info("Releasing the attached Mechanical instance; it is left running.")
+            logger.info("Mechanical disconnect complete")
+        except Exception as e:
+            logger.error(f"Error during Mechanical disconnect: {e}")
+        finally:
+            context.mechanical = None
+            context.owns_mechanical = False
 
 
 # Pass lifespan to server
@@ -228,6 +244,23 @@ def _validate_port(port: int) -> int:
     if port < 1 or port > 65535:
         raise argparse.ArgumentTypeError("Port must be in range 1 to 65535.")
     return port
+
+
+def _build_cors_middleware(cors_origins: list[str]) -> list[Any]:
+    """Build the CORS middleware for the streamable HTTP transport."""
+    from starlette.middleware import Middleware
+    from starlette.middleware.cors import CORSMiddleware
+
+    return [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+            # Browser clients must read the session ID to continue an MCP session.
+            expose_headers=["mcp-session-id"],
+        )
+    ]
 
 
 def launcher(argv: list[str] | None = None) -> None:
@@ -385,8 +418,6 @@ def launcher(argv: list[str] | None = None) -> None:
     )
 
     # Run server using selected transport
-    import asyncio
-
     # import tools, contexts, and prompts to register them
     if not session.on_aali:
         from ansys.mechanical.mcp import contexts  # noqa: F401
@@ -411,10 +442,14 @@ def launcher(argv: list[str] | None = None) -> None:
     if args.transport_type == "stdio":
         asyncio.run(app.run_stdio_async())
     elif args.transport_type == "http":
+        http_kwargs: dict[str, Any] = {}
+        if cors_origins:
+            http_kwargs["middleware"] = _build_cors_middleware(cors_origins)
         asyncio.run(
             app.run_http_async(
                 transport="http",  # Use streamable HTTP (default)
                 host=args.http_host,
                 port=args.http_port,
+                **http_kwargs,
             )
         )

@@ -4,7 +4,7 @@ FROM python:3.13
 LABEL org.opencontainers.image.title="PyMechanical MCP Server"
 LABEL org.opencontainers.image.description="Model Context Protocol server for Ansys Mechanical through PyMechanical"
 LABEL org.opencontainers.image.source="https://github.com/ansys/pymechanical-mcp"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.authors="Tushar Bana,pyansys.core@ansys.com"
 LABEL org.opencontainers.image.vendor="ANSYS, Inc."
 
@@ -35,8 +35,9 @@ WORKDIR /app
 # Copy project files
 COPY . .
 
-# Install package. ansys-common-mcp requires a private PyPI index.
-# Pass PYANSYS_PYPI_INDEX_URL build-arg, or a BuildKit secret 'github_token'.
+# Install package. All dependencies are on public PyPI. An optional
+# PYANSYS_PYPI_INDEX_URL build-arg or BuildKit secret 'github_token' is still
+# honored for builds that pin unreleased dependencies.
 ARG PYANSYS_PYPI_INDEX_URL=""
 RUN --mount=type=secret,id=github_token \
     pip install --no-cache-dir --upgrade pip && \

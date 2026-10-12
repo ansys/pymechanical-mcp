@@ -154,9 +154,11 @@ Response: Mesh generated. Nodes: 1424, Elements: 667
 **Tool:** `run_python_script`
 
 > Always use Named Selections to scope loads and supports to specific geometry.
+> The bundled beam is 200 mm long and centered on the origin, so its end faces
+> are at x = -100 mm and x = 100 mm.
 
 ```python
-# Fixed end: face at x=0 (left face of beam)
+# Fixed end: face at x=-100 (left face of beam)
 ns_group = Model.AddNamedSelection()
 ns_group.ScopingMethod = GeometryDefineByType.Worksheet
 worksheet = ns_group.GenerationCriteria
@@ -166,12 +168,12 @@ criterion.Action = SelectionActionType.Add
 criterion.EntityType = SelectionType.GeoFace
 criterion.Criterion = SelectionCriterionType.LocationX
 criterion.Operator = SelectionOperatorType.Equal
-criterion.Value = Quantity("0 [mm]")
+criterion.Value = Quantity("-100 [mm]")
 worksheet.Add(criterion)
 ns_group.Generate()
 ns_group.Name = "FixedEnd"
 
-# Force end: face at x=200 (right face of beam)
+# Force end: face at x=100 (right face of beam)
 ns_force = Model.AddNamedSelection()
 ns_force.ScopingMethod = GeometryDefineByType.Worksheet
 worksheet2 = ns_force.GenerationCriteria
@@ -181,7 +183,7 @@ criterion2.Action = SelectionActionType.Add
 criterion2.EntityType = SelectionType.GeoFace
 criterion2.Criterion = SelectionCriterionType.LocationX
 criterion2.Operator = SelectionOperatorType.Equal
-criterion2.Value = Quantity("200 [mm]")
+criterion2.Value = Quantity("100 [mm]")
 worksheet2.Add(criterion2)
 ns_force.Generate()
 ns_force.Name = "ForceEnd"

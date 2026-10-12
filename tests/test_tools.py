@@ -496,8 +496,8 @@ class TestDisconnectFromMechanical:
 
     @pytest.mark.asyncio
     async def test_disconnect_success(self, mock_context):
-        """Test disconnecting from Mechanical successfully."""
-        # Store reference to check exit was called
+        """Disconnecting from a launched instance shuts it down."""
+        mock_context.request_context.lifespan_context.owns_mechanical = True
         mechanical_ref = mock_context.request_context.lifespan_context.mechanical
 
         result = await disconnect_from_mechanical(mock_context)
@@ -505,12 +505,58 @@ class TestDisconnectFromMechanical:
         # Verify successful disconnection
         assert isinstance(result, str)
         assert "Successfully disconnected from Mechanical" in result
+        assert "closed the instance" in result
 
         # Verify exit was called on the original object
         mechanical_ref.exit.assert_called_once()
 
         # Verify Mechanical was removed from context
         assert mock_context.request_context.lifespan_context.mechanical is None
+        assert mock_context.request_context.lifespan_context.owns_mechanical is False
+
+    @pytest.mark.asyncio
+    async def test_disconnect_attached_instance_is_left_running(self, mock_context):
+        """An attached instance must be released without a shutdown request."""
+        mechanical_ref = mock_context.request_context.lifespan_context.mechanical
+        assert mock_context.request_context.lifespan_context.owns_mechanical is False
+
+        result = await disconnect_from_mechanical(mock_context)
+
+        assert "Successfully disconnected from Mechanical" in result
+        assert "left running" in result
+        mechanical_ref.exit.assert_not_called()
+        assert mock_context.request_context.lifespan_context.mechanical is None
+        mock_context.disable_components.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_connect_then_disconnect_never_shuts_down(self, mock_context_no_mechanical):
+        """The connect -> disconnect path must never send a shutdown request."""
+        attached = MagicMock()
+        attached.version = "261"
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+            return_value=attached,
+        ):
+            await connect_to_mechanical(mock_context_no_mechanical)
+
+        assert mock_context_no_mechanical.request_context.lifespan_context.owns_mechanical is False
+        await disconnect_from_mechanical(mock_context_no_mechanical)
+        attached.exit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_launch_then_disconnect_shuts_down(self, mock_context_no_mechanical):
+        """The launch -> disconnect path must still close the launched instance."""
+        launched = MagicMock()
+        launched.version = "261"
+        with patch(
+            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+            return_value=launched,
+        ):
+            await launch_mechanical(mock_context_no_mechanical, batch=True)
+
+        assert mock_context_no_mechanical.request_context.lifespan_context.owns_mechanical is True
+        await disconnect_from_mechanical(mock_context_no_mechanical)
+        launched.exit.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_disconnect_no_connection(self, mock_context_no_mechanical):
@@ -537,6 +583,7 @@ class TestDisconnectFromMechanical:
     @pytest.mark.asyncio
     async def test_disconnect_error_during_exit(self, mock_context):
         """Test handling errors during disconnection."""
+        mock_context.request_context.lifespan_context.owns_mechanical = True
         mock_context.request_context.lifespan_context.mechanical._ip = "127.0.0.1"
         mock_context.request_context.lifespan_context.mechanical._port = 10000
         mock_context.request_context.lifespan_context.mechanical.exit.side_effect = Exception(
@@ -555,6 +602,7 @@ class TestDisconnectFromMechanical:
     @pytest.mark.asyncio
     async def test_disconnect_connection_lost(self, mock_context):
         """Test disconnecting when connection is already lost."""
+        mock_context.request_context.lifespan_context.owns_mechanical = True
         mock_context.request_context.lifespan_context.mechanical._ip = "127.0.0.1"
         mock_context.request_context.lifespan_context.mechanical._port = 10000
         mock_context.request_context.lifespan_context.mechanical.exit.side_effect = ConnectionError(
@@ -626,6 +674,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
             )
 
             # Verify Mechanical was stored in context
@@ -666,6 +715,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
                 port=10050,
             )
 
@@ -689,19 +739,29 @@ class TestLaunchMechanical:
                 "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
+            patch("ansys.mechanical.mcp.tools._pypim_configured", return_value=False),
+            patch(
+                "ansys.mechanical.mcp.tools.atp.get_mechanical_path",
+                return_value="C:/ANSYS/v252/aisol/bin/winx64/AnsysWBU.exe",
+            ) as mock_find,
         ):
             result = await launch_mechanical(mock_context_no_mechanical, version="252")
 
             # Verify successful launch
             assert "Successfully launched Mechanical" in result
             assert "2025 R2" in result
+            assert "C:/ANSYS/v252/aisol/bin/winx64/AnsysWBU.exe" in result
 
-            # Verify launch_mechanical was called with version
+            # The executable of the requested release is resolved, because
+            # PyMechanical ignores ``version`` for local launches.
+            mock_find.assert_called_once_with(allow_input=False, version=252)
             mock_launch.assert_called_once_with(
                 batch=False,
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
+                exec_file="C:/ANSYS/v252/aisol/bin/winx64/AnsysWBU.exe",
                 version="252",
             )
 
@@ -734,6 +794,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
             )
 
     @pytest.mark.asyncio
@@ -765,6 +826,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
             )
 
     @pytest.mark.parametrize("action", ["decline", "cancel"])
@@ -799,6 +861,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
             )
 
     @pytest.mark.asyncio
@@ -828,6 +891,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
             )
 
     @pytest.mark.asyncio
@@ -848,6 +912,7 @@ class TestLaunchMechanical:
                 "ansys.mechanical.mcp.tools.resolve_transport_mode",
                 return_value=(None, None),
             ),
+            patch("ansys.mechanical.mcp.tools.atp.version_from_path", return_value=241),
         ):
             result = await launch_mechanical(
                 mock_context_no_mechanical,
@@ -867,6 +932,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
                 exec_file=exec_path,
                 port=10001,
                 version="241",
@@ -991,6 +1057,7 @@ class TestLaunchMechanical:
                 loglevel="INFO",
                 cleanup_on_exit=True,
                 start_timeout=300,
+                allow_input=False,
                 port=10060,
             )
 

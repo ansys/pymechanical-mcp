@@ -54,13 +54,13 @@ Available after connection
    * - Tool
      - Description
    * - ``disconnect_from_mechanical``
-     - Gracefully detach from Mechanical.
+     - End the session. Closes an instance started by ``launch_mechanical`` and leaves an attached instance running.
    * - ``run_python_code``
      - Execute Python snippets in the persistent session.
    * - ``create_custom_plot``
      - Produce custom plots from analysis data.
    * - ``clear_mechanical``
-     - Clear context and release session resources.
+     - Clear the current model (unsaved work is lost). Mechanical and the connection stay open.
    * - ``run_python_script``
      - Execute a Mechanical script string or read one from a local file with ``file_path``.
    * - ``save_project``

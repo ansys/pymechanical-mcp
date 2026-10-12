@@ -6,7 +6,8 @@ Docker deployment
 PyMechanical-MCP supports containerized deployment with HTTP transport.
 The repository provides:
 
-- ``docker/Dockerfile``
+- ``docker/Dockerfile`` (built from the repository root)
+- ``docker/Dockerfile.dockerignore``
 - ``docker/docker-compose.yml``
 - ``docker/env.example``
 
@@ -57,7 +58,13 @@ Important environment variables
      - MCP HTTP bind host.
    * - ``HTTP_PORT``
      - ``8080``
-     - MCP HTTP port.
+     - MCP HTTP port, used both inside the container and on the host.
+   * - ``HTTP_BIND_ADDRESS``
+     - ``127.0.0.1``
+     - Host interface that publishes the MCP HTTP port.
+   * - ``MECHANICAL_BIND_ADDRESS``
+     - ``127.0.0.1``
+     - Host interface that publishes the Mechanical gRPC port.
    * - ``CONNECT_ON_STARTUP``
      - ``false``
      - Whether PyMechanical-MCP is to connect to Mechanical on startup.
@@ -92,6 +99,10 @@ Visual Studio Code MCP client example (HTTP)
 Limitations
 -----------
 
+- The MCP HTTP endpoint has no authentication and can run code through its
+  tools. Compose publishes it, and the Mechanical gRPC port, on ``127.0.0.1``
+  only. Set ``HTTP_BIND_ADDRESS`` or ``MECHANICAL_BIND_ADDRESS`` to ``0.0.0.0``
+  only on a trusted network.
 - Containerizing PyMechanical-MCP does not containerize Ansys Mechanical
   licensing requirements.
 - Ensure the Mechanical gRPC endpoint and license server are reachable from the

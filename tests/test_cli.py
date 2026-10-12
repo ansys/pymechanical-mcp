@@ -185,9 +185,44 @@ def test_product_startup_attempts_connect_on_startup():
         assert call_kwargs["port"] == 10000
         assert call_kwargs["cleanup_on_exit"] is False
 
-        # Verify Mechanical instance was stored in context
+        # Verify Mechanical instance was stored in context as an attached session
         assert mcp.context.mechanical == fake_mechanical
+        assert mcp.context.owns_mechanical is False
 
-        # Test cleanup
+        # Cleanup releases an attached instance without shutting it down
         mcp.product_cleanup()
-        fake_mechanical.exit.assert_called_once()
+        fake_mechanical.exit.assert_not_called()
+        assert mcp.context.mechanical is None
+
+
+def test_product_cleanup_shuts_down_launched_instance():
+    """Cleanup must still close an instance that this server launched."""
+    from ansys.mechanical.mcp.server import PyMechanicalMCP
+
+    mcp = PyMechanicalMCP()
+    mcp.create_context()
+    launched = MagicMock()
+    mcp.context.mechanical = launched
+    mcp.context.owns_mechanical = True
+
+    mcp.product_cleanup()
+
+    launched.exit.assert_called_once()
+    assert mcp.context.mechanical is None
+    assert mcp.context.owns_mechanical is False
+
+
+def test_product_cleanup_clears_state_when_exit_fails():
+    """A failing shutdown must not leave a stale reference behind."""
+    from ansys.mechanical.mcp.server import PyMechanicalMCP
+
+    mcp = PyMechanicalMCP()
+    mcp.create_context()
+    launched = MagicMock()
+    launched.exit.side_effect = RuntimeError("already gone")
+    mcp.context.mechanical = launched
+    mcp.context.owns_mechanical = True
+
+    mcp.product_cleanup()
+
+    assert mcp.context.mechanical is None
