@@ -649,7 +649,7 @@ async def launch_mechanical(
                 kwargs["port"] = port
 
             if version is not None:
-                kwargs["version"] = version
+                kwargs["version"] = str(_normalize_mechanical_version(version))
 
             if resolved_mode is not None:
                 kwargs["transport_mode"] = resolved_mode
@@ -1588,7 +1588,10 @@ def create_custom_plot(
         sanitized_plot_code = _sanitize_output(plot_code)
 
         # Execute the plot code
-        result = session.execute(sanitized_plot_code, timeout=timeout)
+        execution_kwargs: dict[str, Any] = {"timeout": timeout}
+        if "no_output_timeout" in inspect.signature(session.execute).parameters:
+            execution_kwargs["no_output_timeout"] = None
+        result = session.execute(sanitized_plot_code, **execution_kwargs)
 
         # Parse the result
         if isinstance(result, dict):
@@ -2014,7 +2017,7 @@ elif str(solution.Status) != "Done":
 else:
     exported_files = []
     errors = []
-    used_names = {{}}
+    used_names = set()
 
     # The directory must exist on the Mechanical host, which may not be this machine.
     try:
@@ -2056,9 +2059,12 @@ else:
         child.Activate()
 
         base_name = _safe_file_name(child_name)
-        name_count = used_names.get(base_name.lower(), 0) + 1
-        used_names[base_name.lower()] = name_count
-        safe_name = base_name if name_count == 1 else base_name + "_" + str(name_count)
+        safe_name = base_name
+        name_count = 1
+        while safe_name.lower() in used_names:
+            name_count += 1
+            safe_name = base_name + "_" + str(name_count)
+        used_names.add(safe_name.lower())
 
         # Export image
         if export_format in ("png", "both"):

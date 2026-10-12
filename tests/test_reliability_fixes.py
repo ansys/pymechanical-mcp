@@ -210,6 +210,20 @@ class TestLaunchHonorsVersion:
         assert kwargs["allow_input"] is False
         assert context.request_context.lifespan_context.owns_mechanical is True
 
+    @pytest.mark.parametrize("version", ["26.1", "2026 R1", "v261"])
+    async def test_pypim_receives_normalized_release(self, version):
+        context = make_context()
+        with (
+            patch.object(tools, "_pypim_configured", return_value=True),
+            patch.object(
+                tools.pymechanical, "launch_mechanical", return_value=MagicMock()
+            ) as launch,
+        ):
+            result = await tools.launch_mechanical(context, version=version, batch=True)
+        assert "Successfully launched" in result
+        assert launch.call_args.kwargs["version"] == "261"
+        assert "exec_file" not in launch.call_args.kwargs
+
     async def test_launch_without_version_never_prompts(self):
         context = make_context()
         with patch.object(tools.pymechanical, "launch_mechanical", return_value=MagicMock()) as m:
@@ -589,6 +603,14 @@ class TestExportResults:
             "Stress__Max_Min_2.txt",
         ]
         assert all(Path(p).is_file() for p in data["exported_files"])
+
+    def test_generated_suffix_does_not_overwrite_existing_name(self, tmp_path):
+        children = [_ExportResult(name) for name in ["Stress", "Stress", "Stress_2", "stress"]]
+        data = _run_export(tmp_path, children, tmp_path, export_format="txt")
+        names = [Path(path).name.lower() for path in data["exported_files"]]
+        assert data["success"] is True
+        assert len(names) == len(set(names)) == 4
+        assert all(Path(path).is_file() for path in data["exported_files"])
 
     def test_evaluation_error_is_reported(self, tmp_path):
         data = _run_export(tmp_path, [_ExportResult("Stress")], tmp_path, evaluate_error="bad")
