@@ -63,6 +63,21 @@ Available after connection
      - Clear the current model (unsaved work is lost). Mechanical and the connection stay open.
    * - ``run_python_script``
      - Execute a Mechanical script string or read one from a local file with ``file_path``.
+   * - ``check_script``
+     - Check a script without running it: compile it in the connected
+       scripting engine and look up its API names in the live session.
+   * - ``find_objects``
+     - Find Outline objects by name, category, or parent and return their
+       stable object IDs.
+   * - ``describe_object``
+     - Return the API properties of an object as the connected release exposes
+       them, with current values, units, and allowed enum values.
+   * - ``preview_property_change``
+     - Validate a new property value and show the current and proposed values
+       without changing the model. Returns a single-use token.
+   * - ``apply_property_change``
+     - Apply a previewed change. The change is rejected if the token was
+       already used, has expired, or the value changed since the preview.
    * - ``save_project``
      - Save active project.
    * - ``open_project``
@@ -126,10 +141,40 @@ The payload groups tools into:
 - file-management
 - simulation
 - inspection
+- object-discovery
+- property-changes
 - results
 - guidelines
 
 This resource is read-only metadata. It does not modify runtime behavior.
+
+Object discovery and safe changes
+---------------------------------
+
+These tools read the connected session, so their results match the installed
+Mechanical release, including releases newer than the bundled API reference.
+
+- ``find_objects`` returns stable object IDs. Use IDs rather than names, which
+  can repeat, or positions, which change when objects are added.
+- ``describe_object`` lists properties shown in the Details view by default.
+  Set ``details_only=False`` for every public API property.
+- ``preview_property_change`` checks values strictly against the property type.
+  Booleans must be ``true`` or ``false``, integers must fit the property range,
+  enum values must be exact member names, and quantities must be strings such
+  as ``"10 [mm]"`` whose unit is compatible with the current value.
+- ``apply_property_change`` applies only a matching, unused, unexpired preview
+  whose current value has not changed, and then reads the value back.
+
+A preview is not a sandbox. Applied changes are not undone automatically, so
+save the project first if you need a restore point. Properties of other types,
+such as geometry scoping or tabular data, still require ``run_python_script``.
+
+``check_script`` compiles a script in the connected scripting engine without
+running it. Remote Mechanical sessions, including 2026 R1 and 2027 R1, run
+IronPython 2.7, so syntax such as f-strings is reported. It then looks up names
+such as ``Model.Mesh.ElementSize`` in the live session to find misspelled or
+nonexistent members. Lookups read properties but never call methods. A passing
+check does not validate argument types, values, or the model state at run time.
 
 Example workflows
 -----------------
@@ -153,6 +198,15 @@ Modal analysis
 #. Create modal analysis settings with script tools.
 #. Run ``solve_analysis``.
 #. Use ``create_custom_plot`` for mode-shape reporting.
+
+Change a setting with a preview
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. ``find_objects`` with ``category="Mesh"`` to get the mesh object ID
+#. ``describe_object`` to read ``ElementSize`` and its unit
+#. ``preview_property_change`` with ``value="2 [mm]"``
+#. Confirm the preview with the user
+#. ``apply_property_change`` with the returned ``preview_token``
 
 Checks after solving
 ~~~~~~~~~~~~~~~~~~~~~

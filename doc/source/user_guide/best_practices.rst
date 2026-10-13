@@ -44,6 +44,11 @@ Solver and results
 
 - Solve only after confirming analysis settings and boundary condition completeness.
 - Use ``get_model_info`` after setup and after solve to validate state.
+- Use ``describe_object`` to confirm property names, values, and units instead
+  of guessing them, and ``check_script`` before running a new script.
+- Change single properties with ``preview_property_change`` and
+  ``apply_property_change`` so that the user sees each change before it is
+  applied.
 - Export only needed result objects to reduce file churn.
 - Capture screenshots at key milestones for traceability.
 

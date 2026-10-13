@@ -38,8 +38,14 @@ from fastmcp.server import Context
 from fastmcp.server.server import get_logger
 
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
-from ansys.mechanical.mcp import app
-from ansys.mechanical.mcp.errors import InvalidArgumentsError, NotConnectedError, UpstreamError
+from ansys.mechanical.mcp import app, introspection
+from ansys.mechanical.mcp.errors import (
+    InvalidArgumentsError,
+    MechanicalMCPError,
+    NotConnectedError,
+    StalePreviewError,
+    UpstreamError,
+)
 from ansys.mechanical.mcp.helpers import (
     _is_docker,
     _probe_grpc_endpoint,
@@ -51,7 +57,7 @@ from ansys.mechanical.mcp.helpers import (
     stop_processes,
 )
 from ansys.mechanical.mcp.server import session
-from mcp.types import ImageContent, TextContent
+from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 logger = get_logger(__name__)
 
@@ -67,7 +73,8 @@ _SCREENSHOT_VIEW_TYPES = ("model", "mesh", "result")
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 # Helpers prepended to the introspection scripts that run inside Mechanical.
-# Mechanical before 2026 R1 uses IronPython 2.7, so this stays f-string free and
+# Remote Mechanical sessions run IronPython 2.7 (including 2026 R1 and 2027 R1),
+# so this stays f-string free and
 # every accessor is guarded: a missing property must degrade, never raise.
 _SCRIPT_HELPERS = """
 import json
@@ -97,7 +104,7 @@ def _category(obj):
 """
 
 
-def _structured_error(error: NotConnectedError | InvalidArgumentsError | UpstreamError) -> str:
+def _structured_error(error: MechanicalMCPError) -> str:
     """Serialize a known tool error for clients that can handle structured results."""
     logger.info("%s: %s", error.error_code, error.message)
     return json.dumps(error.to_dict(), ensure_ascii=False)
@@ -758,11 +765,11 @@ def run_python_script(
         return "Provide either a 'script' string or a 'file_path' to execute."
 
     try:
-        # Warn about f-strings: Mechanical < 2026 R1 uses IronPython 2.7 which doesn't support them
+        # Warn about f-strings: remote Mechanical sessions run IronPython 2.7.
         if re.search(r'\bf["\']', script):
             logger.warning(
-                "Detected f-string syntax in script. Mechanical versions before 2026 R1 "
-                "use IronPython 2.7 which does not support f-strings. If execution fails, "
+                "Detected f-string syntax in script. Remote Mechanical sessions run "
+                "IronPython 2.7, which does not support f-strings. If execution fails, "
                 "rewrite using .format() instead."
             )
 
@@ -1537,7 +1544,9 @@ try:
         for child_idx in range(analysis.Children.Count):
             child = analysis.Children[child_idx]
             category = _category(child)
-            if category in ('AnalysisSettings', 'Solution'):
+            # Analysis settings report a solver-specific category, such as
+            # ANSYSAnalysisSettings, so match the suffix.
+            if category == 'Solution' or category.endswith('AnalysisSettings'):
                 continue
             boundary_conditions.append({
                 'analysis_index': analysis_idx,
@@ -1550,7 +1559,7 @@ except:
 model_info['analyses'] = analyses
 model_info['boundary_conditions'] = boundary_conditions
 
-json.dumps(model_info)
+json.dumps(model_info, ensure_ascii=False)
 """
         )
         result = mechanical.run_python_script(script)
@@ -1668,7 +1677,7 @@ except:
     # Approach 2: Simpler export (older versions)
     graphics.ExportImage(image_path)
 
-json.dumps({{"path": image_path, "activated": activated}})
+json.dumps({{"path": image_path, "activated": activated}}, ensure_ascii=False)
 """
         try:
             result = mechanical.run_python_script(script)
@@ -2049,7 +2058,7 @@ info["body_count"] = model.Geometry.GetChildren(
     DataModelObjectCategory.Body, True
 ).Count if hasattr(model, 'Geometry') and model.Geometry else 0
 info["analyses_count"] = model.Analyses.Count if hasattr(model, 'Analyses') else 0
-json.dumps(info)
+json.dumps(info, ensure_ascii=False)
 """
         result = mechanical.run_python_script(info_script)
         return f"Project opened successfully: {file_path}\nProject info: {result}"
@@ -2115,7 +2124,9 @@ import time
 
 # Validate analysis index
 if Model.Analyses.Count == 0:
-    result = json.dumps({{"success": False, "error": "No analyses are defined in the model."}})
+    result = json.dumps(
+        {{"success": False, "error": "No analyses are defined in the model."}}, ensure_ascii=False
+    )
 elif {analysis_index} >= Model.Analyses.Count:
     result = json.dumps({{
         "success": False,
@@ -2123,7 +2134,7 @@ elif {analysis_index} >= Model.Analyses.Count:
             "Analysis index {analysis_index} is out of range. "
             "Model has {{0}} analyses."
         ).format(Model.Analyses.Count)
-    }})
+    }}, ensure_ascii=False)
 else:
     analysis = Model.Analyses[{analysis_index}]
 
@@ -2162,7 +2173,7 @@ else:
                 result_count += 1
         solve_result["result_objects_count"] = result_count
 
-    result = json.dumps(solve_result)
+    result = json.dumps(solve_result, ensure_ascii=False)
 
 result
 """
@@ -2267,14 +2278,16 @@ else:
     solution = Model.Analyses[analysis_index].Solution
 
 if index_error is not None:
-    result = json.dumps({{"success": False, "error": index_error}})
+    result = json.dumps({{"success": False, "error": index_error}}, ensure_ascii=False)
 elif solution is None:
-    result = json.dumps({{"success": False, "error": "No analysis found in the model"}})
+    result = json.dumps(
+        {{"success": False, "error": "No analysis found in the model"}}, ensure_ascii=False
+    )
 elif str(solution.Status) != "Done":
     result = json.dumps({{
         "success": False,
         "error": "Solution has not been completed. Status: {{0}}".format(solution.Status)
-    }})
+    }}, ensure_ascii=False)
 else:
     exported_files = []
     errors = []
@@ -2351,7 +2364,7 @@ else:
         "file_count": len(exported_files),
         "errors": errors,
         "output_directory": output_dir,
-    }})
+    }}, ensure_ascii=False)
 
 result
 """
@@ -2444,7 +2457,7 @@ else:
 
     summary = {'success': True, 'analysis_count': len(entries), 'analyses': entries}
 
-json.dumps(summary)
+json.dumps(summary, ensure_ascii=False)
 """
 
 
@@ -2495,6 +2508,460 @@ def get_results_summary(
         return str(result)
     except Exception as exc:
         return _structured_error(UpstreamError(f"Error reading results: {exc}"))
+
+
+####################################################################################################
+# Object discovery, property change previews, and script checks
+
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
+
+
+def _run_introspection(mechanical: Any, script: str, action: str) -> dict[str, Any]:
+    """Run an introspection script and return its JSON payload.
+
+    Raises
+    ------
+    UpstreamError
+        If Mechanical fails or does not return a JSON object.
+    """
+    try:
+        raw = mechanical.run_python_script(script)
+    except Exception as exc:
+        raise UpstreamError(f"Error {action}: {exc}") from exc
+    try:
+        payload = json.loads(str(raw))
+    except (TypeError, ValueError) as exc:
+        raise UpstreamError(f"Unexpected response from Mechanical while {action}.") from exc
+    if not isinstance(payload, dict):
+        raise UpstreamError(f"Unexpected response from Mechanical while {action}.")
+    return payload
+
+
+def _with_suggestions(payload: dict[str, Any], word: str) -> dict[str, Any]:
+    """Replace a long ``candidates`` list in an error with the closest matches."""
+    details = payload.get("details") or {}
+    candidates = details.pop("candidates", None)
+    if candidates:
+        details["suggestions"] = introspection.close_matches(word, candidates)
+    payload["details"] = details
+    return payload
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG}, annotations=_READ_ONLY)
+def find_objects(
+    ctx: Context,
+    name_contains: str | None = None,
+    category: str | None = None,
+    parent_id: int | None = None,
+    max_depth: int | None = None,
+    limit: int = 100,
+) -> str:
+    """Find objects in the Mechanical Outline tree and return their stable IDs.
+
+    Use the returned ``object_id`` values with ``describe_object`` and
+    ``preview_property_change``. IDs stay the same for the life of the object,
+    unlike names, which can repeat, and positions, which change when objects are
+    added. Nothing in the model is changed.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    name_contains : str, optional
+        Case-insensitive text that the object name must contain.
+    category : str, optional
+        ``DataModelObjectCategory`` name, such as ``Force``, ``FixedSupport``,
+        ``Body``, or ``EquivalentStress``. Case-insensitive.
+    parent_id : int, optional
+        Search below this object only. By default the whole project is searched.
+    max_depth : int, optional
+        Number of levels below the start object to search. By default all levels
+        are searched.
+    limit : int, default: 100
+        Maximum number of objects to return, from 1 to 1000. ``match_count``
+        always reports the full number of matches.
+
+    Returns
+    -------
+    str
+        JSON with ``objects`` (``object_id``, ``name``, ``category``, ``state``,
+        ``path``, ``depth``, and ``child_count``), ``match_count``,
+        ``truncated``, ``category_counts`` for every object searched, and the
+        connected ``product_version`` and ``python_engine``.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+    if not 1 <= limit <= 1000:
+        return _structured_error(InvalidArgumentsError("limit must be between 1 and 1000."))
+    if max_depth is not None and max_depth < 0:
+        return _structured_error(InvalidArgumentsError("max_depth must be zero or greater."))
+
+    args = {
+        "name_contains": name_contains,
+        "category": category,
+        "parent_id": parent_id,
+        "max_depth": max_depth,
+        "limit": limit,
+    }
+    try:
+        payload = _run_introspection(
+            mechanical, introspection.find_objects_script(args), "finding objects"
+        )
+    except UpstreamError as exc:
+        return _structured_error(exc)
+    if not payload.get("success", False) and category:
+        payload = _with_suggestions(payload, category)
+    return json.dumps(payload, ensure_ascii=False)
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG}, annotations=_READ_ONLY)
+def describe_object(
+    ctx: Context,
+    object_id: int,
+    details_only: bool = True,
+    name_contains: str | None = None,
+    include_methods: bool = False,
+) -> str:
+    """Describe the API properties of one object in the connected Mechanical release.
+
+    The description is read from the connected session, so it matches the
+    installed release, including releases newer than the bundled API reference.
+    Values are reported with units, and enum properties list their allowed
+    members. Nothing in the model is changed.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    object_id : int
+        ID of the object, as returned by ``find_objects``.
+    details_only : bool, default: True
+        Return only properties shown in the object's Details view, which are the
+        settings a user normally edits. Set to ``False`` to return every public
+        API property.
+    name_contains : str, optional
+        Case-insensitive text that the property name or Details caption must
+        contain.
+    include_methods : bool, default: False
+        Also return the public method signatures of the object.
+
+    Returns
+    -------
+    str
+        JSON with ``object`` (ID, name, category, state, parent ID, API type),
+        ``unit_system``, and ``properties``. Each property reports ``name``,
+        ``type``, ``kind``, ``writable``, ``editable``, and, where available,
+        ``value``, ``caption``, ``display``, ``read_only_in_details``,
+        ``enum_values``, and ``range``. ``editable`` means that
+        ``preview_property_change`` supports the property. Details rows without
+        an API property are listed in ``details_without_api``.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+
+    args = {
+        "object_id": object_id,
+        "details_only": details_only,
+        "name_contains": name_contains,
+        "include_methods": include_methods,
+    }
+    try:
+        payload = _run_introspection(
+            mechanical, introspection.describe_object_script(args), "describing the object"
+        )
+    except UpstreamError as exc:
+        return _structured_error(exc)
+    return json.dumps(payload, ensure_ascii=False)
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG}, annotations=_READ_ONLY)
+def preview_property_change(
+    ctx: Context,
+    object_id: int,
+    property_name: str,
+    value: bool | int | float | str,
+) -> str:
+    """Validate a property change and show its effect without applying it.
+
+    The preview reports the target object, the current value, the proposed
+    value, and the validation result. A valid preview returns a single-use
+    ``preview_token``. Nothing in the model is changed: show the preview to the
+    user and call ``apply_property_change`` only after they agree.
+
+    Values are checked strictly against the property type: booleans must be
+    ``true`` or ``false``, integers must fit the property range, enum values must
+    be an exact member name, and quantities must be a string such as
+    ``"10 [mm]"`` with a unit compatible with the current value.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    object_id : int
+        ID of the object, as returned by ``find_objects``.
+    property_name : str
+        API property name, as returned by ``describe_object``, such as
+        ``ElementSize`` or ``NumberOfSteps``.
+    value : bool, int, float, or str
+        New value. Use a string for enum members and quantities.
+
+    Returns
+    -------
+    str
+        JSON with ``target``, ``current_value``, ``proposed_value``,
+        ``validation`` (``valid``, ``errors``, and ``warnings``), and, when
+        valid, ``no_change``, ``preview_token``, and ``expires_in_seconds``.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+
+    args = {"object_id": object_id, "property_name": property_name, "value": value}
+    try:
+        payload = _run_introspection(
+            mechanical, introspection.preview_change_script(args), "previewing the change"
+        )
+    except UpstreamError as exc:
+        return _structured_error(exc)
+    if not payload.get("success", False):
+        return json.dumps(_with_suggestions(payload, property_name), ensure_ascii=False)
+
+    fingerprint = payload.pop("fingerprint", None)
+    if payload.get("validation", {}).get("valid") and isinstance(fingerprint, str):
+        store = ctx.request_context.lifespan_context.change_previews
+        payload["preview_token"] = introspection.store_preview(
+            store, mechanical, object_id, property_name, value, fingerprint
+        )
+        payload["expires_in_seconds"] = introspection.PREVIEW_TTL_SECONDS
+        payload["note"] = (
+            "Nothing was changed. Call apply_property_change with the same arguments and "
+            "this token to apply the change. The change is not reversible by this server, "
+            "so call save_project first if you need a restore point."
+        )
+    return json.dumps(payload, ensure_ascii=False)
+
+
+@app.tool(
+    tags={REQUIRES_MECHANICAL_TAG},
+    annotations=ToolAnnotations(
+        readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False
+    ),
+)
+def apply_property_change(
+    ctx: Context,
+    object_id: int,
+    property_name: str,
+    value: bool | int | float | str,
+    preview_token: str,
+) -> str:
+    """Apply a property change that was previewed with ``preview_property_change``.
+
+    The change is applied only if the token matches the same object, property,
+    and value, has not been used, has not expired, and the current value has not
+    changed since the preview. Otherwise nothing is changed and the call fails.
+    After applying, the value is read back from Mechanical. There is no
+    automatic undo.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    object_id : int
+        ID of the object, exactly as previewed.
+    property_name : str
+        API property name, exactly as previewed.
+    value : bool, int, float, or str
+        New value, exactly as previewed.
+    preview_token : str
+        Token returned by ``preview_property_change``. Each token works once.
+
+    Returns
+    -------
+    str
+        JSON with ``target``, ``previous_value``, the read-back ``value``,
+        ``readback_matches``, and ``warnings``. Errors use ``stale_preview``
+        when the preview is no longer valid.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+
+    store = ctx.request_context.lifespan_context.change_previews
+    try:
+        entry = introspection.take_preview(
+            store, preview_token, mechanical, object_id, property_name, value
+        )
+    except (StalePreviewError, InvalidArgumentsError) as exc:
+        return _structured_error(exc)
+
+    args = {
+        "object_id": object_id,
+        "property_name": property_name,
+        "value": value,
+        "fingerprint": entry["fingerprint"],
+    }
+    try:
+        payload = _run_introspection(
+            mechanical, introspection.apply_change_script(args), "applying the change"
+        )
+    except UpstreamError as exc:
+        return _structured_error(exc)
+    return json.dumps(payload, ensure_ascii=False)
+
+
+@app.tool(tags={REQUIRES_MECHANICAL_TAG}, annotations=_READ_ONLY)
+def check_script(
+    ctx: Context,
+    script: str | None = None,
+    file_path: str | None = None,
+) -> str:
+    """Check a Mechanical script without running it.
+
+    Use this before ``run_python_script`` to catch mistakes early. The script is
+    compiled, not run, by the scripting engine of the connected Mechanical, so
+    syntax that the engine does not support (for example, f-strings in
+    IronPython 2.7) is reported. Names such as ``Model.Mesh.ElementSize`` are
+    then looked up in the live session to find misspelled or nonexistent API
+    members. Lookups read properties but never call methods.
+
+    A passing check does not guarantee that the script succeeds: argument
+    types, values, and the model state at run time are not validated.
+
+    Parameters
+    ----------
+    ctx : Context
+        MCP context containing the server session and application context.
+    script : str, optional
+        Script to check. Required when ``file_path`` is not provided.
+    file_path : str, optional
+        Path to a local Python (``.py``) script file to check. Takes precedence
+        over ``script`` when both are provided.
+
+    Returns
+    -------
+    str
+        JSON with ``valid``, ``engine_syntax``, ``python3_syntax``,
+        ``api_check`` (``performed``, ``checked_count``, ``problems`` with line,
+        chain, message, and suggestions, and ``unverified``), and the connected
+        ``product_version`` and ``python_engine``.
+    """
+    mechanical, error = _mechanical_or_error(ctx)
+    if error is not None:
+        return error
+
+    if file_path is not None:
+        # check_script is read-only and may be auto-approved by hosts, and syntax
+        # errors echo a source line, so only read Python scripts.
+        if Path(file_path).suffix.lower() != ".py":
+            return _structured_error(
+                InvalidArgumentsError("file_path must point to a Python (.py) script.")
+            )
+        try:
+            script = Path(file_path).read_text(encoding="utf-8")
+        except OSError as exc:
+            return _structured_error(
+                InvalidArgumentsError(f"Cannot read script file '{file_path}': {exc}")
+            )
+    if script is None:
+        return _structured_error(
+            InvalidArgumentsError("Provide either a 'script' string or a 'file_path' to check.")
+        )
+
+    chains, python3_error, star_import = introspection.extract_api_chains(script)
+    truncated = len(chains) > introspection.MAX_CHECKED_CHAINS
+    chains = chains[: introspection.MAX_CHECKED_CHAINS]
+    args = {"source": script, "chains": [chain["parts"] for chain in chains]}
+    try:
+        payload = _run_introspection(
+            mechanical, introspection.check_script_script(args), "checking the script"
+        )
+    except UpstreamError as exc:
+        return _structured_error(exc)
+    if not payload.get("success", False):
+        return json.dumps(payload, ensure_ascii=False)
+
+    problems: list[dict[str, Any]] = []
+    unverified: list[dict[str, Any]] = []
+    for chain, resolution in zip(chains, payload.get("resolutions", []), strict=False):
+        parts = chain["parts"]
+        status = resolution.get("status")
+        index = resolution.get("index", 0)
+        location = {"line": chain["line"], "column": chain["column"]}
+        if status == "undefined":
+            problems.append(
+                {
+                    **location,
+                    "severity": "warning" if star_import else "error",
+                    "chain": parts[0],
+                    "message": f"Name '{parts[0]}' is not defined in the Mechanical session.",
+                }
+            )
+        elif status == "missing":
+            owner = ".".join(parts[:index])
+            problems.append(
+                {
+                    **location,
+                    "severity": "error",
+                    "chain": ".".join(parts[: index + 1]),
+                    "message": f"'{owner}' has no member '{parts[index]}'.",
+                    "suggestions": introspection.close_matches(
+                        parts[index], resolution.get("candidates", [])
+                    ),
+                }
+            )
+        elif status == "unverified":
+            unverified.append(
+                {
+                    **location,
+                    "chain": ".".join(parts[: index + 1]),
+                    "reason": resolution.get("reason", "not checked"),
+                }
+            )
+
+    engine_syntax = payload.get("engine_syntax", {"valid": False})
+    python_engine = payload.get("python_engine")
+    if not engine_syntax.get("valid") and python3_error is None:
+        engine_syntax["note"] = (
+            f"The script is valid Python 3, but not valid for the {python_engine} "
+            "engine used by this Mechanical session."
+        )
+    if python3_error is not None:
+        api_check: dict[str, Any] = {
+            "performed": False,
+            "reason": "The script is not valid Python 3, so API names were not checked.",
+        }
+    else:
+        api_check = {
+            "performed": True,
+            "checked_count": len(chains),
+            "problems": problems,
+            "unverified": unverified,
+        }
+        if truncated:
+            api_check["note"] = (
+                f"Only the first {introspection.MAX_CHECKED_CHAINS} names were checked."
+            )
+
+    result = {
+        "success": True,
+        "valid": bool(engine_syntax.get("valid"))
+        and not any(p["severity"] == "error" for p in problems),
+        "executed": False,
+        "engine_syntax": engine_syntax,
+        "python3_syntax": {"valid": True}
+        if python3_error is None
+        else {"valid": False, **python3_error},
+        "api_check": api_check,
+        "product_version": payload.get("product_version"),
+        "python_engine": python_engine,
+        "note": (
+            "The script was not run. Argument types, values, and the model state at run time "
+            "are not checked, and names created at run time are not resolved."
+        ),
+    }
+    return json.dumps(result, ensure_ascii=False)
 
 
 ####################################################################################################
@@ -2661,16 +3128,30 @@ def _get_mechanical_messages(
     """Read application messages from Mechanical via ExtAPI."""
     script = """
 import json
+# str() raises in IronPython 2.7 for messages with non-ASCII text. .NET strings
+# already arrive as text, so keep them as they are.
+try:
+    _text_types = (basestring,)
+except NameError:
+    _text_types = (str,)
+
+
+def _text(value):
+    if isinstance(value, _text_types):
+        return value
+    return u'{0}'.format(value)
+
+
 msgs = ExtAPI.Application.Messages
 entries = []
 for i in range(msgs.Count):
     m = msgs[i]
     entries.append({
         "severity": str(m.Severity),
-        "source": str(m.Source) if hasattr(m, 'Source') else "",
-        "summary": str(m.Summary) if hasattr(m, 'Summary') else str(m),
+        "source": _text(m.Source) if hasattr(m, 'Source') else "",
+        "summary": _text(m.Summary) if hasattr(m, 'Summary') else _text(m),
     })
-json.dumps(entries)
+json.dumps(entries, ensure_ascii=False)
 """
     raw = mechanical.run_python_script(script)
 
@@ -2776,7 +3257,7 @@ else:
             'lines': lines[-tail_count:],
         }
 
-json.dumps(payload)
+json.dumps(payload, ensure_ascii=False)
 """
 
 

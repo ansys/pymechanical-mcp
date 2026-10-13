@@ -48,7 +48,7 @@ def run_mechanical_script(script: str, namespace: dict) -> object:
 
 
 def assert_ironpython_compatible(script: str) -> None:
-    """Scripts for Mechanical before 2026 R1 run on IronPython 2.7."""
+    """Scripts sent to remote Mechanical sessions run on IronPython 2.7."""
     tree = ast.parse(script)
     assert not any(isinstance(node, ast.JoinedStr) for node in ast.walk(tree)), "f-string"
     assert not any(isinstance(node, ast.AnnAssign) for node in ast.walk(tree)), "annotation"

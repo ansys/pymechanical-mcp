@@ -74,11 +74,14 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "persistent external Python session, and run_python_script to "
             "execute a Mechanical script against ExtAPI. Provide "
             "run_python_script with either an inline ``script`` string or "
-            "a ``file_path`` pointing to a local ``.py`` file."
+            "a ``file_path`` pointing to a local ``.py`` file. Call "
+            "check_script first to compile a new script in the connected "
+            "engine and check its API names without running it."
         ),
         "tools": [
             "run_python_code",
             "run_python_script",
+            "check_script",
         ],
     },
     "project-management": {
@@ -142,6 +145,41 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "get_model_info",
             "screenshot",
             "get_mechanical_logs",
+        ],
+    },
+    "object-discovery": {
+        "description": (
+            "Tools for finding Outline objects by stable ID and reading their "
+            "API properties, values, units, and allowed enum values from the "
+            "connected Mechanical release."
+        ),
+        "skill": (
+            "Use find_objects to search the Outline tree by name, category, or "
+            "parent and get stable object IDs. Use describe_object with an ID "
+            "to read the properties of that object as the connected release "
+            "exposes them, instead of guessing API names."
+        ),
+        "tools": [
+            "find_objects",
+            "describe_object",
+        ],
+    },
+    "property-changes": {
+        "description": (
+            "Tools for changing one object property with an explicit preview "
+            "and a separate apply step."
+        ),
+        "skill": (
+            "Use preview_property_change to validate a new value and show the "
+            "current and proposed values without changing anything. Apply it "
+            "with apply_property_change and the returned single-use token only "
+            "after the user agrees. A changed value since the preview rejects "
+            "the token. A preview is not a sandbox, and there is no automatic "
+            "undo, so call save_project first if a restore point is needed."
+        ),
+        "tools": [
+            "preview_property_change",
+            "apply_property_change",
         ],
     },
     "results": {

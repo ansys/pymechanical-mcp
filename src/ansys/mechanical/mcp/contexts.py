@@ -1150,9 +1150,11 @@ omega = Quantity("10 [rad/s]")
 mechanical.run_python_script(script)
 ```
 
-## IronPython compatibility for older Mechanical versions
+## IronPython compatibility
 
-Mechanical versions before 2026 R1 use **IronPython 2.7**. Do NOT use:
+Remote Mechanical sessions run scripts in **IronPython 2.7**, including
+2026 R1 and 2027 R1. Call `check_script` to see the engine of the connected
+session and to catch unsupported syntax before running a script. Do NOT use:
 - f-strings (`f"value: {x}"`): use `.format()` instead
 - walrus operator (`:=`)
 - Type hints in scripts
@@ -1212,7 +1214,7 @@ mechanical.download_project(target_dir="./project_backup")
 - **No boundary conditions** causing rigid body motion
 - **Forgetting to evaluate results** after adding result objects
 - **Path issues**: Use raw strings (r"path") or double backslashes
-- **Using f-strings**: Mechanical versions before 2026 R1 use IronPython 2.7
+- **Using f-strings**: Remote Mechanical sessions run IronPython 2.7
     (no f-strings)
 - **Wrong Quantity format**: Use `Quantity("5 [mm]")` with square brackets
 - **Setting component values directly**: Use `.Output.DiscreteValues = [...]`
