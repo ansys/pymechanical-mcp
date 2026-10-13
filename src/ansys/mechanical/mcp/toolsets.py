@@ -48,8 +48,10 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "discover running Mechanical processes, connect_to_mechanical "
             "to attach to one (or the user-supplied host:port), and "
             "launch_mechanical to start a new instance. Use "
-            "disconnect_from_mechanical for a graceful detach and "
-            "clear_mechanical to fully release the process."
+            "disconnect_from_mechanical to end the session: it closes an "
+            "instance launched by this server and leaves an attached "
+            "instance running. clear_mechanical wipes the current model "
+            "(unsaved work is lost) but keeps Mechanical open."
         ),
         "tools": [
             "check_mechanical_installed",

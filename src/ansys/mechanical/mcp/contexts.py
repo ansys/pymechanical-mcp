@@ -384,13 +384,20 @@ mechanical.run_python_script(script)
 
 ```python
 script = '''
+import json
 mesh = Model.Mesh
-
-# Check mesh quality metrics
 mesh.GenerateMesh()
 
-# Access mesh statistics
-stats = mesh.GetMeshStatistics()
+# Mesh size and the active quality metric (choose one with mesh.MeshMetric).
+stats = {
+    'nodes': mesh.Nodes,
+    'elements': mesh.Elements,
+    'metric': str(mesh.MeshMetric),
+    'minimum': str(mesh.Minimum),
+    'maximum': str(mesh.Maximum),
+    'average': str(mesh.Average),
+}
+json.dumps(stats)
 '''
 mechanical.run_python_script(script)
 ```
@@ -738,15 +745,13 @@ For long-running solutions, consider:
 script = '''
 analysis = Model.Analyses[0]
 
-# Start solve (returns immediately for monitoring)
-analysis.Solve(True)  # True for background solve
-
-# Check status
-while analysis.Solution.Status == SolutionStatusType.Solving:
-    # Wait and check periodically
-    pass
+# Solve(True) blocks until the solve finishes; Solve(False) returns immediately.
+analysis.Solve(False)
 '''
 mechanical.run_python_script(script)
+
+# Poll from the client between calls instead of looping inside Mechanical.
+status = mechanical.run_python_script("str(Model.Analyses[0].Solution.Status)")
 ```
 
 ## Solution Output Controls
@@ -757,7 +762,7 @@ analysis = Model.Analyses[0]
 settings = analysis.AnalysisSettings
 
 # Control result output frequency
-settings.ResultFileSettings.SaveResultsAtAllTimePoints = True
+settings.StoreResultsAt = TimePointsOptions.AllTimePoints
 '''
 mechanical.run_python_script(script)
 ```

@@ -154,6 +154,30 @@ class TestRunPythonCode:
 
 @pytest.mark.unit
 class TestCreateCustomPlot:
+    def test_disables_idle_cutoff_for_supported_sessions(self, mock_context, mock_python_session):
+        observed = {}
+
+        def execute(code, timeout, no_output_timeout=1.2):
+            observed.update(timeout=timeout, no_output_timeout=no_output_timeout)
+            return {"success": False, "error": "test error", "stdout": "", "stderr": ""}
+
+        mock_python_session.execute = execute
+        mock_context.request_context.lifespan_context.python_session = mock_python_session
+        create_custom_plot(mock_context, plot_code="pass", timeout=120)
+        assert observed == {"timeout": 120, "no_output_timeout": None}
+
+    def test_keeps_older_session_signature(self, mock_context, mock_python_session):
+        observed = {}
+
+        def execute(code, timeout):
+            observed.update(timeout=timeout)
+            return {"success": False, "error": "test error", "stdout": "", "stderr": ""}
+
+        mock_python_session.execute = execute
+        mock_context.request_context.lifespan_context.python_session = mock_python_session
+        create_custom_plot(mock_context, plot_code="pass", timeout=120)
+        assert observed == {"timeout": 120}
+
     def test_no_python_session(self, mock_context):
         # Explicitly remove python_session
         setattr(mock_context.request_context.lifespan_context, "python_session", None)

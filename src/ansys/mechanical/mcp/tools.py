@@ -16,18 +16,24 @@
 
 """List of tools in PyMechanical-MCP."""
 
+import asyncio
 import base64
 import inspect
 import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
+import shutil
 import tempfile
+import time
 from typing import Any, cast
+import uuid
+import warnings
 
 # Import Mechanical at module level to avoid import during tool execution
 # The import happens during server startup, before STDIO transport is active
 from ansys.common.mcp.tools import execute_python_code
+import ansys.tools.common.path as atp  # pyright: ignore[reportMissingTypeStubs]
 from fastmcp.server import Context
 from fastmcp.server.server import get_logger
 
@@ -38,8 +44,11 @@ from ansys.mechanical.mcp.helpers import (
     _is_docker,
     _probe_grpc_endpoint,
     get_info,
+    launched_mechanical_processes,
     list_instances,
     resolve_transport_mode,
+    server_child_pids,
+    stop_processes,
 )
 from ansys.mechanical.mcp.server import session
 from mcp.types import ImageContent, TextContent
@@ -54,6 +63,8 @@ REQUIRES_MECHANICAL_TAG = "requires_mechanical"
 
 #: Views that ``screenshot`` can activate before exporting the image.
 _SCREENSHOT_VIEW_TYPES = ("model", "mesh", "result")
+
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 # Helpers prepended to the introspection scripts that run inside Mechanical.
 # Mechanical before 2026 R1 uses IronPython 2.7, so this stays f-string free and
@@ -169,6 +180,357 @@ async def _resolve_launch_batch_mode(ctx: Context, batch: bool | None) -> bool:
     return False
 
 
+#: Accepted spellings of a Mechanical release: ``261``, ``v261``, ``26.1``, and ``2026 R1``.
+_VERSION_PATTERNS = (
+    re.compile(r"v?(\d{2})(\d)"),
+    re.compile(r"(\d{2})\.(\d)"),
+    re.compile(r"20(\d{2})r(\d)"),
+)
+
+#: Seconds to wait for a liveness probe before treating a slow session as alive and busy.
+_LIVENESS_TIMEOUT = 10.0
+
+_ALREADY_CONNECTED_MESSAGE = (
+    "Already connected to a Mechanical instance. "
+    "Disconnect first using disconnect_from_mechanical tool."
+)
+
+#: PyMechanical's timeouts for starting and for connecting to Mechanical, in seconds.
+_LAUNCH_START_TIMEOUT = 300
+_CONNECT_TIMEOUT = 120
+
+#: Grace period after PyMechanical's own timeout before an operation is abandoned.
+_SESSION_DEADLINE_MARGIN = 60.0
+
+_START_INSTANCE_ENV = "PYMECHANICAL_START_INSTANCE"
+
+
+def _start_instance_refusal() -> str | None:
+    """Return why launching is disabled by ``PYMECHANICAL_START_INSTANCE``, if it is.
+
+    The variable is unset by default, which allows launching. PyMechanical itself reads
+    it, so only the exact values ``true`` and ``false`` (any case) are valid.
+    """
+    value = os.environ.get(_START_INSTANCE_ENV)
+    if value is None or value.lower() == "true":
+        return None
+    if value.lower() == "false":
+        return (
+            f"Starting Mechanical is disabled because the environment variable "
+            f"{_START_INSTANCE_ENV} is set to '{value}' for this MCP server. Remove it or "
+            "set it to 'true' to allow launch_mechanical, or use connect_to_mechanical "
+            "to attach to a Mechanical instance that is already running."
+        )
+    return (
+        f"The environment variable {_START_INSTANCE_ENV} has the invalid value {value!r}. "
+        "Set it to 'true' or 'false', or remove it."
+    )
+
+
+class _SessionJob:
+    """A launch or connect that runs in a worker thread and outlives the request that started it.
+
+    The result is recorded in the context even if the requesting client cancels. An
+    abandoned job's late result is discarded, and only the Mechanical processes that a
+    launch started are ever stopped.
+    """
+
+    def __init__(
+        self,
+        kind: str,
+        context: Any,
+        future: "asyncio.Future[Any]",
+        timeout: float,
+        baseline: frozenset[int] | None,
+    ) -> None:
+        self.kind = kind
+        self.context = context
+        self.future = future
+        self.started = time.monotonic()
+        self.deadline = self.started + timeout
+        self.baseline = baseline
+        self.abandoned = False
+        self.abandoned_event = asyncio.Event()
+        future.add_done_callback(self._finished)
+
+    @property
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    @property
+    def remaining(self) -> float:
+        return max(0.0, self.deadline - time.monotonic())
+
+    def abandon(self) -> list[Any]:
+        """Give up on the operation and return the processes it started, to be stopped."""
+        self.abandoned = True
+        self.abandoned_event.set()
+        if self.context.session_job is self:
+            self.context.session_job = None
+        return self._own_processes()
+
+    def _own_processes(self) -> list[Any]:
+        # Only one job exists at a time, so new -grpc children belong to this launch.
+        if self.baseline is None:
+            return []
+        return launched_mechanical_processes(self.baseline)
+
+    def _finished(self, future: "asyncio.Future[Any]") -> None:
+        if future.cancelled():
+            return
+        if self.abandoned:
+            # A launch abandoned before its process existed can still start one later.
+            if self.kind == "launch" and future.exception() is None:
+                mechanical, _ = future.result()
+                asyncio.get_running_loop().run_in_executor(None, _close_quietly, mechanical)
+            return
+        if self.context.session_job is self:
+            self.context.session_job = None
+        if future.exception() is not None:
+            processes = self._own_processes()
+            if processes:
+                logger.warning("Stopping Mechanical processes left by a failed launch.")
+                asyncio.get_running_loop().run_in_executor(None, stop_processes, processes)
+            return
+        mechanical, _ = future.result()
+        self.context.mechanical = mechanical
+        self.context.owns_mechanical = self.kind == "launch"
+        app.enable(tags={REQUIRES_MECHANICAL_TAG})
+
+
+def _pending_job(context: Any) -> _SessionJob | None:
+    """Return the launch or connect operation in progress, if any."""
+    job = getattr(context, "session_job", None)
+    return job if isinstance(job, _SessionJob) else None
+
+
+def _start_session_job(
+    context: Any, kind: str, worker: Any, timeout: float, baseline: frozenset[int] | None
+) -> _SessionJob:
+    """Start ``worker`` in a thread and register it as the context's operation in progress."""
+    future = asyncio.get_running_loop().run_in_executor(None, worker)
+    job = _SessionJob(kind, context, future, timeout + _SESSION_DEADLINE_MARGIN, baseline)
+    context.session_job = job
+    return job
+
+
+async def _busy_message(context: Any) -> str | None:
+    """Return why a new launch or connect cannot start now, or ``None`` if it can.
+
+    An operation past its deadline is treated as stuck: it is abandoned and the
+    Mechanical processes it started are stopped, so a retry can start cleanly.
+    """
+    job = _pending_job(context)
+    if job is not None:
+        if job.remaining > 0:
+            return (
+                f"A Mechanical {job.kind} started {job.elapsed:.0f} s ago is still in "
+                f"progress. It is recorded when it finishes, or stopped if it has not "
+                f"finished within {job.remaining:.0f} s. Call check_mechanical_status "
+                "to see when it is ready."
+            )
+        logger.warning("Abandoning a Mechanical %s that did not finish in time.", job.kind)
+        await asyncio.to_thread(stop_processes, job.abandon())
+    return await _reject_if_connected(context)
+
+
+async def _await_session_job(job: _SessionJob) -> tuple[Any, dict[str, str]]:
+    """Wait for ``job``; on deadline, abandon it and stop the processes it started.
+
+    Cancelling the waiting request does not cancel the job itself.
+    """
+    abandoned = asyncio.ensure_future(job.abandoned_event.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {job.future, abandoned},
+            timeout=job.remaining,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+    finally:
+        abandoned.cancel()
+    if job.abandoned:
+        raise RuntimeError(f"The Mechanical {job.kind} was cancelled before it finished.")
+    if job.future not in done:
+        await asyncio.to_thread(stop_processes, job.abandon())
+        raise TimeoutError(
+            f"The Mechanical {job.kind} did not finish within "
+            f"{job.deadline - job.started:.0f} s and was stopped. You can retry."
+        )
+    return cast(tuple[Any, dict[str, str]], job.future.result())
+
+
+def _close_quietly(mechanical: Any) -> None:
+    """Close a Mechanical instance this server launched, logging instead of raising."""
+    try:
+        mechanical.exit(force=True)
+    except Exception as exc:
+        logger.info("Could not close the launched Mechanical instance: %s", exc)
+
+
+def _launch_worker(kwargs: dict[str, Any], requested: int | None) -> tuple[Any, dict[str, str]]:
+    """Launch Mechanical and confirm it runs the requested release."""
+    mechanical = pymechanical.launch_mechanical(**kwargs)
+    try:
+        version = str(mechanical.version)
+        if requested is not None:
+            try:
+                actual: int | None = _normalize_mechanical_version(version)
+            except ValueError:
+                actual = None
+            if actual is not None and actual != requested:
+                raise RuntimeError(
+                    f"Mechanical {actual} started, but {requested} was requested. "
+                    "The instance was closed."
+                )
+        info = {"version": version, "project_directory": str(mechanical.project_directory)}
+    except Exception:
+        _close_quietly(mechanical)
+        raise
+    return mechanical, info
+
+
+def _connect_worker(kwargs: dict[str, Any]) -> tuple[Any, dict[str, str]]:
+    """Connect to a running Mechanical instance."""
+    mechanical = pymechanical.connect_to_mechanical(**kwargs)
+    return mechanical, {"version": str(mechanical.version)}
+
+
+def _normalize_mechanical_version(version: str | int | float) -> int:
+    """Convert a Mechanical release such as ``"26.1"`` or ``"2026 R1"`` to ``261``."""
+    text = str(version).strip().lower().replace(" ", "")
+    for pattern in _VERSION_PATTERNS:
+        match = pattern.fullmatch(text)
+        if match:
+            return int(match.group(1)) * 10 + int(match.group(2))
+    raise ValueError(
+        f"Unrecognized Mechanical version {version!r}. Use the three-digit release "
+        "number, for example '261' for 2026 R1."
+    )
+
+
+def _pypim_configured() -> bool:
+    """Return whether PyPIM remote launching is configured; PyPIM honors ``version`` itself."""
+    try:
+        import ansys.platform.instancemanagement as pypim  # pyright: ignore
+    except ImportError:
+        return False
+    try:
+        return bool(pypim.is_configured())
+    except Exception:
+        return False
+
+
+def _installed_mechanical_versions() -> list[int]:
+    """Return the installed Ansys releases, newest first."""
+    try:
+        installations = atp.get_available_ansys_installations()
+    except Exception:
+        return []
+    return sorted((release for release in installations if release > 0), reverse=True)
+
+
+def _resolve_launch_executable(
+    version: str | None, exec_file: str | None
+) -> tuple[str | None, str | None]:
+    """Return ``(exec_file, error)`` for a launch that honors the requested version.
+
+    PyMechanical ignores ``version`` for local launches and starts the saved or newest
+    installation, so the executable for the requested release is resolved here.
+    """
+    if version is None:
+        return exec_file, None
+
+    try:
+        requested = _normalize_mechanical_version(version)
+    except ValueError as exc:
+        return None, str(exc)
+
+    if exec_file is not None:
+        try:
+            actual = atp.version_from_path("mechanical", exec_file)
+        except Exception:
+            # Custom install layouts do not always encode the release in the path.
+            return exec_file, None
+        if actual != requested:
+            return None, (
+                f"exec_file is Mechanical {actual}, but version {requested} was requested. "
+                "Pass a matching exec_file or omit one of the two parameters."
+            )
+        return exec_file, None
+
+    if _pypim_configured():
+        return None, None
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            resolved = atp.get_mechanical_path(allow_input=False, version=requested)
+        except Exception as exc:
+            logger.info("Could not resolve Mechanical %s: %s", requested, exc)
+            resolved = None
+    if resolved:
+        return str(resolved), None
+
+    installed = _installed_mechanical_versions()
+    available = ", ".join(str(release) for release in installed) or "none found"
+    return None, (
+        f"Mechanical {requested} was not found. Installed releases: {available}. "
+        "Pass exec_file to launch a specific Mechanical executable."
+    )
+
+
+async def _session_is_alive(mechanical: Any) -> bool:
+    """Return whether a Mechanical session still responds.
+
+    A probe that does not answer within ``_LIVENESS_TIMEOUT`` is treated as a busy,
+    live session so that a running solve is never mistaken for a dead connection.
+    """
+    try:
+        if getattr(mechanical, "exited", False) is True:
+            return False
+    except Exception:
+        return False
+
+    def _probe() -> bool:
+        try:
+            return bool(mechanical.is_alive)
+        except Exception:
+            return False
+
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_probe), timeout=_LIVENESS_TIMEOUT)
+    except TimeoutError:
+        return True
+
+
+async def _reject_if_connected(context: Any) -> str | None:
+    """Return an error while a live session exists; drop a dead one so a new one can start."""
+    if context.mechanical is None:
+        return None
+    if await _session_is_alive(context.mechanical):
+        return _ALREADY_CONNECTED_MESSAGE
+    logger.warning("Dropping a Mechanical session that no longer responds.")
+    context.mechanical = None
+    context.owns_mechanical = False
+    return None
+
+
+async def _set_mechanical_tools_visible(ctx: Context, visible: bool) -> None:
+    """Show or hide the tools that need a Mechanical connection.
+
+    The connection is shared by every client session, so the server-level rule is
+    authoritative: session-scoped rules alone do not persist across requests with
+    FastMCP 4. The session call is kept because it notifies the client that the
+    tool list changed.
+    """
+    if visible:
+        app.enable(tags={REQUIRES_MECHANICAL_TAG})
+        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
+    elif not ctx.request_context.lifespan_context.static_tools:
+        app.disable(tags={REQUIRES_MECHANICAL_TAG})
+        await ctx.disable_components(tags={REQUIRES_MECHANICAL_TAG})
+
+
 # Access type-safe lifespan context in tools
 @app.tool()  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
 def check_mechanical_status(ctx: Context) -> str:
@@ -192,6 +554,20 @@ def check_mechanical_status(ctx: Context) -> str:
 
         Returns an error message if Mechanical is not available or has exited.
     """
+    job = _pending_job(ctx.request_context.lifespan_context)
+    if job is not None and ctx.request_context.lifespan_context.mechanical is None:
+        return json.dumps(
+            {
+                "success": False,
+                "in_progress": job.kind,
+                "elapsed_seconds": round(job.elapsed),
+                "error": (
+                    f"A Mechanical {job.kind} is still in progress. Call "
+                    "check_mechanical_status again shortly."
+                ),
+            }
+        )
+
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
         return error
@@ -226,11 +602,20 @@ def get_session_diagnostics(ctx: Context) -> str:
     context = ctx.request_context.lifespan_context
     python_session = context.python_session
     mechanical = context.mechanical
+    job = _pending_job(context)
     return json.dumps(
         {
             "mechanical_connected": mechanical is not None,
             "mechanical_alive": (
                 bool(getattr(mechanical, "is_alive", False)) if mechanical is not None else False
+            ),
+            "mechanical_launched_by_server": (
+                bool(context.owns_mechanical) if mechanical is not None else False
+            ),
+            "operation_in_progress": (
+                {"kind": job.kind, "elapsed_seconds": round(job.elapsed)}
+                if job is not None
+                else None
             ),
             "grpc_transport_mode": context.grpc_transport_mode,
             "persistent_python": _python_session_status(python_session),
@@ -406,13 +791,20 @@ async def launch_mechanical(
     available to interact with it (including ``run_python_script``, ``screenshot``,
     and ``save_project``).
 
+    It always starts a new process; use ``connect_to_mechanical`` to attach to a
+    running instance. Launching is refused when the server's environment sets
+    ``PYMECHANICAL_START_INSTANCE=false``. If the request is cancelled, the launch
+    continues and is recorded when it finishes; a launch that does not finish within
+    the start timeout plus a grace period is stopped.
+
     Parameters
     ----------
     ctx : Context
         MCP context containing the server session and application context.
     exec_file : str, default: None
-        path to the Mechanical executable. If ``None``, PyMechanical attempts
-        to find the executable automatically.
+        path to the Mechanical executable. If ``None``, the executable matching
+        ``version`` is used, or PyMechanical's default installation when
+        ``version`` is also ``None``.
     port : int, default: None
         gRPC port for Mechanical to listen on. If ``None``, ``10000`` is used.
     batch : bool | None, default: None
@@ -420,8 +812,10 @@ async def launch_mechanical(
         tries to ask the client to choose between GUI and batch mode and falls back
         to GUI mode if elicitation is unavailable.
     version : str, default: None
-        Mechanical version to run (such as "261" for 2026 R1). If ``None``, the
-        latest installed version is used.
+        Mechanical release to run, such as ``"261"``, ``"26.1"``, or ``"2026 R1"``.
+        The launch fails with the list of installed releases when the requested
+        release is not installed. If ``None``, PyMechanical's default installation
+        (the saved path or the newest installed release) is used.
     transport_mode : str, default: None
         gRPC transport mode for the launched instance. Options are ``auto``,
         ``insecure``, ``mtls``, and ``wnua``. When ``None`` or ``auto``,
@@ -445,43 +839,59 @@ async def launch_mechanical(
                 f"'connect_to_mechanical' to establish a session."
             )
 
-        # Check if there's already a connection
-        if ctx.request_context.lifespan_context.mechanical is not None:
-            return (
-                "Already connected to a Mechanical instance. "
-                "Disconnect first using disconnect_from_mechanical tool."
-            )
+        # PyPIM launches remotely and does not read PYMECHANICAL_START_INSTANCE.
+        if not (exec_file is None and _pypim_configured()):
+            refusal = _start_instance_refusal()
+            if refusal is not None:
+                logger.error("Failed to launch Mechanical: %s", refusal)
+                return f"Failed to launch Mechanical: {refusal}"
+
+        context = ctx.request_context.lifespan_context
+        # Answer before asking the user for a launch mode when nothing can start.
+        if _pending_job(context) is not None or context.mechanical is not None:
+            async with context.lifecycle_lock:
+                busy = await _busy_message(context)
+            if busy is not None:
+                return busy
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
         if effective_mode is None:
-            effective_mode = ctx.request_context.lifespan_context.grpc_transport_mode
-
-        effective_certs = ctx.request_context.lifespan_context.certs_dir
+            effective_mode = context.grpc_transport_mode
 
         resolved_mode, resolved_certs = resolve_transport_mode(
             transport_mode=effective_mode,
-            certs_dir=effective_certs,
+            certs_dir=context.certs_dir,
         )
+
+        resolved_exec_file, version_error = _resolve_launch_executable(version, exec_file)
+        if version_error is not None:
+            logger.error("Failed to launch Mechanical: %s", version_error)
+            return f"Failed to launch Mechanical: {version_error}"
+
+        requested = _normalize_mechanical_version(version) if version is not None else None
 
         resolved_batch = await _resolve_launch_batch_mode(ctx, batch)
 
-        # Launch new Mechanical instance
         kwargs: dict[str, Any] = {
             "batch": resolved_batch,
             "loglevel": "INFO",
             "cleanup_on_exit": True,
-            "start_timeout": 300,  # 5 minutes for graphical mode launches
+            "start_timeout": _LAUNCH_START_TIMEOUT,
+            # Never prompt on stdin: in stdio mode it is the MCP protocol stream.
+            "allow_input": False,
+            # Always start a new process; attaching is connect_to_mechanical's job.
+            "start_instance": True,
         }
 
-        if exec_file is not None:
-            kwargs["exec_file"] = exec_file
+        if resolved_exec_file is not None:
+            kwargs["exec_file"] = resolved_exec_file
 
         if port is not None:
             kwargs["port"] = port
 
-        if version is not None:
-            kwargs["version"] = version
+        if requested is not None:
+            kwargs["version"] = str(requested)
 
         if resolved_mode is not None:
             kwargs["transport_mode"] = resolved_mode
@@ -489,18 +899,30 @@ async def launch_mechanical(
         if resolved_certs is not None:
             kwargs["certs_dir"] = resolved_certs
 
-        # Launch Mechanical
-        mechanical = pymechanical.launch_mechanical(**kwargs)
+        async with context.lifecycle_lock:
+            busy = await _busy_message(context)
+            if busy is not None:
+                return busy
+            job = _start_session_job(
+                context,
+                "launch",
+                lambda: _launch_worker(kwargs, requested),
+                _LAUNCH_START_TIMEOUT,
+                server_child_pids(),
+            )
 
-        # Store in context for later use
-        ctx.request_context.lifespan_context.mechanical = mechanical
+        _, info = await _await_session_job(job)
 
-        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
+        await _set_mechanical_tools_visible(ctx, True)
         logger.info("Mechanical launched successfully!")
+        executable_line = (
+            f"Executable: {resolved_exec_file}\n" if resolved_exec_file is not None else ""
+        )
         return (
             f"Successfully launched Mechanical\n"
-            f"Version: {mechanical.version}\n"
-            f"Project Directory: {mechanical.project_directory}\n"
+            f"Version: {info['version']}\n"
+            f"{executable_line}"
+            f"Project Directory: {info['project_directory']}\n"
         )
 
     except Exception as e:
@@ -556,30 +978,22 @@ async def connect_to_mechanical(
     logger.info(f"Connecting to Mechanical instance at {ip}:{port}...")
 
     try:
-        # Check if there's already a connection
-        if ctx.request_context.lifespan_context.mechanical is not None:
-            return (
-                "Already connected to a Mechanical instance. "
-                "Disconnect first using disconnect_from_mechanical tool."
-            )
+        context = ctx.request_context.lifespan_context
 
         # Merge: tool parameter > CLI/env config > auto
         effective_mode = transport_mode
         if effective_mode is None:
-            effective_mode = ctx.request_context.lifespan_context.grpc_transport_mode
-
-        effective_certs = ctx.request_context.lifespan_context.certs_dir
+            effective_mode = context.grpc_transport_mode
 
         resolved_mode, resolved_certs = resolve_transport_mode(
             transport_mode=effective_mode,
-            certs_dir=effective_certs,
+            certs_dir=context.certs_dir,
         )
 
         logger.info(
             f"Resolved gRPC transport: mode={resolved_mode!r}, certs_dir={resolved_certs!r}"
         )
 
-        # Build connection kwargs
         connect_kwargs: dict[str, Any] = {
             "ip": ip,
             "port": port,
@@ -590,17 +1004,25 @@ async def connect_to_mechanical(
         if resolved_certs is not None:
             connect_kwargs["certs_dir"] = resolved_certs
 
-        # Connect to existing Mechanical instance
-        mechanical = pymechanical.connect_to_mechanical(**connect_kwargs)
+        async with context.lifecycle_lock:
+            busy = await _busy_message(context)
+            if busy is not None:
+                return busy
+            job = _start_session_job(
+                context,
+                "connection",
+                lambda: _connect_worker(connect_kwargs),
+                _CONNECT_TIMEOUT,
+                None,
+            )
 
-        # Store in context for later use
-        ctx.request_context.lifespan_context.mechanical = mechanical
+        _, info = await _await_session_job(job)
 
-        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
+        await _set_mechanical_tools_visible(ctx, True)
         logger.info(f"Connected to Mechanical successfully at {ip}:{port}!")
         return (
             f"Successfully connected to Mechanical at {ip}:{port}\n"
-            f"Version: {mechanical.version}\n"
+            f"Version: {info['version']}\n"
             f"Transport mode: {resolved_mode or 'default'}\n"
         )
 
@@ -614,8 +1036,11 @@ async def connect_to_mechanical(
 async def disconnect_from_mechanical(ctx: Context) -> str:
     """Disconnect from the connected Mechanical instance.
 
-    This tool closes the connection to the Mechanical instance and releases
-    the associated resources.
+    An instance started by ``launch_mechanical`` is shut down. An instance attached
+    with ``connect_to_mechanical`` (or ``--connect-on-startup``) is only released and
+    keeps running, so a user's own Mechanical session and its unsaved work are kept.
+    A launch or connection that is still in progress is cancelled; a launch's own
+    Mechanical process is stopped.
 
     Parameters
     ----------
@@ -627,30 +1052,41 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
     str
         Disconnection status message.
     """
-    mechanical = ctx.request_context.lifespan_context.mechanical
+    context = ctx.request_context.lifespan_context
 
-    if mechanical is None:
-        return "No Mechanical connection to disconnect."
+    async with context.lifecycle_lock:
+        job = _pending_job(context)
+        if job is not None:
+            await asyncio.to_thread(stop_processes, job.abandon())
+            return f"Cancelled the Mechanical {job.kind} that was still in progress."
 
-    try:
-        logger.info("Disconnecting from Mechanical...")
+        mechanical = context.mechanical
+        if mechanical is None:
+            return "No Mechanical connection to disconnect."
 
-        # Exit the Mechanical connection
-        mechanical.exit()
+        try:
+            if context.owns_mechanical:
+                logger.info("Shutting down the Mechanical instance launched by this server...")
+                await asyncio.to_thread(mechanical.exit)
+                message = (
+                    "Successfully disconnected from Mechanical and closed the instance "
+                    "launched by this server."
+                )
+            else:
+                logger.info("Releasing the attached Mechanical instance; it is left running.")
+                message = (
+                    "Successfully disconnected from Mechanical. The instance was not "
+                    "launched by this server, so it was left running."
+                )
+        except Exception as e:
+            message = f"Error during disconnect: {str(e)}"
+            logger.error(message)
+        finally:
+            context.mechanical = None
+            context.owns_mechanical = False
 
-        # Clear from context
-        ctx.request_context.lifespan_context.mechanical = None
-
-        await ctx.disable_components(tags={REQUIRES_MECHANICAL_TAG})
-        logger.info("Disconnected successfully!")
-        return "Successfully disconnected from Mechanical"
-
-    except Exception as e:
-        error_msg = f"Error during disconnect: {str(e)}"
-        logger.error(error_msg)
-        # Still clear the reference even if disconnect failed
-        ctx.request_context.lifespan_context.mechanical = None
-        return error_msg
+        await _set_mechanical_tools_visible(ctx, False)
+        return message
 
 
 @app.tool()
@@ -904,7 +1340,9 @@ def clear_mechanical(ctx: Context) -> str:
     """Clear the Mechanical database.
 
     This tool clears the current database in the Mechanical instance,
-    providing a fresh start for a new analysis.
+    providing a fresh start for a new analysis. All unsaved model data is lost.
+    The Mechanical process and the connection stay open; use
+    ``disconnect_from_mechanical`` to end the session.
 
     Parameters
     ----------
@@ -1010,8 +1448,12 @@ model_info['model'] = {
 # Get Geometry info
 if hasattr(model, 'Geometry') and model.Geometry is not None:
     geom = model.Geometry
+    try:
+        body_count = geom.GetChildren(DataModelObjectCategory.Body, True).Count
+    except:
+        body_count = 0
     model_info['geometry'] = {
-        'body_count': geom.Children.Count if hasattr(geom, 'Children') else 0,
+        'body_count': body_count,
     }
 else:
     model_info['geometry'] = {'body_count': 0}
@@ -1170,16 +1612,19 @@ def screenshot(
             )
         ]
 
+    # The image is written next to the project on the Mechanical host and transferred over
+    # gRPC, so capture works whether Mechanical runs locally, remotely, or in a container.
+    remote_name = f"mcp_screenshot_{uuid.uuid4().hex}.png"
+    remote_path: str | None = None
+    local_dir: str | None = None
+
     try:
         logger.info(f"Capturing Mechanical screenshot (type: {view_type})...")
-
-        # Create a temporary file with .png extension
-        temp_fd, temp_path = tempfile.mkstemp(suffix=".png", prefix="mechanical_screenshot_")
-        os.close(temp_fd)
 
         # Script to capture screenshot using Mechanical's Graphics API
         script = f"""
 import json
+import os
 
 requested_view = {json.dumps(view_type)}
 activated = "current"
@@ -1206,6 +1651,8 @@ try:
 except:
     activated = "current"
 
+image_path = os.path.join(ExtAPI.DataModel.Project.ProjectDirectory, {json.dumps(remote_name)})
+
 # Get the Graphics object
 graphics = ExtAPI.Graphics
 
@@ -1216,12 +1663,12 @@ try:
     settings.Resolution = GraphicsResolutionType.EnhancedResolution
     settings.Width = 1920
     settings.Height = 1080
-    graphics.ExportImage(r"{temp_path}", GraphicsImageExportFormat.PNG, settings)
+    graphics.ExportImage(image_path, GraphicsImageExportFormat.PNG, settings)
 except:
     # Approach 2: Simpler export (older versions)
-    graphics.ExportImage(r"{temp_path}")
+    graphics.ExportImage(image_path)
 
-json.dumps({{"path": r"{temp_path}", "activated": activated}})
+json.dumps({{"path": image_path, "activated": activated}})
 """
         try:
             result = mechanical.run_python_script(script)
@@ -1230,49 +1677,72 @@ json.dumps({{"path": r"{temp_path}", "activated": activated}})
             logger.warning(f"Graphics export failed: {e}")
             return [TextContent(type="text", text=f"Screenshot capture failed: {str(e)}")]
 
+        try:
+            script_result = json.loads(str(result))
+            remote_path = str(script_result["path"])
+        except (ValueError, TypeError, KeyError):
+            return [
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Screenshot capture failed: unexpected response from Mechanical: {result}"
+                    ),
+                )
+            ]
+
         # The script reports the view it managed to activate, which can differ from
         # view_type when the requested object is unavailable (for example, no results yet).
-        activated_view = view_type
-        try:
-            activated_view = str(json.loads(str(result))["activated"])
-        except (ValueError, TypeError, KeyError):
-            pass
+        activated_view = str(script_result.get("activated", view_type))
 
-        # Verify file was created
-        image_path = Path(temp_path)
-        if not image_path.exists():
-            return [TextContent(type="text", text=f"Screenshot file not created: {temp_path}")]
+        local_dir = tempfile.mkdtemp(prefix="mechanical_screenshot_")
+        local_paths = mechanical.download(remote_path, target_dir=local_dir, progress_bar=False)
+        if not local_paths:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Screenshot capture failed: Mechanical did not create {remote_path}.",
+                )
+            ]
 
-        # Read image data
-        with image_path.open("rb") as f:
-            image_data = f.read()
+        image_data = Path(local_paths[0]).read_bytes()
+        if not image_data.startswith(_PNG_SIGNATURE):
+            return [
+                TextContent(
+                    type="text",
+                    text="Screenshot capture failed: Mechanical did not produce a PNG image.",
+                )
+            ]
 
-        # Encode to base64
         base64_data = base64.b64encode(image_data).decode("utf-8")
+        logger.info(f"Screenshot captured successfully ({len(image_data)} bytes).")
 
-        # Determine mime type
-        mime_type = "image/png"
-
-        logger.info(f"Screenshot captured successfully: {temp_path}")
-
-        # Clean up temp file
-        try:
-            Path(temp_path).unlink()
-        except OSError:
-            pass
-
-        # Return both text (file path) and image content
         return [
             TextContent(
                 type="text", text=f"Screenshot captured successfully (view: {activated_view})."
             ),
-            ImageContent(type="image", data=base64_data, mimeType=mime_type),
+            ImageContent(type="image", data=base64_data, mimeType="image/png"),
         ]
 
     except Exception as e:
         error_msg = f"Failed to capture screenshot: {str(e)}"
         logger.error(error_msg)
         return [TextContent(type="text", text=error_msg)]
+
+    finally:
+        if local_dir is not None:
+            shutil.rmtree(local_dir, ignore_errors=True)
+        if remote_path is not None:
+            _delete_remote_file(mechanical, remote_path)
+
+
+def _delete_remote_file(mechanical: Any, remote_path: str) -> None:
+    """Delete a temporary file on the Mechanical host, ignoring failures."""
+    path_literal = json.dumps(remote_path)
+    script = f"import os\nif os.path.isfile({path_literal}):\n    os.remove({path_literal})\n"
+    try:
+        mechanical.run_python_script(script)
+    except Exception as exc:
+        logger.info("Could not delete %s on the Mechanical host: %s", remote_path, exc)
 
 
 ####################################################################################################
@@ -1379,7 +1849,10 @@ def create_custom_plot(
         sanitized_plot_code = _sanitize_output(plot_code)
 
         # Execute the plot code
-        result = session.execute(sanitized_plot_code, timeout=timeout)
+        execution_kwargs: dict[str, Any] = {"timeout": timeout}
+        if "no_output_timeout" in inspect.signature(session.execute).parameters:
+            execution_kwargs["no_output_timeout"] = None
+        result = session.execute(sanitized_plot_code, **execution_kwargs)
 
         # Parse the result
         if isinstance(result, dict):
@@ -1734,7 +2207,9 @@ def export_results(
         Export format. Use ``"png"`` for images, ``"txt"`` for text data, or ``"both"`` for
         images and text.
     output_dir : str, default: None
-        Directory to save exported files. If ``None``, uses the project directory.
+        Directory on the Mechanical host to save exported files. It is created if
+        it does not exist. If ``None``, uses the project directory. Use
+        ``download_file`` or ``download_project`` to copy the files locally.
 
     Returns
     -------
@@ -1749,16 +2224,13 @@ def export_results(
             "Use connect_to_mechanical tool to establish a connection."
         )
 
+    if analysis_index < 0:
+        return json.dumps({"success": False, "error": "analysis_index must be zero or greater."})
+
     try:
         # Determine output directory
         if output_dir is None:
-            output_dir = mechanical.project_directory
-
-        # Strip trailing backslash to avoid breaking raw string literals
-        output_dir = output_dir.rstrip("\\")
-
-        if not Path(output_dir).exists():
-            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            output_dir = str(mechanical.project_directory)
 
         script = f"""
 import json
@@ -1768,6 +2240,18 @@ output_dir = {json.dumps(output_dir)}
 result_type = {json.dumps(result_type)}
 export_format = {json.dumps(export_format)}
 analysis_index = {analysis_index}
+
+_invalid_name_chars = '<>:"/|?*' + chr(92)
+
+
+def _safe_file_name(name):
+    cleaned = []
+    for ch in name:
+        if ch in _invalid_name_chars or ch.isspace() or ord(ch) < 32:
+            cleaned.append('_')
+        else:
+            cleaned.append(ch)
+    return ''.join(cleaned).rstrip('.') or 'result'
 
 # Resolve the requested analysis before exporting so the results match the
 # analysis the caller solved.
@@ -1794,15 +2278,25 @@ elif str(solution.Status) != "Done":
 else:
     exported_files = []
     errors = []
+    used_names = set()
+
+    # The directory must exist on the Mechanical host, which may not be this machine.
+    try:
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+    except Exception as e:
+        errors.append("Could not create output directory {{0}}: {{1}}".format(output_dir, str(e)))
 
     # Evaluate all results first
     try:
         solution.EvaluateAllResults()
-    except:
-        pass
+    except Exception as e:
+        errors.append("Result evaluation failed: {{0}}".format(str(e)))
 
     # Iterate through result objects
     for i in range(solution.Children.Count):
+        if not os.path.isdir(output_dir):
+            break
         child = solution.Children[i]
 
         # Check if this is a result object (has Maximum property)
@@ -1825,7 +2319,13 @@ else:
         # Activate the result for export
         child.Activate()
 
-        safe_name = child_name.replace(" ", "_").replace("/", "_")
+        base_name = _safe_file_name(child_name)
+        safe_name = base_name
+        name_count = 1
+        while safe_name.lower() in used_names:
+            name_count += 1
+            safe_name = base_name + "_" + str(name_count)
+        used_names.add(safe_name.lower())
 
         # Export image
         if export_format in ("png", "both"):
@@ -1897,10 +2397,15 @@ else:
             'results': [],
         }
 
-        # Extrema are only meaningful once the solve has finished.
-        if status == 'Done':
+        # Results can only be evaluated once the solver has produced them.
+        if status in ('Done', 'PostProcessingRequired'):
             try:
                 solution.EvaluateAllResults()
+            except Exception as e:
+                entry['evaluation_error'] = str(e)
+            try:
+                status = str(solution.Status)
+                entry['solution_status'] = status
             except:
                 pass
 
@@ -1910,11 +2415,24 @@ else:
             if not hasattr(child, 'Maximum'):
                 continue
             item = {'name': child.Name, 'type': _category(child)}
+            try:
+                state = str(child.ObjectState)
+            except:
+                state = None
+            item['state'] = state
+            # Values of an unsolved, obsolete, or failed result are stale or absent.
+            if state is not None:
+                has_values = state == 'Solved'
+            else:
+                has_values = status == 'Done'
             for key, attr in (
                 ('minimum', 'Minimum'),
                 ('maximum', 'Maximum'),
                 ('average', 'Average'),
             ):
+                if not has_values:
+                    item[key] = None
+                    continue
                 try:
                     item[key] = _quantity(getattr(child, attr))
                 except:
@@ -1954,7 +2472,9 @@ def get_results_summary(
     -------
     str
         JSON string with one entry per analysis, each listing its result objects
-        with their minimum, maximum, and average values and units.
+        with their ``state`` and their minimum, maximum, and average values and
+        units. Values are ``null`` unless the result is solved, so stale values
+        of an obsolete or failed result are never reported.
     """
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
@@ -2059,6 +2579,7 @@ def get_mechanical_logs(
     tail_lines: int = 200,
     contains: str | None = None,
     max_chars: int = 40000,
+    analysis_index: int | None = None,
 ) -> str:
     """Return recent log entries from the connected Mechanical instance.
 
@@ -2075,7 +2596,7 @@ def get_mechanical_logs(
         - ``"messages"`` (default): Application messages (errors, warnings,
           info) from ``ExtAPI.Application.Messages``.
         - ``"solve_log"``: Raw solver transcript from ``solve.out`` in the
-          project directory.
+          solver working directory, read on the Mechanical host.
 
     tail_lines : int, default: 200
         Number of most recent lines to return.
@@ -2083,6 +2604,9 @@ def get_mechanical_logs(
         Case-insensitive substring filter applied to each line.
     max_chars : int, default: 40000
         Maximum character count for the returned log text.
+    analysis_index : int, optional
+        Analysis whose ``solve.out`` to read (0-based) when ``source`` is
+        ``"solve_log"``. When ``None``, the most recently written log is read.
 
     Returns
     -------
@@ -2101,6 +2625,8 @@ def get_mechanical_logs(
         return "Invalid parameter: tail_lines must be greater than 0."
     if max_chars <= 0:
         return "Invalid parameter: max_chars must be greater than 0."
+    if analysis_index is not None and analysis_index < 0:
+        return "Invalid parameter: analysis_index must be zero or greater."
 
     safe_tail_lines = min(tail_lines, 5000)
     safe_max_chars = min(max_chars, 200000)
@@ -2109,7 +2635,9 @@ def get_mechanical_logs(
         if source == "messages":
             return _get_mechanical_messages(mechanical, safe_tail_lines, contains, safe_max_chars)
         elif source == "solve_log":
-            return _get_mechanical_solve_log(mechanical, safe_tail_lines, contains, safe_max_chars)
+            return _get_mechanical_solve_log(
+                mechanical, safe_tail_lines, contains, safe_max_chars, analysis_index
+            )
         else:
             return json.dumps(
                 {
@@ -2188,7 +2716,141 @@ json.dumps(entries)
     )
 
 
+# Body of the remote solve.out reader. The caller prepends ``analysis_filter``,
+# ``contains_filter`` (lower-case or None), and ``tail_count``.
+_SOLVE_LOG_SCRIPT = """
+import io
+import json
+import os
+
+
+def _solve_log_candidates():
+    paths = []
+    for analysis_idx in range(Model.Analyses.Count):
+        if analysis_filter is not None and analysis_idx != analysis_filter:
+            continue
+        try:
+            working_dir = Model.Analyses[analysis_idx].WorkingDir
+        except:
+            working_dir = None
+        if working_dir:
+            path = os.path.join(working_dir, 'solve.out')
+            if os.path.isfile(path):
+                paths.append(path)
+    if not paths and analysis_filter is None:
+        for dir_path, _, file_names in os.walk(ExtAPI.DataModel.Project.ProjectDirectory):
+            if 'solve.out' in file_names:
+                paths.append(os.path.join(dir_path, 'solve.out'))
+    return paths
+
+
+if analysis_filter is not None and analysis_filter >= Model.Analyses.Count:
+    payload = {
+        'found': False,
+        'error': 'Analysis index {0} is out of range. Model has {1} analyses.'.format(
+            analysis_filter, Model.Analyses.Count
+        ),
+    }
+else:
+    candidates = _solve_log_candidates()
+    if not candidates:
+        payload = {'found': False}
+    else:
+        log_path = max(candidates, key=os.path.getmtime)
+        try:
+            handle = io.open(log_path, 'r', encoding='utf-8', errors='replace')
+        except:
+            handle = open(log_path, 'r')
+        try:
+            lines = handle.read().splitlines()
+        finally:
+            handle.close()
+        total = len(lines)
+        if contains_filter:
+            lines = [line for line in lines if contains_filter in line.lower()]
+        payload = {
+            'found': True,
+            'path': log_path,
+            'total_lines': total,
+            'matched_lines': len(lines),
+            'lines': lines[-tail_count:],
+        }
+
+json.dumps(payload)
+"""
+
+
+def _read_remote_solve_log(
+    mechanical: Any, tail_lines: int, contains: str | None, analysis_index: int | None
+) -> dict[str, Any] | None:
+    """Read ``solve.out`` on the Mechanical host, or return ``None`` if that is not possible."""
+    selector = "None" if analysis_index is None else str(int(analysis_index))
+    contains_literal = json.dumps(contains.lower()) if contains else "None"
+    script = (
+        f"analysis_filter = {selector}\n"
+        f"contains_filter = {contains_literal}\n"
+        f"tail_count = {int(tail_lines)}\n"
+        f"{_SOLVE_LOG_SCRIPT}"
+    )
+    try:
+        payload = json.loads(str(mechanical.run_python_script(script)))
+    except Exception as exc:
+        logger.info("Remote solve.out read failed; using the local project path: %s", exc)
+        return None
+    if not isinstance(payload, dict) or "found" not in payload:
+        return None
+    return payload
+
+
 def _get_mechanical_solve_log(
+    mechanical: Any,
+    tail_lines: int,
+    contains: str | None,
+    max_chars: int,
+    analysis_index: int | None = None,
+) -> str:
+    """Read the solver ``solve.out`` log, preferring the copy on the Mechanical host."""
+    payload = _read_remote_solve_log(mechanical, tail_lines, contains, analysis_index)
+    if payload is None:
+        return _get_local_solve_log(mechanical, tail_lines, contains, max_chars)
+
+    if not payload.get("found"):
+        return json.dumps(
+            {
+                "source": "solve_log",
+                "error": payload.get("error")
+                or (
+                    "solve.out not found in the solver working directory. "
+                    "Run a solve first to generate solver output."
+                ),
+            }
+        )
+
+    selected = [str(line) for line in payload.get("lines", [])]
+    text = "\n".join(selected)
+
+    truncated = False
+    if len(text) > max_chars:
+        text = text[-max_chars:]
+        truncated = True
+
+    return json.dumps(
+        {
+            "source": "solve_log",
+            "log_file": payload.get("path"),
+            "total_lines": payload.get("total_lines"),
+            "matched_lines": payload.get("matched_lines"),
+            "returned_lines": len(selected),
+            "tail_lines_requested": tail_lines,
+            "contains": contains,
+            "truncated": truncated,
+            "logs": text,
+        },
+        indent=2,
+    )
+
+
+def _get_local_solve_log(
     mechanical: Any,
     tail_lines: int,
     contains: str | None,

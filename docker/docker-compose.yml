@@ -3,10 +3,14 @@ services:
   pymechanical-mcp:
     depends_on:
       - mechanical
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: pymechanical-mcp:latest
     container_name: pymechanical-mcp-server
     ports:
-      - "${HTTP_PORT:-8080}:8080"
+      # Localhost only by default: the MCP server is unauthenticated and can run code.
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
     env_file:
       - .env
     environment:
@@ -41,7 +45,7 @@ services:
     environment:
       - ANSYSLMD_LICENSE_FILE=${ANSYSLMD_LICENSE_FILE:-1055@license-server}
     ports:
-      - '10000:10000'
+      - '${MECHANICAL_BIND_ADDRESS:-127.0.0.1}:10000:10000'
     image: 'ghcr.io/ansys/mechanical:26.1.0'
     user: "0:0"
     networks:

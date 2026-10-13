@@ -66,6 +66,60 @@ def _probe_grpc_endpoint(host: str, port: int, timeout: float = 3.0) -> dict[str
         return {"reachable": False, "host": host, "port": port, "error": str(e)}
 
 
+def server_child_pids() -> frozenset[int]:
+    """Return the process IDs of this server's direct child processes."""
+    import psutil
+
+    try:
+        return frozenset(child.pid for child in psutil.Process().children())
+    except psutil.Error:
+        return frozenset()
+
+
+def launched_mechanical_processes(baseline: frozenset[int]) -> list[Any]:
+    """Return Mechanical processes this server started after ``baseline`` was taken.
+
+    PyMechanical starts Mechanical as a direct child process with ``-grpc <port>``
+    on its command line, so only such children (and their descendants) qualify.
+    A user's own Mechanical is never a child of this server.
+    """
+    import psutil
+
+    targets: list[Any] = []
+    try:
+        children = psutil.Process().children()
+    except psutil.Error:
+        return targets
+    for child in children:
+        if child.pid in baseline:
+            continue
+        try:
+            if "-grpc" not in (arg.lower() for arg in child.cmdline()):
+                continue
+            targets.extend(child.children(recursive=True))
+        except psutil.Error:
+            continue
+        targets.append(child)
+    return targets
+
+
+def stop_processes(processes: list[Any], timeout: float = 10.0) -> None:
+    """Terminate processes, then kill any that are still running after ``timeout``."""
+    import psutil
+
+    for process in processes:
+        try:
+            process.terminate()
+        except psutil.Error:
+            pass
+    _, alive = psutil.wait_procs(processes, timeout=timeout)
+    for process in alive:
+        try:
+            process.kill()
+        except psutil.Error:
+            pass
+
+
 def _find_certs_dir(certs_dir: str | None = None) -> Path | None:
     """Locate a certificate directory that contains the required mTLS files.
 
@@ -248,25 +302,19 @@ def list_instances(
 
     mechanical_instances = []
 
-    def is_grpc_based(proc):
-        """Check if process uses gRPC."""
-        cmdline = proc.cmdline()
-        # Check for --port flag or grpc indicators
-        return (
-            "--port" in cmdline
-            or "-grpc" in cmdline
-            or any("grpc" in arg.lower() for arg in cmdline)
-        )
-
     def get_port(proc):
-        """Extract port from command line."""
+        """Extract the gRPC port from the command line.
+
+        PyMechanical starts Mechanical with ``-grpc <port>``; ``--port`` is also accepted.
+        """
         cmdline = proc.cmdline()
-        if "--port" in cmdline:
-            try:
-                ind_port = cmdline.index("--port")
-                return cmdline[ind_port + 1]
-            except (IndexError, ValueError):
-                pass
+        # Mechanical on Windows reports its command line in upper case (``-GRPC``).
+        lowered = [arg.lower() for arg in cmdline]
+        for flag in ("-grpc", "--port"):
+            if flag in lowered:
+                ind_port = lowered.index(flag)
+                if ind_port + 1 < len(cmdline) and cmdline[ind_port + 1].isdigit():
+                    return cmdline[ind_port + 1]
         return "N/A"
 
     def is_valid_process(proc):
@@ -292,11 +340,12 @@ def list_instances(
     for proc in psutil.process_iter():
         try:
             if is_valid_process(proc):
-                # Check if it's a main process or child
-                if len(proc.children(recursive=True)) < 2:
-                    proc.ansys_instance = False
-                else:
-                    proc.ansys_instance = True
+                # Mechanical serving gRPC (``-grpc``) is an instance even without child
+                # processes, which is the case for batch and headless sessions.
+                proc.ansys_instance = (
+                    "-grpc" in (arg.lower() for arg in proc.cmdline())
+                    or len(proc.children(recursive=True)) >= 2
+                )
                 mechanical_instances.append(proc)
 
         except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
@@ -322,16 +371,20 @@ def list_instances(
         if instances and not each_p.ansys_instance:
             continue
 
-        proc_line = []
-        proc_line.append(each_p.name())
+        try:
+            proc_line = []
+            proc_line.append(each_p.name())
 
-        if not instances:
-            proc_line.append(each_p.ansys_instance)
+            if not instances:
+                proc_line.append(each_p.ansys_instance)
 
-        proc_line.extend([each_p.status(), get_port(each_p), each_p.pid])
+            proc_line.extend([each_p.status(), get_port(each_p), each_p.pid])
 
-        if cmd:
-            proc_line.append(" ".join(each_p.cmdline()))
+            if cmd:
+                proc_line.append(" ".join(each_p.cmdline()))
+        except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
+            # The process exited or became inaccessible after it was discovered.
+            continue
 
         if location:
             try:
