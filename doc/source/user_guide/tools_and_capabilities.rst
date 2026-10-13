@@ -71,7 +71,7 @@ Available after connection
        stable object IDs.
    * - ``describe_object``
      - Return the API properties of an object as the connected release exposes
-       them, with current values, units, and allowed enum values.
+       them, with current values, units, and allowed values for enumerations.
    * - ``preview_property_change``
      - Validate a new property value and show the current and proposed values
        without changing the model. Returns a single-use token.
@@ -160,7 +160,7 @@ Mechanical release, including releases newer than the bundled API reference.
   Set ``details_only=False`` for every public API property.
 - ``preview_property_change`` checks values strictly against the property type.
   Booleans must be ``true`` or ``false``, integers must fit the property range,
-  enum values must be exact member names, and quantities must be strings such
+  enumeration values must be exact member names, and quantities must be strings such
   as ``"10 [mm]"`` whose unit is compatible with the current value.
 - ``apply_property_change`` applies only a matching, unused, unexpired preview
   whose current value has not changed, and then reads the value back.
@@ -173,7 +173,7 @@ such as geometry scoping or tabular data, still require ``run_python_script``.
 running it. Remote Mechanical sessions, including 2026 R1 and 2027 R1, run
 IronPython 2.7, so syntax such as f-strings is reported. It then looks up names
 such as ``Model.Mesh.ElementSize`` in the live session to find misspelled or
-nonexistent members. Lookups read properties but never call methods. A passing
+nonexistent members. The check reads properties but never calls methods. A passing
 check does not validate argument types, values, or the model state at run time.
 
 Example workflows
