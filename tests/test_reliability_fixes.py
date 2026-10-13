@@ -483,6 +483,7 @@ class TestSessionJobs:
             patch.object(tools, "_SESSION_DEADLINE_MARGIN", 0.0),
             patch.object(tools, "launched_mechanical_processes", return_value=own_processes),
             patch.object(tools, "stop_processes") as stop,
+            patch.object(tools, "_close_quietly") as close,
         ):
             task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
             job = await _wait_for_job(state)
@@ -492,11 +493,37 @@ class TestSessionJobs:
 
             release.set()
             await job.future
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
+        close.assert_called_once()
         assert job.abandoned is True
         assert state.mechanical is None
         assert tools._pending_job(state) is None
+
+    async def test_stuck_connection_late_result_is_not_closed(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        release = threading.Event()
+        attached = MagicMock(version="261")
+
+        def _connect(**kwargs):
+            release.wait(timeout=10)
+            return attached
+
+        with (
+            patch.object(tools.pymechanical, "connect_to_mechanical", side_effect=_connect),
+            patch.object(tools, "_CONNECT_TIMEOUT", 0.2),
+            patch.object(tools, "_SESSION_DEADLINE_MARGIN", 0.0),
+            patch.object(tools, "stop_processes") as stop,
+        ):
+            result = await tools.connect_to_mechanical(context)
+            assert "did not finish within" in result
+            stop.assert_called_once_with([])
+            release.set()
+            await asyncio.sleep(0.2)
+
+        attached.exit.assert_not_called()
+        assert state.mechanical is None
 
     async def test_expired_job_without_waiter_is_replaced_on_retry(self):
         context = make_context()

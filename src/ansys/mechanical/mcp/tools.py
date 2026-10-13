@@ -276,7 +276,13 @@ class _SessionJob:
         return launched_mechanical_processes(self.baseline)
 
     def _finished(self, future: "asyncio.Future[Any]") -> None:
-        if self.abandoned or future.cancelled():
+        if future.cancelled():
+            return
+        if self.abandoned:
+            # A launch abandoned before its process existed can still start one later.
+            if self.kind == "launch" and future.exception() is None:
+                mechanical, _ = future.result()
+                asyncio.get_running_loop().run_in_executor(None, _close_quietly, mechanical)
             return
         if self.context.session_job is self:
             self.context.session_job = None
@@ -353,6 +359,14 @@ async def _await_session_job(job: _SessionJob) -> tuple[Any, dict[str, str]]:
     return cast(tuple[Any, dict[str, str]], job.future.result())
 
 
+def _close_quietly(mechanical: Any) -> None:
+    """Close a Mechanical instance this server launched, logging instead of raising."""
+    try:
+        mechanical.exit(force=True)
+    except Exception as exc:
+        logger.info("Could not close the launched Mechanical instance: %s", exc)
+
+
 def _launch_worker(kwargs: dict[str, Any], requested: int | None) -> tuple[Any, dict[str, str]]:
     """Launch Mechanical and confirm it runs the requested release."""
     mechanical = pymechanical.launch_mechanical(**kwargs)
@@ -370,10 +384,7 @@ def _launch_worker(kwargs: dict[str, Any], requested: int | None) -> tuple[Any, 
                 )
         info = {"version": version, "project_directory": str(mechanical.project_directory)}
     except Exception:
-        try:
-            mechanical.exit(force=True)
-        except Exception as exc:
-            logger.info("Could not close the launched Mechanical instance: %s", exc)
+        _close_quietly(mechanical)
         raise
     return mechanical, info
 

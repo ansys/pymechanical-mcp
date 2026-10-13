@@ -207,15 +207,14 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
     def product_cleanup(self):
         """Perform cleanup actions for Mechanical instances on shutdown."""
         context = self.context
-        job = getattr(context, "session_job", None)
-        if job is not None:
+        if getattr(context, "session_job", None) is not None:
             from ansys.mechanical.mcp.helpers import stop_processes
             from ansys.mechanical.mcp.tools import _pending_job
 
             job = _pending_job(context)
-        if job is not None:
-            logger.info("Stopping the Mechanical %s that is still in progress...", job.kind)
-            stop_processes(job.abandon())
+            if job is not None:
+                logger.info("Stopping the Mechanical %s that is still in progress...", job.kind)
+                stop_processes(job.abandon())
         if context.mechanical is None:
             return
         try:
