@@ -157,7 +157,7 @@ and then point Visual Studio Code at it:
      "servers": {
        "pymechanical-mcp": {
          "type": "http",
-         "url": "http://127.0.0.1:8080"
+         "url": "http://127.0.0.1:8080/mcp"
        }
      }
    }
@@ -240,7 +240,7 @@ HTTP transport
       # With CORS origins for web clients
       ansys-mechanical-mcp --transport http --cors-origins "http://localhost:3000"
 
-#. Configure your client to connect to ``http://[server-ip]:8080``.
+#. Configure your client to connect to ``http://[server-ip]:8080/mcp``.
 
 Claude Code versus Visual Studio Code
 --------------------------------------
@@ -361,7 +361,7 @@ Integrate with Docker
         "servers": {
           "pymechanical-mcp": {
             "type": "http",
-            "url": "http://localhost:8080"
+            "url": "http://localhost:8080/mcp"
           }
         }
       }

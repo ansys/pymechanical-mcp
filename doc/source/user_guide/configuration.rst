@@ -48,6 +48,10 @@ Environment variables
      - Default certificate directory when ``--certs-dir`` is not passed.
    * - ``PYMECHANICAL_IP`` / ``PYMECHANICAL_PORT``
      - Preferred endpoint values in containerized deployments.
+   * - ``PYMECHANICAL_START_INSTANCE``
+     - Unset by default, which allows ``launch_mechanical``. Set to ``false`` to
+       disable launching; ``launch_mechanical`` then returns an error naming this
+       variable, and ``connect_to_mechanical`` remains available.
    * - ``FASTMCP_LOG_LEVEL``
      - MCP server log verbosity.
 

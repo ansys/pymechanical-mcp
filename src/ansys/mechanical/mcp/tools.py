@@ -25,6 +25,7 @@ from pathlib import Path, PureWindowsPath
 import re
 import shutil
 import tempfile
+import time
 from typing import Any, cast
 import uuid
 import warnings
@@ -43,8 +44,11 @@ from ansys.mechanical.mcp.helpers import (
     _is_docker,
     _probe_grpc_endpoint,
     get_info,
+    launched_mechanical_processes,
     list_instances,
     resolve_transport_mode,
+    server_child_pids,
+    stop_processes,
 )
 from ansys.mechanical.mcp.server import session
 from mcp.types import ImageContent, TextContent
@@ -190,6 +194,194 @@ _ALREADY_CONNECTED_MESSAGE = (
     "Already connected to a Mechanical instance. "
     "Disconnect first using disconnect_from_mechanical tool."
 )
+
+#: PyMechanical's timeouts for starting and for connecting to Mechanical, in seconds.
+_LAUNCH_START_TIMEOUT = 300
+_CONNECT_TIMEOUT = 120
+
+#: Grace period after PyMechanical's own timeout before an operation is abandoned.
+_SESSION_DEADLINE_MARGIN = 60.0
+
+_START_INSTANCE_ENV = "PYMECHANICAL_START_INSTANCE"
+
+
+def _start_instance_refusal() -> str | None:
+    """Return why launching is disabled by ``PYMECHANICAL_START_INSTANCE``, if it is.
+
+    The variable is unset by default, which allows launching. PyMechanical itself reads
+    it, so only the exact values ``true`` and ``false`` (any case) are valid.
+    """
+    value = os.environ.get(_START_INSTANCE_ENV)
+    if value is None or value.lower() == "true":
+        return None
+    if value.lower() == "false":
+        return (
+            f"Starting Mechanical is disabled because the environment variable "
+            f"{_START_INSTANCE_ENV} is set to '{value}' for this MCP server. Remove it or "
+            "set it to 'true' to allow launch_mechanical, or use connect_to_mechanical "
+            "to attach to a Mechanical instance that is already running."
+        )
+    return (
+        f"The environment variable {_START_INSTANCE_ENV} has the invalid value {value!r}. "
+        "Set it to 'true' or 'false', or remove it."
+    )
+
+
+class _SessionJob:
+    """A launch or connect that runs in a worker thread and outlives the request that started it.
+
+    The result is recorded in the context even if the requesting client cancels. An
+    abandoned job's late result is discarded, and only the Mechanical processes that a
+    launch started are ever stopped.
+    """
+
+    def __init__(
+        self,
+        kind: str,
+        context: Any,
+        future: "asyncio.Future[Any]",
+        timeout: float,
+        baseline: frozenset[int] | None,
+    ) -> None:
+        self.kind = kind
+        self.context = context
+        self.future = future
+        self.started = time.monotonic()
+        self.deadline = self.started + timeout
+        self.baseline = baseline
+        self.abandoned = False
+        self.abandoned_event = asyncio.Event()
+        future.add_done_callback(self._finished)
+
+    @property
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    @property
+    def remaining(self) -> float:
+        return max(0.0, self.deadline - time.monotonic())
+
+    def abandon(self) -> list[Any]:
+        """Give up on the operation and return the processes it started, to be stopped."""
+        self.abandoned = True
+        self.abandoned_event.set()
+        if self.context.session_job is self:
+            self.context.session_job = None
+        return self._own_processes()
+
+    def _own_processes(self) -> list[Any]:
+        # Only one job exists at a time, so new -grpc children belong to this launch.
+        if self.baseline is None:
+            return []
+        return launched_mechanical_processes(self.baseline)
+
+    def _finished(self, future: "asyncio.Future[Any]") -> None:
+        if self.abandoned or future.cancelled():
+            return
+        if self.context.session_job is self:
+            self.context.session_job = None
+        if future.exception() is not None:
+            processes = self._own_processes()
+            if processes:
+                logger.warning("Stopping Mechanical processes left by a failed launch.")
+                asyncio.get_running_loop().run_in_executor(None, stop_processes, processes)
+            return
+        mechanical, _ = future.result()
+        self.context.mechanical = mechanical
+        self.context.owns_mechanical = self.kind == "launch"
+        app.enable(tags={REQUIRES_MECHANICAL_TAG})
+
+
+def _pending_job(context: Any) -> _SessionJob | None:
+    """Return the launch or connect operation in progress, if any."""
+    job = getattr(context, "session_job", None)
+    return job if isinstance(job, _SessionJob) else None
+
+
+def _start_session_job(
+    context: Any, kind: str, worker: Any, timeout: float, baseline: frozenset[int] | None
+) -> _SessionJob:
+    """Start ``worker`` in a thread and register it as the context's operation in progress."""
+    future = asyncio.get_running_loop().run_in_executor(None, worker)
+    job = _SessionJob(kind, context, future, timeout + _SESSION_DEADLINE_MARGIN, baseline)
+    context.session_job = job
+    return job
+
+
+async def _busy_message(context: Any) -> str | None:
+    """Return why a new launch or connect cannot start now, or ``None`` if it can.
+
+    An operation past its deadline is treated as stuck: it is abandoned and the
+    Mechanical processes it started are stopped, so a retry can start cleanly.
+    """
+    job = _pending_job(context)
+    if job is not None:
+        if job.remaining > 0:
+            return (
+                f"A Mechanical {job.kind} started {job.elapsed:.0f} s ago is still in "
+                f"progress. It is recorded when it finishes, or stopped if it has not "
+                f"finished within {job.remaining:.0f} s. Call check_mechanical_status "
+                "to see when it is ready."
+            )
+        logger.warning("Abandoning a Mechanical %s that did not finish in time.", job.kind)
+        await asyncio.to_thread(stop_processes, job.abandon())
+    return await _reject_if_connected(context)
+
+
+async def _await_session_job(job: _SessionJob) -> tuple[Any, dict[str, str]]:
+    """Wait for ``job``; on deadline, abandon it and stop the processes it started.
+
+    Cancelling the waiting request does not cancel the job itself.
+    """
+    abandoned = asyncio.ensure_future(job.abandoned_event.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {job.future, abandoned},
+            timeout=job.remaining,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+    finally:
+        abandoned.cancel()
+    if job.abandoned:
+        raise RuntimeError(f"The Mechanical {job.kind} was cancelled before it finished.")
+    if job.future not in done:
+        await asyncio.to_thread(stop_processes, job.abandon())
+        raise TimeoutError(
+            f"The Mechanical {job.kind} did not finish within "
+            f"{job.deadline - job.started:.0f} s and was stopped. You can retry."
+        )
+    return cast(tuple[Any, dict[str, str]], job.future.result())
+
+
+def _launch_worker(kwargs: dict[str, Any], requested: int | None) -> tuple[Any, dict[str, str]]:
+    """Launch Mechanical and confirm it runs the requested release."""
+    mechanical = pymechanical.launch_mechanical(**kwargs)
+    try:
+        version = str(mechanical.version)
+        if requested is not None:
+            try:
+                actual: int | None = _normalize_mechanical_version(version)
+            except ValueError:
+                actual = None
+            if actual is not None and actual != requested:
+                raise RuntimeError(
+                    f"Mechanical {actual} started, but {requested} was requested. "
+                    "The instance was closed."
+                )
+        info = {"version": version, "project_directory": str(mechanical.project_directory)}
+    except Exception:
+        try:
+            mechanical.exit(force=True)
+        except Exception as exc:
+            logger.info("Could not close the launched Mechanical instance: %s", exc)
+        raise
+    return mechanical, info
+
+
+def _connect_worker(kwargs: dict[str, Any]) -> tuple[Any, dict[str, str]]:
+    """Connect to a running Mechanical instance."""
+    mechanical = pymechanical.connect_to_mechanical(**kwargs)
+    return mechanical, {"version": str(mechanical.version)}
 
 
 def _normalize_mechanical_version(version: str | int | float) -> int:
@@ -351,6 +543,20 @@ def check_mechanical_status(ctx: Context) -> str:
 
         Returns an error message if Mechanical is not available or has exited.
     """
+    job = _pending_job(ctx.request_context.lifespan_context)
+    if job is not None and ctx.request_context.lifespan_context.mechanical is None:
+        return json.dumps(
+            {
+                "success": False,
+                "in_progress": job.kind,
+                "elapsed_seconds": round(job.elapsed),
+                "error": (
+                    f"A Mechanical {job.kind} is still in progress. Call "
+                    "check_mechanical_status again shortly."
+                ),
+            }
+        )
+
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
         return error
@@ -385,6 +591,7 @@ def get_session_diagnostics(ctx: Context) -> str:
     context = ctx.request_context.lifespan_context
     python_session = context.python_session
     mechanical = context.mechanical
+    job = _pending_job(context)
     return json.dumps(
         {
             "mechanical_connected": mechanical is not None,
@@ -393,6 +600,11 @@ def get_session_diagnostics(ctx: Context) -> str:
             ),
             "mechanical_launched_by_server": (
                 bool(context.owns_mechanical) if mechanical is not None else False
+            ),
+            "operation_in_progress": (
+                {"kind": job.kind, "elapsed_seconds": round(job.elapsed)}
+                if job is not None
+                else None
             ),
             "grpc_transport_mode": context.grpc_transport_mode,
             "persistent_python": _python_session_status(python_session),
@@ -568,6 +780,12 @@ async def launch_mechanical(
     available to interact with it (including ``run_python_script``, ``screenshot``,
     and ``save_project``).
 
+    It always starts a new process; use ``connect_to_mechanical`` to attach to a
+    running instance. Launching is refused when the server's environment sets
+    ``PYMECHANICAL_START_INSTANCE=false``. If the request is cancelled, the launch
+    continues and is recorded when it finishes; a launch that does not finish within
+    the start timeout plus a grace period is stopped.
+
     Parameters
     ----------
     ctx : Context
@@ -610,57 +828,79 @@ async def launch_mechanical(
                 f"'connect_to_mechanical' to establish a session."
             )
 
+        # PyPIM launches remotely and does not read PYMECHANICAL_START_INSTANCE.
+        if not (exec_file is None and _pypim_configured()):
+            refusal = _start_instance_refusal()
+            if refusal is not None:
+                logger.error("Failed to launch Mechanical: %s", refusal)
+                return f"Failed to launch Mechanical: {refusal}"
+
         context = ctx.request_context.lifespan_context
+        # Answer before asking the user for a launch mode when nothing can start.
+        if _pending_job(context) is not None or context.mechanical is not None:
+            async with context.lifecycle_lock:
+                busy = await _busy_message(context)
+            if busy is not None:
+                return busy
+
+        # Merge: tool parameter > CLI/env config > auto
+        effective_mode = transport_mode
+        if effective_mode is None:
+            effective_mode = context.grpc_transport_mode
+
+        resolved_mode, resolved_certs = resolve_transport_mode(
+            transport_mode=effective_mode,
+            certs_dir=context.certs_dir,
+        )
+
+        resolved_exec_file, version_error = _resolve_launch_executable(version, exec_file)
+        if version_error is not None:
+            logger.error("Failed to launch Mechanical: %s", version_error)
+            return f"Failed to launch Mechanical: {version_error}"
+
+        requested = _normalize_mechanical_version(version) if version is not None else None
+
+        resolved_batch = await _resolve_launch_batch_mode(ctx, batch)
+
+        kwargs: dict[str, Any] = {
+            "batch": resolved_batch,
+            "loglevel": "INFO",
+            "cleanup_on_exit": True,
+            "start_timeout": _LAUNCH_START_TIMEOUT,
+            # Never prompt on stdin: in stdio mode it is the MCP protocol stream.
+            "allow_input": False,
+            # Always start a new process; attaching is connect_to_mechanical's job.
+            "start_instance": True,
+        }
+
+        if resolved_exec_file is not None:
+            kwargs["exec_file"] = resolved_exec_file
+
+        if port is not None:
+            kwargs["port"] = port
+
+        if requested is not None:
+            kwargs["version"] = str(requested)
+
+        if resolved_mode is not None:
+            kwargs["transport_mode"] = resolved_mode
+
+        if resolved_certs is not None:
+            kwargs["certs_dir"] = resolved_certs
+
         async with context.lifecycle_lock:
-            already_connected = await _reject_if_connected(context)
-            if already_connected is not None:
-                return already_connected
-
-            # Merge: tool parameter > CLI/env config > auto
-            effective_mode = transport_mode
-            if effective_mode is None:
-                effective_mode = context.grpc_transport_mode
-
-            resolved_mode, resolved_certs = resolve_transport_mode(
-                transport_mode=effective_mode,
-                certs_dir=context.certs_dir,
+            busy = await _busy_message(context)
+            if busy is not None:
+                return busy
+            job = _start_session_job(
+                context,
+                "launch",
+                lambda: _launch_worker(kwargs, requested),
+                _LAUNCH_START_TIMEOUT,
+                server_child_pids(),
             )
 
-            resolved_exec_file, version_error = _resolve_launch_executable(version, exec_file)
-            if version_error is not None:
-                logger.error("Failed to launch Mechanical: %s", version_error)
-                return f"Failed to launch Mechanical: {version_error}"
-
-            resolved_batch = await _resolve_launch_batch_mode(ctx, batch)
-
-            kwargs: dict[str, Any] = {
-                "batch": resolved_batch,
-                "loglevel": "INFO",
-                "cleanup_on_exit": True,
-                "start_timeout": 300,  # 5 minutes for graphical mode launches
-                # Never prompt on stdin: in stdio mode it is the MCP protocol stream.
-                "allow_input": False,
-            }
-
-            if resolved_exec_file is not None:
-                kwargs["exec_file"] = resolved_exec_file
-
-            if port is not None:
-                kwargs["port"] = port
-
-            if version is not None:
-                kwargs["version"] = str(_normalize_mechanical_version(version))
-
-            if resolved_mode is not None:
-                kwargs["transport_mode"] = resolved_mode
-
-            if resolved_certs is not None:
-                kwargs["certs_dir"] = resolved_certs
-
-            mechanical = await asyncio.to_thread(pymechanical.launch_mechanical, **kwargs)
-
-            context.mechanical = mechanical
-            context.owns_mechanical = True
+        _, info = await _await_session_job(job)
 
         await _set_mechanical_tools_visible(ctx, True)
         logger.info("Mechanical launched successfully!")
@@ -669,9 +909,9 @@ async def launch_mechanical(
         )
         return (
             f"Successfully launched Mechanical\n"
-            f"Version: {mechanical.version}\n"
+            f"Version: {info['version']}\n"
             f"{executable_line}"
-            f"Project Directory: {mechanical.project_directory}\n"
+            f"Project Directory: {info['project_directory']}\n"
         )
 
     except Exception as e:
@@ -728,47 +968,50 @@ async def connect_to_mechanical(
 
     try:
         context = ctx.request_context.lifespan_context
+
+        # Merge: tool parameter > CLI/env config > auto
+        effective_mode = transport_mode
+        if effective_mode is None:
+            effective_mode = context.grpc_transport_mode
+
+        resolved_mode, resolved_certs = resolve_transport_mode(
+            transport_mode=effective_mode,
+            certs_dir=context.certs_dir,
+        )
+
+        logger.info(
+            f"Resolved gRPC transport: mode={resolved_mode!r}, certs_dir={resolved_certs!r}"
+        )
+
+        connect_kwargs: dict[str, Any] = {
+            "ip": ip,
+            "port": port,
+            "cleanup_on_exit": False,
+        }
+        if resolved_mode is not None:
+            connect_kwargs["transport_mode"] = resolved_mode
+        if resolved_certs is not None:
+            connect_kwargs["certs_dir"] = resolved_certs
+
         async with context.lifecycle_lock:
-            already_connected = await _reject_if_connected(context)
-            if already_connected is not None:
-                return already_connected
-
-            # Merge: tool parameter > CLI/env config > auto
-            effective_mode = transport_mode
-            if effective_mode is None:
-                effective_mode = context.grpc_transport_mode
-
-            resolved_mode, resolved_certs = resolve_transport_mode(
-                transport_mode=effective_mode,
-                certs_dir=context.certs_dir,
+            busy = await _busy_message(context)
+            if busy is not None:
+                return busy
+            job = _start_session_job(
+                context,
+                "connection",
+                lambda: _connect_worker(connect_kwargs),
+                _CONNECT_TIMEOUT,
+                None,
             )
 
-            logger.info(
-                f"Resolved gRPC transport: mode={resolved_mode!r}, certs_dir={resolved_certs!r}"
-            )
-
-            connect_kwargs: dict[str, Any] = {
-                "ip": ip,
-                "port": port,
-                "cleanup_on_exit": False,
-            }
-            if resolved_mode is not None:
-                connect_kwargs["transport_mode"] = resolved_mode
-            if resolved_certs is not None:
-                connect_kwargs["certs_dir"] = resolved_certs
-
-            mechanical = await asyncio.to_thread(
-                pymechanical.connect_to_mechanical, **connect_kwargs
-            )
-
-            context.mechanical = mechanical
-            context.owns_mechanical = False
+        _, info = await _await_session_job(job)
 
         await _set_mechanical_tools_visible(ctx, True)
         logger.info(f"Connected to Mechanical successfully at {ip}:{port}!")
         return (
             f"Successfully connected to Mechanical at {ip}:{port}\n"
-            f"Version: {mechanical.version}\n"
+            f"Version: {info['version']}\n"
             f"Transport mode: {resolved_mode or 'default'}\n"
         )
 
@@ -785,6 +1028,8 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
     An instance started by ``launch_mechanical`` is shut down. An instance attached
     with ``connect_to_mechanical`` (or ``--connect-on-startup``) is only released and
     keeps running, so a user's own Mechanical session and its unsaved work are kept.
+    A launch or connection that is still in progress is cancelled; a launch's own
+    Mechanical process is stopped.
 
     Parameters
     ----------
@@ -799,6 +1044,11 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
     context = ctx.request_context.lifespan_context
 
     async with context.lifecycle_lock:
+        job = _pending_job(context)
+        if job is not None:
+            await asyncio.to_thread(stop_processes, job.abandon())
+            return f"Cancelled the Mechanical {job.kind} that was still in progress."
+
         mechanical = context.mechanical
         if mechanical is None:
             return "No Mechanical connection to disconnect."

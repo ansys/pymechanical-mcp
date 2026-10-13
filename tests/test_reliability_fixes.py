@@ -312,7 +312,7 @@ class TestLifecycleSerialization:
 
         assert len(launches) == 1
         assert sum("Successfully launched" in r for r in results) == 1
-        assert sum("Already connected" in r for r in results) == 1
+        assert sum("still in progress" in r for r in results) == 1
 
     async def test_blocking_launch_does_not_block_event_loop(self):
         context = make_context()
@@ -329,6 +329,292 @@ class TestLifecycleSerialization:
             assert not task.done()
             released.set()
             assert "Successfully launched" in await task
+
+
+@pytest.mark.unit
+class TestStartInstanceFlag:
+    @pytest.mark.parametrize("value", ["false", "FALSE", "False"])
+    async def test_explicit_false_refuses_and_names_the_flag(self, monkeypatch, value):
+        monkeypatch.setenv("PYMECHANICAL_START_INSTANCE", value)
+        context = make_context()
+        with patch.object(tools.pymechanical, "launch_mechanical") as launch:
+            result = await tools.launch_mechanical(context, batch=True)
+        assert result.startswith("Failed to launch Mechanical: Starting Mechanical is disabled")
+        assert "PYMECHANICAL_START_INSTANCE" in result
+        assert "connect_to_mechanical" in result
+        launch.assert_not_called()
+        context.elicit.assert_not_awaited()
+
+    async def test_invalid_value_is_reported(self, monkeypatch):
+        monkeypatch.setenv("PYMECHANICAL_START_INSTANCE", "yes")
+        context = make_context()
+        with patch.object(tools.pymechanical, "launch_mechanical") as launch:
+            result = await tools.launch_mechanical(context, batch=True)
+        assert "invalid value 'yes'" in result
+        launch.assert_not_called()
+
+    @pytest.mark.parametrize("value", [None, "true", "TRUE"])
+    async def test_unset_or_true_launches_a_new_instance(self, monkeypatch, value):
+        if value is None:
+            monkeypatch.delenv("PYMECHANICAL_START_INSTANCE", raising=False)
+        else:
+            monkeypatch.setenv("PYMECHANICAL_START_INSTANCE", value)
+        context = make_context()
+        with patch.object(tools.pymechanical, "launch_mechanical", return_value=MagicMock()) as m:
+            result = await tools.launch_mechanical(context, batch=True)
+        assert "Successfully launched" in result
+        assert m.call_args.kwargs["start_instance"] is True
+
+    async def test_pypim_launch_is_not_blocked(self, monkeypatch):
+        monkeypatch.setenv("PYMECHANICAL_START_INSTANCE", "false")
+        context = make_context()
+        with (
+            patch.object(tools, "_pypim_configured", return_value=True),
+            patch.object(tools.pymechanical, "launch_mechanical", return_value=MagicMock()),
+        ):
+            result = await tools.launch_mechanical(context, batch=True)
+        assert "Successfully launched" in result
+
+    def test_core_start_instance_true_ignores_the_flag(self, monkeypatch, tmp_path):
+        """PyMechanical starts a process, not an attach, when start_instance=True."""
+        from ansys.mechanical.core import mechanical as core
+
+        monkeypatch.setenv("PYMECHANICAL_START_INSTANCE", "false")
+        exe = tmp_path / "AnsysWBU.exe"
+        exe.write_text("", encoding="utf-8")
+        with (
+            patch.object(core, "_HAS_ANSYS_PIM", False),
+            patch.object(core, "launch_grpc", return_value=10123) as launch_grpc,
+            patch.object(core.atp, "version_from_path", return_value=261),
+            patch.object(core, "Mechanical", return_value=MagicMock()) as client,
+        ):
+            core.launch_mechanical(exec_file=str(exe), start_instance=True, allow_input=False)
+        launch_grpc.assert_called_once()
+        assert client.call_args.kwargs["local"] is True
+
+
+@pytest.mark.unit
+class TestLaunchVersionCheck:
+    async def test_mismatched_release_is_closed_and_reported(self):
+        context = make_context()
+        launched = MagicMock(version="271", project_directory="C:/proj")
+        with (
+            patch.object(tools.pymechanical, "launch_mechanical", return_value=launched),
+            patch.object(tools, "_pypim_configured", return_value=False),
+            patch.object(tools.atp, "get_mechanical_path", return_value="C:/v261/AnsysWBU.exe"),
+        ):
+            result = await tools.launch_mechanical(context, version="261", batch=True)
+        assert "Mechanical 271 started, but 261 was requested" in result
+        launched.exit.assert_called_once_with(force=True)
+        assert context.request_context.lifespan_context.mechanical is None
+
+
+def _blocking_worker():
+    """A launch that blocks until released, recording how often it was started."""
+    release = threading.Event()
+    calls = []
+
+    def _launch(**kwargs):
+        calls.append(kwargs)
+        release.wait(timeout=10)
+        return MagicMock(version="261", project_directory="C:/proj", exited=False, is_alive=True)
+
+    return _launch, release, calls
+
+
+async def _wait_for_job(context, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while tools._pending_job(context) is None:
+        assert time.monotonic() < deadline, "job did not start"
+        await asyncio.sleep(0.01)
+    return tools._pending_job(context)
+
+
+@pytest.mark.unit
+class TestSessionJobs:
+    async def test_cancelled_request_still_records_the_launch(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, calls = _blocking_worker()
+        with patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            job = await _wait_for_job(state)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+            retry = await tools.launch_mechanical(context, batch=True)
+            assert "still in progress" in retry
+            assert len(calls) == 1
+
+            release.set()
+            await job.future
+            await asyncio.sleep(0)
+
+        assert state.mechanical is not None
+        assert state.owns_mechanical is True
+        assert tools._pending_job(state) is None
+        assert "Already connected" in await tools.launch_mechanical(context, batch=True)
+
+    async def test_connect_waits_for_a_launch_in_progress(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, _ = _blocking_worker()
+        with (
+            patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch),
+            patch.object(tools.pymechanical, "connect_to_mechanical") as connect,
+        ):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            await _wait_for_job(state)
+            result = await tools.connect_to_mechanical(context)
+            assert "Mechanical launch started" in result
+            connect.assert_not_called()
+            release.set()
+            assert "Successfully launched" in await task
+
+    async def test_stuck_launch_is_stopped_and_its_late_result_discarded(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, _ = _blocking_worker()
+        own_processes = [MagicMock(name="mechanical-child")]
+        with (
+            patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch),
+            patch.object(tools, "_LAUNCH_START_TIMEOUT", 0.2),
+            patch.object(tools, "_SESSION_DEADLINE_MARGIN", 0.0),
+            patch.object(tools, "launched_mechanical_processes", return_value=own_processes),
+            patch.object(tools, "stop_processes") as stop,
+        ):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            job = await _wait_for_job(state)
+            result = await task
+            assert "did not finish within" in result
+            stop.assert_called_once_with(own_processes)
+
+            release.set()
+            await job.future
+            await asyncio.sleep(0)
+
+        assert job.abandoned is True
+        assert state.mechanical is None
+        assert tools._pending_job(state) is None
+
+    async def test_expired_job_without_waiter_is_replaced_on_retry(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, calls = _blocking_worker()
+        with (
+            patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch),
+            patch.object(tools, "launched_mechanical_processes", return_value=["old"]),
+            patch.object(tools, "stop_processes") as stop,
+        ):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            stuck = await _wait_for_job(state)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            stuck.deadline = time.monotonic() - 1
+
+            release.set()
+            result = await tools.launch_mechanical(context, batch=True)
+
+        assert "Successfully launched" in result
+        stop.assert_called_once_with(["old"])
+        assert len(calls) == 2
+        assert stuck.abandoned is True
+
+    async def test_failed_launch_stops_the_processes_it_left(self):
+        context = make_context()
+        with (
+            patch.object(
+                tools.pymechanical, "launch_mechanical", side_effect=RuntimeError("no license")
+            ),
+            patch.object(tools, "launched_mechanical_processes", return_value=["orphan"]),
+            patch.object(tools, "stop_processes") as stop,
+        ):
+            result = await tools.launch_mechanical(context, batch=True)
+            await asyncio.sleep(0.05)
+        assert "no license" in result
+        stop.assert_called_once_with(["orphan"])
+        assert tools._pending_job(context.request_context.lifespan_context) is None
+
+    async def test_disconnect_cancels_a_launch_in_progress(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, _ = _blocking_worker()
+        with (
+            patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch),
+            patch.object(tools, "launched_mechanical_processes", return_value=["child"]),
+            patch.object(tools, "stop_processes") as stop,
+        ):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            await _wait_for_job(state)
+            result = await tools.disconnect_from_mechanical(context)
+            assert "Cancelled the Mechanical launch" in result
+            stop.assert_called_once_with(["child"])
+            release.set()
+            assert "cancelled before it finished" in await task
+        assert state.mechanical is None
+
+    async def test_status_and_diagnostics_report_the_operation(self):
+        context = make_context()
+        state = context.request_context.lifespan_context
+        launch, release, _ = _blocking_worker()
+        with patch.object(tools.pymechanical, "launch_mechanical", side_effect=launch):
+            task = asyncio.create_task(tools.launch_mechanical(context, batch=True))
+            await _wait_for_job(state)
+            status = json.loads(tools.check_mechanical_status(context))
+            assert status["in_progress"] == "launch"
+            diagnostics = json.loads(tools.get_session_diagnostics(context))
+            assert diagnostics["operation_in_progress"]["kind"] == "launch"
+            release.set()
+            await task
+
+    def test_server_shutdown_stops_a_launch_in_progress(self):
+        from ansys.mechanical.mcp.server import PyMechanicalMCP
+
+        mcp = PyMechanicalMCP(name="test")
+        mcp.context = PyMechanicalAppContext()
+        job = MagicMock(spec=tools._SessionJob, kind="launch")
+        job.abandon.return_value = ["child"]
+        mcp.context.session_job = job
+        with patch("ansys.mechanical.mcp.helpers.stop_processes") as stop:
+            mcp.product_cleanup()
+        stop.assert_called_once_with(["child"])
+
+
+class _FakeProcess:
+    def __init__(self, pid, cmdline, descendants=()):
+        self.pid = pid
+        self._cmdline = cmdline
+        self._descendants = list(descendants)
+
+    def cmdline(self):
+        return self._cmdline
+
+    def children(self, recursive=False):
+        return self._descendants
+
+
+@pytest.mark.unit
+class TestLaunchedProcessSelection:
+    def test_only_new_grpc_children_and_their_descendants(self):
+        solver = _FakeProcess(30, ["ansyscl.exe"])
+        baseline_child = _FakeProcess(10, ["AnsysWBU.exe", "-grpc", "10000"])
+        new_mechanical = _FakeProcess(20, ["AnsysWBU.exe", "-DSApplet", "-GRPC", "10001"], [solver])
+        new_other = _FakeProcess(40, ["python.exe", "-i"])
+        server = _FakeProcess(1, [], [baseline_child, new_mechanical, new_other])
+        with patch.object(psutil, "Process", return_value=server):
+            selected = helpers.launched_mechanical_processes(frozenset({10}))
+        assert {p.pid for p in selected} == {20, 30}
+
+    def test_stop_processes_kills_survivors(self):
+        quick, stubborn = MagicMock(), MagicMock()
+        with patch.object(psutil, "wait_procs", return_value=([quick], [stubborn])):
+            helpers.stop_processes([quick, stubborn], timeout=0.1)
+        quick.terminate.assert_called_once()
+        stubborn.terminate.assert_called_once()
+        stubborn.kill.assert_called_once()
+        quick.kill.assert_not_called()
 
 
 @pytest.mark.unit

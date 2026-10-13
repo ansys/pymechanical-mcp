@@ -47,6 +47,8 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         are released and left running.
     lifecycle_lock : asyncio.Lock
         Serializes launch, connect, and disconnect operations.
+    session_job : Optional[Any]
+        Launch or connect operation that is still in progress, if any.
     transport_type : str
         Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
     mechanical_ip : Optional[str]
@@ -79,6 +81,7 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     mechanical: Any | None = None
     owns_mechanical: bool = False
     lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    session_job: Any | None = field(default=None, repr=False)
     transport_type: str = "stdio"
     mechanical_ip: str | None = None
     mechanical_port: int | None = None
@@ -204,6 +207,15 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
     def product_cleanup(self):
         """Perform cleanup actions for Mechanical instances on shutdown."""
         context = self.context
+        job = getattr(context, "session_job", None)
+        if job is not None:
+            from ansys.mechanical.mcp.helpers import stop_processes
+            from ansys.mechanical.mcp.tools import _pending_job
+
+            job = _pending_job(context)
+        if job is not None:
+            logger.info("Stopping the Mechanical %s that is still in progress...", job.kind)
+            stop_processes(job.abandon())
         if context.mechanical is None:
             return
         try:

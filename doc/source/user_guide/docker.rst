@@ -29,7 +29,7 @@ Quick start with Docker Compose
 
       docker compose up -d --build
 
-   PyMechanical-MCP is available at ``http://localhost:8080`` by default.
+   PyMechanical-MCP is available at ``http://localhost:8080/mcp`` by default.
 
 4. Validate: view container logs to confirm the ``pymechanical-mcp`` service is ready:
 
@@ -91,7 +91,7 @@ Visual Studio Code MCP client example (HTTP)
      "servers": {
        "pymechanical-mcp": {
          "type": "http",
-         "url": "http://127.0.0.1:8080"
+         "url": "http://127.0.0.1:8080/mcp"
        }
      }
    }

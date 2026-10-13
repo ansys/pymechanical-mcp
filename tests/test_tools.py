@@ -675,6 +675,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
             )
 
             # Verify Mechanical was stored in context
@@ -716,6 +717,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
                 port=10050,
             )
 
@@ -761,6 +763,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
                 exec_file="C:/ANSYS/v252/aisol/bin/winx64/AnsysWBU.exe",
                 version="252",
             )
@@ -795,6 +798,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
             )
 
     @pytest.mark.asyncio
@@ -827,6 +831,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
             )
 
     @pytest.mark.parametrize("action", ["decline", "cancel"])
@@ -862,6 +867,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
             )
 
     @pytest.mark.asyncio
@@ -892,6 +898,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
             )
 
     @pytest.mark.asyncio
@@ -933,6 +940,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
                 exec_file=exec_path,
                 port=10001,
                 version="241",
@@ -1058,6 +1066,7 @@ class TestLaunchMechanical:
                 cleanup_on_exit=True,
                 start_timeout=300,
                 allow_input=False,
+                start_instance=True,
                 port=10060,
             )
 

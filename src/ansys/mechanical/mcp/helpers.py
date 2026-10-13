@@ -66,6 +66,60 @@ def _probe_grpc_endpoint(host: str, port: int, timeout: float = 3.0) -> dict[str
         return {"reachable": False, "host": host, "port": port, "error": str(e)}
 
 
+def server_child_pids() -> frozenset[int]:
+    """Return the process IDs of this server's direct child processes."""
+    import psutil
+
+    try:
+        return frozenset(child.pid for child in psutil.Process().children())
+    except psutil.Error:
+        return frozenset()
+
+
+def launched_mechanical_processes(baseline: frozenset[int]) -> list[Any]:
+    """Return Mechanical processes this server started after ``baseline`` was taken.
+
+    PyMechanical starts Mechanical as a direct child process with ``-grpc <port>``
+    on its command line, so only such children (and their descendants) qualify.
+    A user's own Mechanical is never a child of this server.
+    """
+    import psutil
+
+    targets: list[Any] = []
+    try:
+        children = psutil.Process().children()
+    except psutil.Error:
+        return targets
+    for child in children:
+        if child.pid in baseline:
+            continue
+        try:
+            if "-grpc" not in (arg.lower() for arg in child.cmdline()):
+                continue
+            targets.extend(child.children(recursive=True))
+        except psutil.Error:
+            continue
+        targets.append(child)
+    return targets
+
+
+def stop_processes(processes: list[Any], timeout: float = 10.0) -> None:
+    """Terminate processes, then kill any that are still running after ``timeout``."""
+    import psutil
+
+    for process in processes:
+        try:
+            process.terminate()
+        except psutil.Error:
+            pass
+    _, alive = psutil.wait_procs(processes, timeout=timeout)
+    for process in alive:
+        try:
+            process.kill()
+        except psutil.Error:
+            pass
+
+
 def _find_certs_dir(certs_dir: str | None = None) -> Path | None:
     """Locate a certificate directory that contains the required mTLS files.
 
