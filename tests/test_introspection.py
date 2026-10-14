@@ -38,6 +38,7 @@ from tests.test_reliability_fixes import (
 SCRIPT_BUILDERS = [
     introspection.find_objects_script,
     introspection.describe_object_script,
+    introspection.search_api_script,
     introspection.preview_change_script,
     introspection.apply_change_script,
     introspection.check_script_script,
@@ -271,7 +272,8 @@ class TestPreviewTokens:
 # ---------------------------------------------------------------------------
 NEW_TOOLS = [
     (tools.find_objects, {}),
-    (tools.describe_object, {"object_id": 1}),
+    (tools.describe_api, {"object_id": 1}),
+    (tools.describe_api, {"query": "element size"}),
     (tools.preview_property_change, {"object_id": 1, "property_name": "Name", "value": "a"}),
     (
         tools.apply_property_change,
@@ -347,16 +349,48 @@ class TestFindAndDescribe:
         result = json.loads(tools.find_objects(ctx, category="Forc"))
         assert result["details"] == {"suggestions": ["Force"]}
 
-    def test_describe_object_returns_mechanical_payload(self):
+    def test_describe_api_object_returns_mechanical_payload(self):
         payload = {"success": True, "object": {"object_id": 3}, "properties": []}
         ctx, mechanical = connected(payload)
-        assert json.loads(tools.describe_object(ctx, 3, details_only=False)) == payload
+        assert json.loads(tools.describe_api(ctx, object_id=3, details_only=False)) == payload
         assert sent_payload(mechanical) == {
             "object_id": 3,
             "details_only": False,
             "name_contains": None,
             "include_methods": False,
         }
+
+    def test_describe_api_query_sends_search(self):
+        payload = {"success": True, "matches": [], "types": []}
+        ctx, mechanical = connected(payload)
+        assert json.loads(tools.describe_api(ctx, query="fixed support", limit=5)) == payload
+        assert sent_payload(mechanical) == {"query": "fixed support", "limit": 5}
+        assert "_mcp_search_api" in mechanical.run_python_script.call_args.args[0]
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({}, "exactly one"),
+            ({"object_id": 1, "query": "x"}, "exactly one"),
+            ({"query": "  "}, "empty"),
+            ({"query": "x", "limit": 0}, "limit"),
+            ({"query": "x", "limit": 201}, "limit"),
+        ],
+    )
+    def test_describe_api_validates_arguments(self, kwargs, message):
+        ctx, mechanical = connected("{}")
+        result = json.loads(tools.describe_api(ctx, **kwargs))
+        assert result["error_code"] == "invalid_arguments"
+        assert message in result["error"]
+        mechanical.run_python_script.assert_not_called()
+
+
+@pytest.mark.unit
+def test_solve_analysis_rejects_negative_index():
+    ctx, mechanical = connected("{}")
+    result = json.loads(tools.solve_analysis(ctx, analysis_index=-1))
+    assert result["success"] is False
+    mechanical.run_python_script.assert_not_called()
 
 
 @pytest.mark.unit

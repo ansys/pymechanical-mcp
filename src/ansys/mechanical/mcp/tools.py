@@ -2119,6 +2119,10 @@ def solve_analysis(
             "Use connect_to_mechanical tool to establish a connection."
         )
 
+    # A negative index would silently select an analysis counted from the end.
+    if analysis_index < 0:
+        return json.dumps({"success": False, "error": "analysis_index must be zero or greater."})
+
     try:
         script = f"""
 import json
@@ -2560,7 +2564,7 @@ def find_objects(
 ) -> str:
     """Find objects in the Mechanical Outline tree and return their stable IDs.
 
-    Use the returned ``object_id`` values with ``describe_object`` and
+    Use the returned ``object_id`` values with ``describe_api`` and
     ``preview_property_change``. IDs stay the same for the life of the object,
     unlike names, which can repeat, and positions, which change when objects are
     added. Nothing in the model is changed.
@@ -2618,61 +2622,89 @@ def find_objects(
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG}, annotations=_READ_ONLY)
-def describe_object(
+def describe_api(
     ctx: Context,
-    object_id: int,
+    object_id: int | None = None,
+    query: str | None = None,
     details_only: bool = True,
     name_contains: str | None = None,
     include_methods: bool = False,
+    limit: int = 30,
 ) -> str:
-    """Describe the API properties of one object in the connected Mechanical release.
+    """Describe an object, or search the Mechanical API, of the connected release.
 
-    The description is read from the connected session, so it matches the
-    installed release, including releases newer than the bundled API reference.
-    Values are reported with units, and enum properties list their allowed
-    members. Nothing in the model is changed.
+    Pass exactly one of ``object_id`` or ``query``. Everything is read from the
+    connected session, so it matches the installed release, including releases
+    newer than the bundled API reference. Nothing in the model is changed.
+
+    - ``object_id``: properties of one object, with current values, units, and
+      allowed enum members. Use this before ``preview_property_change``.
+    - ``query``: search API types, properties, methods, and enum members by
+      keywords, such as ``"element size"``, ``"AddFixedSupport"``, or
+      ``"contact formulation"``. A query that names a type, such as
+      ``"FixedSupport"``, also returns all members of that type. Use this
+      before writing a script instead of guessing API names.
 
     Parameters
     ----------
     ctx : Context
         MCP context containing the server session and application context.
-    object_id : int
+    object_id : int, optional
         ID of the object, as returned by ``find_objects``.
+    query : str, optional
+        Keywords to search for in API names. Case-insensitive; every word must
+        match.
     details_only : bool, default: True
-        Return only properties shown in the object's Details view, which are the
-        settings a user normally edits. Set to ``False`` to return every public
-        API property.
+        With ``object_id``, return only properties shown in the Details view,
+        which are the settings a user normally edits. Set to ``False`` for every
+        public API property.
     name_contains : str, optional
-        Case-insensitive text that the property name or Details caption must
-        contain.
+        With ``object_id``, case-insensitive text that the property name or
+        Details caption must contain.
     include_methods : bool, default: False
-        Also return the public method signatures of the object.
+        With ``object_id``, also return the public method signatures.
+    limit : int, default: 30
+        With ``query``, maximum number of matches to return, from 1 to 200.
 
     Returns
     -------
     str
-        JSON with ``object`` (ID, name, category, state, parent ID, API type),
-        ``unit_system``, and ``properties``. Each property reports ``name``,
-        ``type``, ``kind``, ``writable``, ``editable``, and, where available,
-        ``value``, ``caption``, ``display``, ``read_only_in_details``,
-        ``enum_values``, and ``range``. ``editable`` means that
-        ``preview_property_change`` supports the property. Details rows without
-        an API property are listed in ``details_without_api``.
+        With ``object_id``: JSON with ``object`` (ID, name, category, state,
+        parent ID, API type), ``unit_system``, and ``properties``. Each property
+        reports ``name``, ``type``, ``kind``, ``writable``, ``editable``, and,
+        where available, ``value``, ``caption``, ``display``,
+        ``read_only_in_details``, ``enum_values``, and ``range``. ``editable``
+        means ``preview_property_change`` supports the property.
+
+        With ``query``: JSON with ranked ``matches`` (``name``, ``type``,
+        ``kind``, and ``signature``), ``match_count``, ``truncated``, and
+        ``types`` for a type named by the query.
     """
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
         return error
+    if (object_id is None) == (query is None):
+        return _structured_error(InvalidArgumentsError("Pass exactly one of object_id or query."))
 
-    args = {
-        "object_id": object_id,
-        "details_only": details_only,
-        "name_contains": name_contains,
-        "include_methods": include_methods,
-    }
-    try:
-        payload = _run_introspection(
-            mechanical, introspection.describe_object_script(args), "describing the object"
+    if query is not None:
+        if not query.strip():
+            return _structured_error(InvalidArgumentsError("query must not be empty."))
+        if not 1 <= limit <= 200:
+            return _structured_error(InvalidArgumentsError("limit must be between 1 and 200."))
+        script = introspection.search_api_script({"query": query, "limit": limit})
+        action = "searching the API"
+    else:
+        script = introspection.describe_object_script(
+            {
+                "object_id": object_id,
+                "details_only": details_only,
+                "name_contains": name_contains,
+                "include_methods": include_methods,
+            }
         )
+        action = "describing the object"
+    try:
+        payload = _run_introspection(mechanical, script, action)
     except UpstreamError as exc:
         return _structured_error(exc)
     return json.dumps(payload, ensure_ascii=False)
@@ -2704,7 +2736,7 @@ def preview_property_change(
     object_id : int
         ID of the object, as returned by ``find_objects``.
     property_name : str
-        API property name, as returned by ``describe_object``, such as
+        API property name, as returned by ``describe_api``, such as
         ``ElementSize`` or ``NumberOfSteps``.
     value : bool, int, float, or str
         New value. Use a string for enum members and quantities.

@@ -337,15 +337,19 @@ class TestObjectDiscoveryIntegration:
     def test_find_and_describe(self, context):
         import json
 
-        from ansys.mechanical.mcp.tools import describe_object, find_objects
+        from ansys.mechanical.mcp.tools import describe_api, find_objects
 
         found = json.loads(find_objects(context, category="force"))
         assert found["match_count"] == 1
         assert found["python_engine"]
-        settings = json.loads(describe_object(context, self._id(context, "ANSYSAnalysisSettings")))
+        settings = json.loads(
+            describe_api(context, object_id=self._id(context, "ANSYSAnalysisSettings"))
+        )
         properties = {p["name"]: p for p in settings["properties"]}
         assert "Direct" in properties["SolverType"]["enum_values"]
         assert properties["NumberOfSteps"]["editable"] is True
+        search = json.loads(describe_api(context, query="large deflection"))
+        assert search["matches"][0]["name"] == "ANSYSAnalysisSettings.LargeDeflection"
 
     def test_preview_apply_and_stale_preview(self, real_mechanical, context):
         import json

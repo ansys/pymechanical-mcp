@@ -149,19 +149,20 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
     },
     "object-discovery": {
         "description": (
-            "Tools for finding Outline objects by stable ID and reading their "
-            "API properties, values, units, and allowed enum values from the "
-            "connected Mechanical release."
+            "Tools for finding Outline objects by stable ID, reading their "
+            "API properties, values, units, and allowed enum values, and "
+            "searching the API of the connected Mechanical release."
         ),
         "skill": (
             "Use find_objects to search the Outline tree by name, category, or "
-            "parent and get stable object IDs. Use describe_object with an ID "
-            "to read the properties of that object as the connected release "
-            "exposes them, instead of guessing API names."
+            "parent and get stable object IDs. Use describe_api with an object "
+            "ID to read that object's properties, or with a query such as "
+            "'element size' to search API types, properties, methods, and enum "
+            "members of the connected release, instead of guessing API names."
         ),
         "tools": [
             "find_objects",
-            "describe_object",
+            "describe_api",
         ],
     },
     "property-changes": {

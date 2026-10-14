@@ -37,7 +37,7 @@ You can use 29 tools exposed by the server, grouped as follows:
 | Connection and lifecycle | `check_mechanical_status`, `get_session_diagnostics`, `check_mechanical_installed`, `launch_mechanical`, `connect_to_mechanical`, `disconnect_from_mechanical`, `list_mechanical_instances` |
 | File and project management | `list_files`, `upload_file`, `download_file`, `download_project`, `clear_mechanical`, `save_project`, `open_project` |
 | Mechanical scripting and solve | `run_python_script`, `check_script`, `solve_analysis`, `get_model_info`, `get_results_summary`, `export_results` |
-| Object discovery and property changes | `find_objects`, `describe_object`, `preview_property_change`, `apply_property_change` |
+| Object discovery and property changes | `find_objects`, `describe_api`, `preview_property_change`, `apply_property_change` |
 | Visualization and diagnostics | `screenshot`, `create_custom_plot`, `get_mechanical_logs` |
 | Persistent Python execution | `run_python_code` |
 | Workflow guidance | `get_guidelines_for` |

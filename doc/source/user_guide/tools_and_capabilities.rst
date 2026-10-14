@@ -69,9 +69,10 @@ Available after connection
    * - ``find_objects``
      - Find Outline objects by name, category, or parent and return their
        stable object IDs.
-   * - ``describe_object``
-     - Return the API properties of an object as the connected release exposes
-       them, with current values, units, and allowed values for enumerations.
+   * - ``describe_api``
+     - With ``object_id``, return the API properties of an object with current
+       values, units, and allowed values for enumerations. With ``query``,
+       search the API of the connected release by keyword.
    * - ``preview_property_change``
      - Validate a new property value and show the current and proposed values
        without changing the model. Returns a single-use token.
@@ -156,8 +157,12 @@ Mechanical release, including releases newer than the bundled API reference.
 
 - ``find_objects`` returns stable object IDs. Use IDs rather than names, which
   can repeat, or positions, which change when objects are added.
-- ``describe_object`` lists properties shown in the Details view by default.
-  Set ``details_only=False`` for every public API property.
+- ``describe_api`` with ``object_id`` lists properties shown in the Details
+  view by default. Set ``details_only=False`` for every public API property.
+- ``describe_api`` with ``query`` searches API types, properties, methods, and
+  enumeration members by keyword, such as ``"element size"``. A query that names
+  a type, such as ``"FixedSupport"``, also lists all its members. Use it to find
+  real API names before writing a script.
 - ``preview_property_change`` checks values strictly against the property type.
   Booleans must be ``true`` or ``false``, integers must fit the property range,
   enumeration values must be exact member names, and quantities must be strings such
@@ -203,7 +208,7 @@ Change a setting with a preview
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. ``find_objects`` with ``category="Mesh"`` to get the mesh object ID
-#. ``describe_object`` to read ``ElementSize`` and its unit
+#. ``describe_api`` with the object ID to read ``ElementSize`` and its unit
 #. ``preview_property_change`` with ``value="2 [mm]"``
 #. Confirm the preview with the user
 #. ``apply_property_change`` with the returned ``preview_token``

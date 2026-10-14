@@ -652,6 +652,150 @@ def _mcp_check_script(args):
     return result
 """
 
+_SEARCH_API = r"""
+
+_MCP_API_NAMESPACES = ('Ansys.ACT.Automation.Mechanical', 'Ansys.Mechanical.DataModel.Enums')
+_MCP_KIND_ORDER = {'property': 0, 'method': 1, 'enum_value': 2}
+
+
+def _mcp_api_index():
+    # Reflecting over every automation type takes about 2 s, so build once per session.
+    cached = globals().get('_mcp_api_cache')
+    if cached is not None:
+        return cached
+    types = []
+    assemblies = set()
+    seeds = (Ansys.ACT.Automation.Mechanical.Model, Ansys.Mechanical.DataModel.Enums.SolverType)
+    for seed in seeds:
+        assembly = clr.GetClrType(seed).Assembly
+        if assembly.FullName in assemblies:
+            continue
+        assemblies.add(assembly.FullName)
+        for clr_type in assembly.GetExportedTypes():
+            namespace = clr_type.Namespace or ''
+            if namespace.startswith(_MCP_API_NAMESPACES):
+                types.append(clr_type)
+    # Entry points live outside those namespaces; index them under their script names.
+    aliases = {}
+    for alias, read in (
+        ('ExtAPI', lambda: ExtAPI),
+        ('DataModel', lambda: DataModel),
+        ('Graphics', lambda: Graphics),
+        ('Graphics.Camera', lambda: Graphics.Camera),
+        ('ExtAPI.Application', lambda: ExtAPI.Application),
+        ('ExtAPI.SelectionManager', lambda: ExtAPI.SelectionManager),
+        ('Quantity', lambda: Quantity('1 [m]')),
+    ):
+        try:
+            clr_type = read().GetType()
+        except Exception:
+            continue
+        aliases[clr_type.FullName] = alias
+        if clr_type not in types:
+            types.append(clr_type)
+    entries = []
+    for clr_type in types:
+        display = aliases.get(clr_type.FullName, clr_type.Name)
+        prefix = display.lower() + '.'
+        if clr_type.IsEnum:
+            for name in System.Enum.GetNames(clr_type):
+                entries.append((prefix + name.lower(), clr_type, name, 'enum_value', None))
+            continue
+        names = set()
+        for info in clr_type.GetProperties():
+            if info.Name in names or info.Name == 'InternalObject':
+                continue
+            names.add(info.Name)
+            entries.append((prefix + info.Name.lower(), clr_type, info.Name, 'property', info))
+        for method in clr_type.GetMethods():
+            if method.IsSpecialName or method.Name in names:
+                continue
+            if not (method.DeclaringType.Namespace or '').startswith('Ansys'):
+                continue
+            names.add(method.Name)
+            entries.append((prefix + method.Name.lower(), clr_type, method.Name, 'method', None))
+    cached = {'types': types, 'entries': entries, 'aliases': aliases}
+    globals()['_mcp_api_cache'] = cached
+    return cached
+
+
+def _mcp_signature(clr_type, member, kind, info):
+    if kind == 'property':
+        access = 'read/write' if _mcp_writable(info) else 'read-only'
+        return '{0}: {1} ({2})'.format(member, _mcp_type_name(info.PropertyType), access)
+    if kind == 'method':
+        overloads = []
+        for method in clr_type.GetMethods():
+            if method.Name != member:
+                continue
+            parameters = ', '.join([
+                _mcp_type_name(p.ParameterType) + ' ' + str(p.Name)
+                for p in method.GetParameters()])
+            overloads.append('{0}({1}) -> {2}'.format(
+                member, parameters, _mcp_type_name(method.ReturnType)))
+        return ' | '.join(sorted(set(overloads))[:3])
+    return '{0}.{1}'.format(clr_type.Name, member)
+
+
+def _mcp_search_api(args):
+    words = [w.lower() for w in args['query'].replace('.', ' ').split() if w]
+    if not words:
+        return _mcp_error('invalid_arguments', 'query must contain a word to search for.')
+    joined = ''.join(words)
+    limit = args['limit']
+    index = _mcp_api_index()
+
+    # A query that names a type returns its full member list, like help() on a class.
+    described = []
+    aliases = index['aliases']
+    for clr_type in index['types']:
+        names = (clr_type.Name.lower(), (clr_type.FullName or '').lower(),
+                 aliases.get(clr_type.FullName, '').lower().replace('.', ''))
+        if joined in names:
+            members = [
+                _mcp_signature(t, member, kind, info)
+                for _, t, member, kind, info in index['entries'] if t is clr_type
+            ]
+            described.append({
+                'type': str(clr_type.FullName),
+                'script_name': aliases.get(clr_type.FullName),
+                'kind': 'enum' if clr_type.IsEnum else 'class',
+                'members': members,
+            })
+
+    ranked = []
+    for key, clr_type, member, kind, info in index['entries']:
+        if not all(w in key for w in words):
+            continue
+        name = member.lower()
+        if name == joined or key.replace('.', '') == joined:
+            score = 0
+        elif all(w in name for w in words):
+            score = 1
+        else:
+            score = 2
+        ranked.append((score, _MCP_KIND_ORDER[kind], len(key), key, clr_type, member, kind, info))
+    ranked.sort(key=lambda r: r[:4])
+    matches = []
+    for _, _, _, _, clr_type, member, kind, info in ranked[:limit]:
+        matches.append({
+            'name': '{0}.{1}'.format(aliases.get(clr_type.FullName, clr_type.Name), member),
+            'type': str(clr_type.FullName),
+            'kind': kind,
+            'signature': _mcp_signature(clr_type, member, kind, info),
+        })
+    result = {
+        'success': True,
+        'query': args['query'],
+        'match_count': len(ranked),
+        'truncated': len(ranked) > len(matches),
+        'types': described[:3],
+        'matches': matches,
+    }
+    result.update(_mcp_context())
+    return result
+"""
+
 
 def _encode(args: dict[str, Any]) -> str:
     """Encode tool arguments as base64 JSON, which is safe to embed in a script."""
@@ -671,6 +815,11 @@ def find_objects_script(args: dict[str, Any]) -> str:
 def describe_object_script(args: dict[str, Any]) -> str:
     """Return the Mechanical script that describes one object."""
     return _build(_DESCRIBE_OBJECT, "_mcp_describe_object", args)
+
+
+def search_api_script(args: dict[str, Any]) -> str:
+    """Return the Mechanical script that searches the API of the connected release."""
+    return _build(_SEARCH_API, "_mcp_search_api", args)
 
 
 def preview_change_script(args: dict[str, Any]) -> str:
