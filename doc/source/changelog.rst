@@ -9,6 +9,77 @@ This section contains the release notes for PyMechanical-MCP.
 
 .. towncrier release notes start
 
+`0.3.0 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.3.0>`_ - October 14, 2026
+===========================================================================================
+
+.. tab-set::
+
+
+  .. tab-item:: Added
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Add get_results_summary and enrich get_model_info introspection
+          - `#123 <https://github.com/ansys/pymechanical-mcp/pull/123>`_
+
+        * - Add API discovery and validation; replace get_session_diagnostics with check_mechanical_status (breaking)
+          - `#132 <https://github.com/ansys/pymechanical-mcp/pull/132>`_
+
+
+  .. tab-item:: Fixed
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Honor view_type and wait, and export results from the requested analysis
+          - `#122 <https://github.com/ansys/pymechanical-mcp/pull/122>`_
+
+        * - Resolve download_file by base name, allow save_project overwrite, and clarify remote-path errors
+          - `#126 <https://github.com/ansys/pymechanical-mcp/pull/126>`_
+
+        * - Honor Mechanical versions and harden session reliability
+          - `#131 <https://github.com/ansys/pymechanical-mcp/pull/131>`_
+
+
+  .. tab-item:: Documentation
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Add uv and Git prerequisites for uvx-based setup
+          - `#119 <https://github.com/ansys/pymechanical-mcp/pull/119>`_
+
+
+  .. tab-item:: Dependencies
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Bump https://github.com/astral-sh/ruff-pre-commit from v0.16.5 to 0.16.8 in the pre-commit group across 1 directory
+          - `#117 <https://github.com/ansys/pymechanical-mcp/pull/117>`_
+
+        * - Bump the actions group across 1 directory with 15 updates
+          - `#118 <https://github.com/ansys/pymechanical-mcp/pull/118>`_
+
+        * - Bump the pip-deps group across 1 directory with 4 updates
+          - `#124 <https://github.com/ansys/pymechanical-mcp/pull/124>`_
+
+
+  .. tab-item:: Maintenance
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Update CHANGELOG for v0.2.1
+          - `#115 <https://github.com/ansys/pymechanical-mcp/pull/115>`_
+
+
 `0.2.1 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.2.1>`_ - September 17, 2026
 =============================================================================================
 
