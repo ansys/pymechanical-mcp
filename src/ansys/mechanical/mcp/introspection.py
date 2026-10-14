@@ -779,7 +779,8 @@ def store_preview(
         store.pop(next(iter(store)))
     token = secrets.token_urlsafe(16)
     store[token] = {
-        "session": id(mechanical),
+        # The object, not id(): ids are reused after a session is freed.
+        "session": mechanical,
         "object_id": object_id,
         "property_name": property_name,
         "value": json.dumps(value),
@@ -813,7 +814,7 @@ def take_preview(
         )
     if time.monotonic() - entry["issued"] > PREVIEW_TTL_SECONDS:
         raise StalePreviewError("The preview expired. Call preview_property_change again.")
-    if entry["session"] != id(mechanical):
+    if entry["session"] is not mechanical:
         raise StalePreviewError(
             "The preview was made for a different Mechanical session. "
             "Call preview_property_change again."

@@ -519,6 +519,7 @@ async def _reject_if_connected(context: Any) -> str | None:
     logger.warning("Dropping a Mechanical session that no longer responds.")
     context.mechanical = None
     context.owns_mechanical = False
+    context.change_previews.clear()
     return None
 
 
@@ -1091,6 +1092,7 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
         finally:
             context.mechanical = None
             context.owns_mechanical = False
+            context.change_previews.clear()
 
         await _set_mechanical_tools_visible(ctx, False)
         return message

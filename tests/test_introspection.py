@@ -231,6 +231,15 @@ class TestPreviewTokens:
         with pytest.raises(StalePreviewError, match="different Mechanical session"):
             introspection.take_preview(store, token, object(), 5, "Name", "a")
 
+    @pytest.mark.asyncio
+    async def test_disconnect_discards_pending_previews(self):
+        mechanical = MagicMock()
+        ctx = make_context(mechanical, owns=False)
+        store = ctx.request_context.lifespan_context.change_previews
+        introspection.store_preview(store, mechanical, 5, "Name", "a", "fp")
+        await tools.disconnect_from_mechanical(ctx)
+        assert store == {}
+
     @pytest.mark.parametrize(
         ("object_id", "name", "value"), [(6, "Name", "a"), (5, "Other", "a"), (5, "Name", "b")]
     )
