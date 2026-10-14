@@ -73,7 +73,6 @@ Before connection, use offline-capable tools such as:
 
 - ``check_mechanical_installed``
 - ``check_mechanical_status``
-- ``get_session_diagnostics``
 - ``list_mechanical_instances``
 - ``get_guidelines_for``
 

@@ -44,7 +44,8 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "Call check_mechanical_installed once at startup to confirm the "
             "Mechanical binary is on disk. Call check_mechanical_status "
             "before every workflow to see whether this MCP already has a "
-            "live Mechanical connection. Use list_mechanical_instances to "
+            "live Mechanical connection, plus ownership, transport, and Python "
+            "session diagnostics even when disconnected. Use list_mechanical_instances to "
             "discover running Mechanical processes, connect_to_mechanical "
             "to attach to one (or the user-supplied host:port), and "
             "launch_mechanical to start a new instance. Use "
@@ -56,7 +57,6 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
         "tools": [
             "check_mechanical_installed",
             "check_mechanical_status",
-            "get_session_diagnostics",
             "list_mechanical_instances",
             "launch_mechanical",
             "connect_to_mechanical",

@@ -749,7 +749,7 @@ def _mcp_search_api(args):
     described = []
     aliases = index['aliases']
     for clr_type in index['types']:
-        names = (clr_type.Name.lower(), (clr_type.FullName or '').lower(),
+        names = (clr_type.Name.lower(), (clr_type.FullName or '').lower().replace('.', ''),
                  aliases.get(clr_type.FullName, '').lower().replace('.', ''))
         if joined in names:
             members = [

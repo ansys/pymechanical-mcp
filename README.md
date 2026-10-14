@@ -30,11 +30,11 @@ Key features:
 
 ## Tool surface
 
-You can use 29 tools exposed by the server, grouped as follows:
+You can use 28 tools exposed by the server, grouped as follows:
 
 | Group | Tools |
 |-------|-------|
-| Connection and lifecycle | `check_mechanical_status`, `get_session_diagnostics`, `check_mechanical_installed`, `launch_mechanical`, `connect_to_mechanical`, `disconnect_from_mechanical`, `list_mechanical_instances` |
+| Connection and lifecycle | `check_mechanical_status`, `check_mechanical_installed`, `launch_mechanical`, `connect_to_mechanical`, `disconnect_from_mechanical`, `list_mechanical_instances` |
 | File and project management | `list_files`, `upload_file`, `download_file`, `download_project`, `clear_mechanical`, `save_project`, `open_project` |
 | Mechanical scripting and solve | `run_python_script`, `check_script`, `solve_analysis`, `get_model_info`, `get_results_summary`, `export_results` |
 | Object discovery and property changes | `find_objects`, `describe_api`, `preview_property_change`, `apply_property_change` |
@@ -44,6 +44,10 @@ You can use 29 tools exposed by the server, grouped as follows:
 
 The server also exposes an MCP resource, `files://mechanical/working_directory`, that
 returns the working directory of the connected Mechanical instance.
+
+In v0.3.0, `check_mechanical_status` replaces `get_session_diagnostics` and
+includes its connection ownership, transport, and persistent Python diagnostics,
+even when Mechanical is disconnected. Update clients that call the old name.
 
 ## Installation
 

@@ -540,12 +540,15 @@ async def _set_mechanical_tools_visible(ctx: Context, visible: bool) -> None:
 
 
 # Access type-safe lifespan context in tools
-@app.tool()  # I would have expected the tag ``lifecycle`` to be added here and not only in toolset
+@app.tool()
 def check_mechanical_status(ctx: Context) -> str:
-    """Check the status of Mechanical initialization.
+    """Check Mechanical status and non-sensitive MCP session diagnostics.
 
     This tool retrieves comprehensive information from the connected Mechanical
     instance including version, project directory, and connection status.
+    Ownership, transport, pending operations, and persistent Python diagnostics
+    are included even when Mechanical is disconnected. Replaces the former
+    ``get_session_diagnostics`` tool.
 
     Parameters
     ----------
@@ -562,10 +565,12 @@ def check_mechanical_status(ctx: Context) -> str:
 
         Returns an error message if Mechanical is not available or has exited.
     """
+    diagnostics = _session_diagnostics(ctx)
     job = _pending_job(ctx.request_context.lifespan_context)
     if job is not None and ctx.request_context.lifespan_context.mechanical is None:
         return json.dumps(
             {
+                **diagnostics,
                 "success": False,
                 "in_progress": job.kind,
                 "elapsed_seconds": round(job.elapsed),
@@ -578,15 +583,22 @@ def check_mechanical_status(ctx: Context) -> str:
 
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
-        return error
+        return json.dumps({**json.loads(error), **diagnostics}, default=str)
     mechanical = cast(Any, mechanical)
 
     try:
         # Check if Mechanical has exited
         if hasattr(mechanical, "exited") and mechanical.exited:
-            return "Mechanical instance has exited. Reconnect or launch a new instance."
+            return json.dumps(
+                {
+                    **diagnostics,
+                    "success": False,
+                    "error": "Mechanical instance has exited. Reconnect or launch a new instance.",
+                }
+            )
 
         info = get_info(mechanical)
+        info.update(diagnostics)
         python_session = ctx.request_context.lifespan_context.python_session
         info["python_session"] = _python_session_status(python_session)
 
@@ -596,11 +608,10 @@ def check_mechanical_status(ctx: Context) -> str:
     except Exception as e:
         error_msg = f"Error checking Mechanical status: {str(e)}"
         logger.error(error_msg)
-        return error_msg
+        return json.dumps({**diagnostics, "success": False, "error": error_msg})
 
 
-@app.tool()
-def get_session_diagnostics(ctx: Context) -> str:
+def _session_diagnostics(ctx: Context) -> dict[str, Any]:
     """Return safe connection and persistent-Python-session diagnostics.
 
     This tool intentionally excludes environment variables, command histories,
@@ -611,25 +622,22 @@ def get_session_diagnostics(ctx: Context) -> str:
     python_session = context.python_session
     mechanical = context.mechanical
     job = _pending_job(context)
-    return json.dumps(
-        {
-            "mechanical_connected": mechanical is not None,
-            "mechanical_alive": (
-                bool(getattr(mechanical, "is_alive", False)) if mechanical is not None else False
-            ),
-            "mechanical_launched_by_server": (
-                bool(context.owns_mechanical) if mechanical is not None else False
-            ),
-            "operation_in_progress": (
-                {"kind": job.kind, "elapsed_seconds": round(job.elapsed)}
-                if job is not None
-                else None
-            ),
-            "grpc_transport_mode": context.grpc_transport_mode,
-            "persistent_python": _python_session_status(python_session),
-        },
-        indent=2,
-    )
+    try:
+        alive = bool(mechanical.is_alive) if mechanical is not None else False
+    except Exception:
+        alive = False
+    return {
+        "mechanical_connected": mechanical is not None,
+        "mechanical_alive": alive,
+        "mechanical_launched_by_server": (
+            bool(context.owns_mechanical) if mechanical is not None else False
+        ),
+        "operation_in_progress": (
+            {"kind": job.kind, "elapsed_seconds": round(job.elapsed)} if job is not None else None
+        ),
+        "grpc_transport_mode": context.grpc_transport_mode,
+        "persistent_python": _python_session_status(python_session),
+    }
 
 
 @app.tool(tags={"aali"})

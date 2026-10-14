@@ -32,9 +32,9 @@ Always available (before connection)
    * - ``check_mechanical_installed``
      - Verify that Mechanical is installed and discoverable.
    * - ``check_mechanical_status``
-     - Inspect current MCP connection state.
-   * - ``get_session_diagnostics``
-     - Return non-sensitive Mechanical and persistent Python session diagnostics.
+     - Inspect connection state, ownership, transport, pending operations, and
+       persistent Python diagnostics, including when disconnected. Replaces
+       ``get_session_diagnostics`` in v0.3.0.
    * - ``list_mechanical_instances``
      - List running Mechanical processes.
    * - ``launch_mechanical``

@@ -11,7 +11,7 @@ Repeated launch/connect cycles increase runtime and can create confusion in
 stateful workflows.
 
 - Call ``check_mechanical_status`` before starting each major step.
-- Call ``get_session_diagnostics`` when diagnosing persistent Python startup or connection issues.
+- Use its diagnostics when investigating persistent Python startup or connection issues.
 - Use ``connect_to_mechanical`` if a compatible instance already exists.
 - Use ``disconnect_from_mechanical`` for clean shutdowns.
 
