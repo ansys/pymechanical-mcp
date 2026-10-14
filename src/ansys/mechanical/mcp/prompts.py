@@ -91,6 +91,21 @@ built-in entry points directly (no imports needed):
 **Scoping**: Always prefer Named Selections over direct geometry picks for
 boundary conditions, loads, and results.
 
+## Inspect before you change
+
+- Use `find_objects` to get stable object IDs, and `describe_api` with an
+  `object_id` to read property names, current values, units, and allowed enum
+  values from the connected release.
+- Before writing a script, call `describe_api` with a `query` (for example
+  `"fixed support"` or `"element size"`) to find the real API names instead of
+  guessing them.
+- To change a single property, call `preview_property_change`, show the preview
+  to the user, and call `apply_property_change` with the returned token only
+  after they agree. A preview is not a sandbox, and there is no automatic undo.
+- Call `check_script` before running a new script with `run_python_script`. It
+  compiles the script in the connected engine and checks API names without
+  running it.
+
 ## Workflow
 
 1. Verify connection: call `check_mechanical_status` first.

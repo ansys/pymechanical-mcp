@@ -49,6 +49,9 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
         Serializes launch, connect, and disconnect operations.
     session_job : Optional[Any]
         Launch or connect operation that is still in progress, if any.
+    change_previews : dict
+        Pending property change previews by token. Each token is single use
+        and expires after a few minutes.
     transport_type : str
         Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
     mechanical_ip : Optional[str]
@@ -82,6 +85,7 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     owns_mechanical: bool = False
     lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     session_job: Any | None = field(default=None, repr=False)
+    change_previews: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)
     transport_type: str = "stdio"
     mechanical_ip: str | None = None
     mechanical_port: int | None = None

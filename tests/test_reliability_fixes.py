@@ -48,7 +48,7 @@ def run_mechanical_script(script: str, namespace: dict) -> object:
 
 
 def assert_ironpython_compatible(script: str) -> None:
-    """Scripts for Mechanical before 2026 R1 run on IronPython 2.7."""
+    """Scripts sent to remote Mechanical sessions run on IronPython 2.7."""
     tree = ast.parse(script)
     assert not any(isinstance(node, ast.JoinedStr) for node in ast.walk(tree)), "f-string"
     assert not any(isinstance(node, ast.AnnAssign) for node in ast.walk(tree)), "annotation"
@@ -591,7 +591,7 @@ class TestSessionJobs:
             await _wait_for_job(state)
             status = json.loads(tools.check_mechanical_status(context))
             assert status["in_progress"] == "launch"
-            diagnostics = json.loads(tools.get_session_diagnostics(context))
+            diagnostics = status
             assert diagnostics["operation_in_progress"]["kind"] == "launch"
             release.set()
             await task
@@ -647,11 +647,11 @@ class TestLaunchedProcessSelection:
 @pytest.mark.unit
 def test_diagnostics_report_ownership():
     context = make_context(MagicMock(is_alive=True), owns=True)
-    data = json.loads(tools.get_session_diagnostics(context))
+    data = json.loads(tools.check_mechanical_status(context))
     assert data["mechanical_launched_by_server"] is True
 
     context = make_context(None)
-    data = json.loads(tools.get_session_diagnostics(context))
+    data = json.loads(tools.check_mechanical_status(context))
     assert data["mechanical_launched_by_server"] is False
 
 

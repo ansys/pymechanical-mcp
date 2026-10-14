@@ -44,7 +44,8 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "Call check_mechanical_installed once at startup to confirm the "
             "Mechanical binary is on disk. Call check_mechanical_status "
             "before every workflow to see whether this MCP already has a "
-            "live Mechanical connection. Use list_mechanical_instances to "
+            "live Mechanical connection, plus ownership, transport, and Python "
+            "session diagnostics even when disconnected. Use list_mechanical_instances to "
             "discover running Mechanical processes, connect_to_mechanical "
             "to attach to one (or the user-supplied host:port), and "
             "launch_mechanical to start a new instance. Use "
@@ -56,7 +57,6 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
         "tools": [
             "check_mechanical_installed",
             "check_mechanical_status",
-            "get_session_diagnostics",
             "list_mechanical_instances",
             "launch_mechanical",
             "connect_to_mechanical",
@@ -74,11 +74,14 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "persistent external Python session, and run_python_script to "
             "execute a Mechanical script against ExtAPI. Provide "
             "run_python_script with either an inline ``script`` string or "
-            "a ``file_path`` pointing to a local ``.py`` file."
+            "a ``file_path`` pointing to a local ``.py`` file. Call "
+            "check_script first to compile a new script in the connected "
+            "engine and check its API names without running it."
         ),
         "tools": [
             "run_python_code",
             "run_python_script",
+            "check_script",
         ],
     },
     "project-management": {
@@ -142,6 +145,42 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "get_model_info",
             "screenshot",
             "get_mechanical_logs",
+        ],
+    },
+    "object-discovery": {
+        "description": (
+            "Tools for finding Outline objects by stable ID, reading their "
+            "API properties, values, units, and allowed enum values, and "
+            "searching the API of the connected Mechanical release."
+        ),
+        "skill": (
+            "Use find_objects to search the Outline tree by name, category, or "
+            "parent and get stable object IDs. Use describe_api with an object "
+            "ID to read that object's properties, or with a query such as "
+            "'element size' to search API types, properties, methods, and enum "
+            "members of the connected release, instead of guessing API names."
+        ),
+        "tools": [
+            "find_objects",
+            "describe_api",
+        ],
+    },
+    "property-changes": {
+        "description": (
+            "Tools for changing one object property with an explicit preview "
+            "and a separate apply step."
+        ),
+        "skill": (
+            "Use preview_property_change to validate a new value and show the "
+            "current and proposed values without changing anything. Apply it "
+            "with apply_property_change and the returned single-use token only "
+            "after the user agrees. A changed value since the preview rejects "
+            "the token. A preview is not a sandbox, and there is no automatic "
+            "undo, so call save_project first if a restore point is needed."
+        ),
+        "tools": [
+            "preview_property_change",
+            "apply_property_change",
         ],
     },
     "results": {

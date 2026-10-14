@@ -30,7 +30,6 @@ from ansys.mechanical.mcp.tools import (
     disconnect_from_mechanical,
     download_file,
     get_model_info,
-    get_session_diagnostics,
     launch_mechanical,
     list_files,
     list_mechanical_instances,
@@ -125,13 +124,38 @@ class TestCheckMechanicalStatus:
 
 @pytest.mark.unit
 class TestSessionDiagnostics:
+    def test_disconnected_status_includes_diagnostics(self, mock_context_no_mechanical):
+        data = json.loads(check_mechanical_status(mock_context_no_mechanical))
+        assert data["mechanical_connected"] is False
+        assert data["mechanical_alive"] is False
+        assert data["operation_in_progress"] is None
+        assert "grpc_transport_mode" in data
+        assert "persistent_python" in data
+
+    def test_liveness_failure_still_returns_diagnostics(self, mock_context):
+        from unittest.mock import PropertyMock
+
+        mechanical = mock_context.request_context.lifespan_context.mechanical
+        type(mechanical).is_alive = PropertyMock(side_effect=RuntimeError("RPC unavailable"))
+        data = json.loads(check_mechanical_status(mock_context))
+        assert data["mechanical_alive"] is False
+        assert "persistent_python" in data
+
+    @pytest.mark.asyncio
+    async def test_only_consolidated_status_tool_is_registered(self):
+        from ansys.mechanical.mcp import app
+
+        names = {tool.name for tool in await app._local_provider._list_tools()}
+        assert "check_mechanical_status" in names
+        assert "get_session_diagnostics" not in names
+
     def test_reports_connection_and_python_session_state(self, mock_context):
         session = MagicMock()
         session.is_running.return_value = True
         session.python_executable = "C:/Python/python.exe"
         mock_context.request_context.lifespan_context.python_session = session
 
-        data = json.loads(get_session_diagnostics(mock_context))
+        data = json.loads(check_mechanical_status(mock_context))
 
         assert data["mechanical_connected"] is True
         assert data["persistent_python"]["running"] is True
@@ -140,7 +164,7 @@ class TestSessionDiagnostics:
     def test_reports_missing_python_session(self, mock_context):
         mock_context.request_context.lifespan_context.python_session = None
 
-        data = json.loads(get_session_diagnostics(mock_context))
+        data = json.loads(check_mechanical_status(mock_context))
 
         assert data["persistent_python"]["available"] is False
         assert data["persistent_python"]["running"] is False
@@ -151,7 +175,7 @@ class TestSessionDiagnostics:
         session.python_executable = "python"
         mock_context.request_context.lifespan_context.python_session = session
 
-        data = json.loads(get_session_diagnostics(mock_context))
+        data = json.loads(check_mechanical_status(mock_context))
 
         assert data["persistent_python"]["running"] is False
         assert data["persistent_python"]["error"] == "process unavailable"
@@ -2296,7 +2320,6 @@ class TestRequiresMechanicalVisibility:
         ALWAYS_AVAILABLE_TOOLS = {
             "check_mechanical_installed",
             "check_mechanical_status",
-            "get_session_diagnostics",
             "launch_mechanical",
             "connect_to_mechanical",
             "list_mechanical_instances",

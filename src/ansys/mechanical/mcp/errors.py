@@ -56,3 +56,9 @@ class UpstreamError(MechanicalMCPError):
     """Raised when Mechanical or a dependent service cannot complete an operation."""
 
     error_code = "upstream_error"
+
+
+class StalePreviewError(MechanicalMCPError):
+    """Raised when a property change preview is unknown, used, expired, or outdated."""
+
+    error_code = "stale_preview"

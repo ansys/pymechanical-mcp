@@ -309,3 +309,88 @@ class TestPythonPersistentSessionIntegration:
         data = json.loads(result)
         assert data["success"] is True
         assert data["stdout"].strip() == "hello"
+
+
+@pytest.mark.integration
+@pytest.mark.slow
+class TestObjectDiscoveryIntegration:
+    """Object discovery, property change previews, and script checks on a live session."""
+
+    @pytest.fixture
+    def context(self, real_mechanical):
+        real_mechanical.clear()
+        real_mechanical.run_python_script(
+            "analysis = Model.AddStaticStructuralAnalysis()\nanalysis.AddForce()\nNone"
+        )
+        ctx = MagicMock()
+        ctx.request_context.lifespan_context = PyMechanicalAppContext(mechanical=real_mechanical)
+        return ctx
+
+    @staticmethod
+    def _id(ctx, category):
+        import json
+
+        from ansys.mechanical.mcp.tools import find_objects
+
+        return json.loads(find_objects(ctx, category=category))["objects"][0]["object_id"]
+
+    def test_find_and_describe(self, context):
+        import json
+
+        from ansys.mechanical.mcp.tools import describe_api, find_objects
+
+        found = json.loads(find_objects(context, category="force"))
+        assert found["match_count"] == 1
+        assert found["python_engine"]
+        settings = json.loads(
+            describe_api(context, object_id=self._id(context, "ANSYSAnalysisSettings"))
+        )
+        properties = {p["name"]: p for p in settings["properties"]}
+        assert "Direct" in properties["SolverType"]["enum_values"]
+        assert properties["NumberOfSteps"]["editable"] is True
+        search = json.loads(describe_api(context, query="large deflection"))
+        assert search["matches"][0]["name"] == "ANSYSAnalysisSettings.LargeDeflection"
+
+    def test_preview_apply_and_stale_preview(self, real_mechanical, context):
+        import json
+
+        from ansys.mechanical.mcp.tools import apply_property_change, preview_property_change
+
+        mesh_id = self._id(context, "Mesh")
+        bad = json.loads(preview_property_change(context, mesh_id, "ElementSize", "2 [N]"))
+        assert bad["validation"]["valid"] is False
+
+        preview = json.loads(preview_property_change(context, mesh_id, "ElementSize", "2 [mm]"))
+        assert real_mechanical.run_python_script("str(Model.Mesh.ElementSize)") == "0 [m]"
+        applied = json.loads(
+            apply_property_change(
+                context, mesh_id, "ElementSize", "2 [mm]", preview["preview_token"]
+            )
+        )
+        assert applied["readback_matches"] is True
+
+        force_id = self._id(context, "Force")
+        name = "Lastfall \u00dc"
+        stale = json.loads(preview_property_change(context, force_id, "Name", name))
+        real_mechanical.run_python_script("Model.Analyses[0].Children[1].Name = 'Changed'")
+        rejected = json.loads(
+            apply_property_change(context, force_id, "Name", name, stale["preview_token"])
+        )
+        assert rejected["error_code"] == "stale_preview"
+        assert real_mechanical.run_python_script("Model.Analyses[0].Children[1].Name") == "Changed"
+
+    def test_check_script_does_not_run_the_script(self, real_mechanical, context):
+        import json
+
+        from ansys.mechanical.mcp.tools import check_script
+
+        result = json.loads(
+            check_script(context, script="Model.AddModalAnalysis()\nModel.Mesh.GetMeshStatistics()")
+        )
+        assert result["valid"] is False
+        assert result["api_check"]["problems"][0]["chain"] == "Model.Mesh.GetMeshStatistics"
+        assert real_mechanical.run_python_script("str(Model.Analyses.Count)") == "1"
+
+        fstring = json.loads(check_script(context, script="x = f'{1}'"))
+        if "IronPython" in fstring["python_engine"]:
+            assert fstring["engine_syntax"]["valid"] is False
