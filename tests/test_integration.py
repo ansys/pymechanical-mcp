@@ -351,6 +351,72 @@ class TestObjectDiscoveryIntegration:
         search = json.loads(describe_api(context, query="large deflection"))
         assert search["matches"][0]["name"] == "ANSYSAnalysisSettings.LargeDeflection"
 
+    def test_installed_api_documentation(self, context):
+        import json
+
+        from ansys.mechanical.mcp.tools import describe_api
+
+        result = json.loads(describe_api(context, query="Analysis.Solve"))
+        assert result["success"] is True
+        match = next(item for item in result["matches"] if item["name"] == "Analysis.Solve")
+        documentation = match["documentation"]
+        assert documentation["source_kind"] == "installed_xml"
+        assert documentation["status"] in {
+            "available",
+            "missing",
+            "unavailable",
+            "no_descriptive_text",
+        }
+        if documentation["status"] == "available":
+            assert documentation["source"].endswith(".xml")
+            assert documentation["entries"]
+            assert all(entry["member_id"].startswith("M:") for entry in documentation["entries"])
+        assert "Solve(" in match["signature"]
+
+    def test_large_model_summary_and_paging(self, real_mechanical, context):
+        import json
+
+        from ansys.mechanical.mcp.tools import find_objects, get_model_info
+
+        for start in range(0, 1005, 50):
+            real_mechanical.run_python_script(
+                "with Tree.Suspend():\n"
+                "    with Transaction():\n"
+                "        for index in range(%d, %d):\n"
+                "            selection = Model.AddNamedSelection()\n"
+                "            selection.Name = 'Paging %%04d' %% index\n"
+                "None" % (start, min(start + 50, 1005))
+            )
+        summary = json.loads(get_model_info(context))
+        assert len(summary["named_selections"]) == 50
+        assert summary["collection_info"]["named_selections"] == {
+            "total_count": 1005,
+            "returned_count": 50,
+            "truncated": True,
+            "find_objects": {"category": "NamedSelection"},
+        }
+        assert len(json.loads(get_model_info(context, max_items=None))["named_selections"]) == 1005
+        assert json.loads(get_model_info(context, max_items=0))["named_selections"] == []
+        offset, object_ids, fingerprints = 0, [], set()
+        while True:
+            page = json.loads(
+                find_objects(context, category="NamedSelection", limit=500, offset=offset)
+            )
+            object_ids.extend(item["object_id"] for item in page["objects"])
+            fingerprints.add(page["result_fingerprint"])
+            if page["next_offset"] is None:
+                break
+            assert page["next_offset"] > offset
+            offset = page["next_offset"]
+        assert len(object_ids) == len(set(object_ids)) == 1005
+        assert len(fingerprints) == 1
+        real_mechanical.run_python_script(
+            "DataModel.GetObjectById(%d).Name = u'Renamed \\u00dc'\nNone" % object_ids[-1]
+        )
+        changed = json.loads(find_objects(context, category="NamedSelection", limit=1))
+        assert changed["match_count"] == 1005
+        assert changed["result_fingerprint"] not in fingerprints
+
     def test_preview_apply_and_stale_preview(self, real_mechanical, context):
         import json
 

@@ -33,7 +33,8 @@ def test_build_system_prompt_defaults_to_original_prompt():
 
     assert prompt == DYNAMIC_SYSTEM_PROMPT
     assert "## Tool availability" not in prompt
-    assert "MANDATORY: Call guideline tools" in prompt
+    assert "Reference guidance when needed" in prompt
+    assert "Do not reload it before every script" in prompt
 
 
 @pytest.mark.unit
@@ -46,7 +47,7 @@ def test_build_system_prompt_static_tools_language():
     assert "exposes the full tool surface from startup" in prompt
     assert "--static-tools" in prompt
     assert "No Mechanical connection available" in prompt
-    assert "MANDATORY: Call guideline tools" in prompt
+    assert "Reference guidance when needed" in prompt
 
 
 @pytest.mark.unit

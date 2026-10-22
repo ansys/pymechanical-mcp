@@ -1414,7 +1414,7 @@ def mechanical_working_directory() -> str:
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def get_model_info(ctx: Context) -> str:
+def get_model_info(ctx: Context, max_items: int | None = 50) -> str:
     """Get information about the current model in Mechanical.
 
     This tool retrieves information about the current model including
@@ -1425,6 +1425,10 @@ def get_model_info(ctx: Context) -> str:
     ----------
     ctx : Context
         MCP context containing the server session and application context.
+    max_items : int or None, default: 50
+        Maximum entries per name or analysis list (0 to 1000). Zero returns
+        counts only; None explicitly returns every entry. For large models,
+        prefer filtered, paged ``find_objects`` calls over an unlimited response.
 
     Returns
     -------
@@ -1432,7 +1436,9 @@ def get_model_info(ctx: Context) -> str:
         JSON string containing model information. Includes ``project``,
         ``model``, ``geometry``, ``mesh`` (counts plus the active mesh metric),
         ``analyses_count``, ``named_selections``, ``materials``, ``unit_system``,
-        ``analyses``, and ``boundary_conditions``.
+        ``analyses``, and ``boundary_conditions``. ``collection_info`` reports
+        total and returned counts and truncation per list. Geometry includes
+        body counts by ``GeometryType`` and suppression counts, not body names.
     """
     mechanical = ctx.request_context.lifespan_context.mechanical
 
@@ -1442,10 +1448,16 @@ def get_model_info(ctx: Context) -> str:
             "Use connect_to_mechanical tool to establish a connection."
         )
 
+    if max_items is not None and (
+        isinstance(max_items, bool) or not isinstance(max_items, int) or not 0 <= max_items <= 1000
+    ):
+        return _structured_error(InvalidArgumentsError("max_items must be 0 to 1000, or null."))
+
     try:
         # Script to gather model information
         script = (
             _SCRIPT_HELPERS
+            + f"\nmax_items = {max_items!r}\n"
             + """
 model_info = {}
 
@@ -1466,14 +1478,33 @@ model_info['model'] = {
 if hasattr(model, 'Geometry') and model.Geometry is not None:
     geom = model.Geometry
     try:
-        body_count = geom.GetChildren(DataModelObjectCategory.Body, True).Count
+        bodies = list(geom.GetChildren(DataModelObjectCategory.Body, True))
+        body_count = len(bodies)
     except:
+        bodies = []
         body_count = 0
+    by_type = {}
+    suppression = {'suppressed': 0, 'active': 0, 'unknown': 0}
+    for body in bodies:
+        try:
+            kind = str(body.GeometryType)
+        except:
+            kind = 'Unknown'
+        by_type[kind] = by_type.get(kind, 0) + 1
+        try:
+            suppression['suppressed' if body.Suppressed else 'active'] += 1
+        except:
+            suppression['unknown'] += 1
     model_info['geometry'] = {
         'body_count': body_count,
+        'body_counts_by_type': by_type,
+        'suppression_counts': suppression,
     }
 else:
-    model_info['geometry'] = {'body_count': 0}
+    model_info['geometry'] = {
+        'body_count': 0, 'body_counts_by_type': {},
+        'suppression_counts': {'suppressed': 0, 'active': 0, 'unknown': 0},
+    }
 
 # Get Mesh info
 if hasattr(model, 'Mesh') and model.Mesh is not None:
@@ -1568,6 +1599,26 @@ except:
 
 model_info['analyses'] = analyses
 model_info['boundary_conditions'] = boundary_conditions
+
+model_info['collection_info'] = {}
+for key in ('named_selections', 'materials', 'analyses', 'boundary_conditions'):
+    entries = model_info[key]
+    total = len(entries)
+    if max_items is not None:
+        model_info[key] = entries[:max_items]
+    returned = len(model_info[key])
+    model_info['collection_info'][key] = {
+        'total_count': total, 'returned_count': returned, 'truncated': returned < total,
+    }
+if any(item['truncated'] for item in model_info['collection_info'].values()):
+    model_info['retrieval_note'] = (
+        'Lists are previews, not the full model. Use find_objects with category, '
+        'name_contains, parent_id, limit and next_offset to retrieve more. '
+        'Use max_items=null only when the full name lists are required.'
+    )
+    model_info['collection_info']['named_selections']['find_objects'] = {
+        'category': 'NamedSelection'}
+    model_info['collection_info']['materials']['find_objects'] = {'category': 'Material'}
 
 json.dumps(model_info, ensure_ascii=False)
 """
@@ -2569,6 +2620,7 @@ def find_objects(
     parent_id: int | None = None,
     max_depth: int | None = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> str:
     """Find objects in the Mechanical Outline tree and return their stable IDs.
 
@@ -2594,6 +2646,10 @@ def find_objects(
     limit : int, default: 100
         Maximum number of objects to return, from 1 to 1000. ``match_count``
         always reports the full number of matches.
+    offset : int, default: 0
+        Number of filtered matches to skip in Outline order. Follow ``next_offset``
+        until null to retrieve all matches, including lists larger than 1000.
+        Keep filters unchanged; restart if ``result_fingerprint`` changes.
 
     Returns
     -------
@@ -2610,6 +2666,8 @@ def find_objects(
         return _structured_error(InvalidArgumentsError("limit must be between 1 and 1000."))
     if max_depth is not None and max_depth < 0:
         return _structured_error(InvalidArgumentsError("max_depth must be zero or greater."))
+    if offset < 0:
+        return _structured_error(InvalidArgumentsError("offset must be zero or greater."))
 
     args = {
         "name_contains": name_contains,
@@ -2617,6 +2675,7 @@ def find_objects(
         "parent_id": parent_id,
         "max_depth": max_depth,
         "limit": limit,
+        "offset": offset,
     }
     try:
         payload = _run_introspection(
@@ -2652,6 +2711,11 @@ def describe_api(
       ``"contact formulation"``. A query that names a type, such as
       ``"FixedSupport"``, also returns all members of that type. Use this
       before writing a script instead of guessing API names.
+
+        Query results include concise installed-documentation summaries where available.
+        An exact ``Type.Member`` query also returns parameters, remarks and examples
+        from the connected installation's XML, with source and truncation metadata.
+        Documentation can be missing or boilerplate; reflection still works offline.
 
     Parameters
     ----------

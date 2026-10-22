@@ -850,9 +850,61 @@ def test_model_info_counts_bodies_recursively():
     mechanical.run_python_script.return_value = "{}"
     tools.get_model_info(make_context(mechanical))
     script = mechanical.run_python_script.call_args.args[0]
-    assert "geom.GetChildren(DataModelObjectCategory.Body, True).Count" in script
+    assert "geom.GetChildren(DataModelObjectCategory.Body, True)" in script
     assert "geom.Children.Count" not in script
     assert_ironpython_compatible(script)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("max_items,expected", [(0, 0), (50, 50), (None, 2105)])
+def test_model_info_bounds_lists_on_mechanical_host(max_items, expected):
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=max_items)
+    script = mechanical.run_python_script.call_args.args[0]
+    bodies = Items(
+        [
+            SimpleNamespace(GeometryType="Solid", Suppressed=False),
+            SimpleNamespace(GeometryType="Surface", Suppressed=True),
+            SimpleNamespace(),
+        ]
+    )
+    model = SimpleNamespace(
+        Name="Model",
+        Geometry=SimpleNamespace(GetChildren=lambda *args: bodies),
+        Analyses=Items(),
+        Materials=SimpleNamespace(Children=Items()),
+        NamedSelections=SimpleNamespace(
+            Children=Items(
+                [SimpleNamespace(Name="Selection %04d" % index) for index in range(2105)]
+            )
+        ),
+    )
+    namespace = {
+        "Model": model,
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+        "DataModelObjectCategory": SimpleNamespace(Body="Body"),
+    }
+    result = json.loads(run_mechanical_script(script, namespace))
+    assert len(result["named_selections"]) == expected
+    meta = result["collection_info"]["named_selections"]
+    assert meta["total_count"] == 2105
+    assert meta["truncated"] is (expected < 2105)
+    assert result["geometry"]["body_counts_by_type"] == {"Solid": 1, "Surface": 1, "Unknown": 1}
+    assert result["geometry"]["suppression_counts"] == {"suppressed": 1, "active": 1, "unknown": 1}
+    assert_ironpython_compatible(script)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("value", [-1, 1001, True, "50"])
+def test_model_info_rejects_invalid_limit(value):
+    mechanical = MagicMock()
+    result = json.loads(tools.get_model_info(make_context(mechanical), max_items=value))
+    assert result["error_code"] == "invalid_arguments"
+    mechanical.run_python_script.assert_not_called()
 
 
 class _ExportResult:

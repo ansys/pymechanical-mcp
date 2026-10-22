@@ -157,12 +157,23 @@ Mechanical release, including releases newer than the bundled API reference.
 
 - ``find_objects`` returns stable object IDs. Use IDs rather than names, which
   can repeat, or positions, which change when objects are added.
+  Results are in Outline order. ``offset`` skips filtered matches, not arbitrary
+  tree nodes. Follow ``next_offset`` until null with unchanged filters to retrieve
+  more than 1000 objects. Restart if ``result_fingerprint`` changes: pagination is
+  not a transactional snapshot of an editable model.
 - ``describe_api`` with ``object_id`` lists properties shown in the Details
   view by default. Set ``details_only=False`` for every public API property.
 - ``describe_api`` with ``query`` searches API types, properties, methods, and
   enumeration members by keyword, such as ``"element size"``. A query that names
   a type, such as ``"FixedSupport"``, also lists all its members. Use it to find
   real API names before writing a script.
+  Search results include concise summaries from XML documentation beside the
+  reflected assemblies, where available. Exact ``Type.Member`` queries such as
+  ``"Analysis.Solve"`` return parameters, remarks and examples with source and
+  truncation metadata. Documentation is read on the Mechanical host, requires no
+  internet access and matches that installation. Missing or boilerplate XML does
+  not prevent reflection; the response reports its availability. A connection is
+  still required. No newest-installed stubs or online ``latest`` docs are substituted.
 - ``preview_property_change`` checks values strictly against the property type.
   Booleans must be ``true`` or ``false``, integers must fit the property range,
   enumeration values must be exact member names, and quantities must be strings such
@@ -180,6 +191,19 @@ IronPython 2.7, so syntax such as f-strings is reported. It then looks up names
 such as ``Model.Mesh.ElementSize`` in the live session to find misspelled or
 nonexistent members. The check reads properties but never calls methods. A passing
 check does not validate argument types, values, or the model state at run time.
+
+Large-model summaries
+---------------------
+
+``get_model_info`` defaults to ``max_items=50`` entries per named-selection,
+material, analysis and boundary-condition list. Existing list formats remain;
+``collection_info`` reports total counts, returned counts and truncation.
+``max_items=0`` returns counts without those lists; ``max_items=None`` explicitly
+returns all entries and can produce a very large response. Use filtered
+``find_objects`` pages for large models instead of repeatedly loading all names.
+Geometry remains counts-only, including ``body_counts_by_type`` and
+``suppression_counts``. Line bodies are reported as Line, not assumed to be beams.
+Object counts and fingerprints are discovery aids, not engineering validation.
 
 Example workflows
 -----------------

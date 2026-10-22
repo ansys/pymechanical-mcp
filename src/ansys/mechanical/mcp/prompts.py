@@ -52,12 +52,12 @@ tool before one succeeds, it returns a clear
 """
 
 _PROMPT_BODY = """\
-## MANDATORY: Call guideline tools before generating code
+## Reference guidance when needed
 
 You have a `get_guidelines_for` tool that returns ExtAPI scripting patterns and
-code examples for a requested topic. **Always call the relevant guideline(s)
-before writing any Mechanical script.** Call it multiple times for multi-step
-workflows when you need more than one topic.
+code examples for a requested topic. Call a topic once when unfamiliar, then reuse
+it for the same release and engine. Do not reload it before every script.
+Use describe_api for the connected release's API and installed documentation.
 
 | Task area | Guideline tool |
 |---|---|
@@ -99,6 +99,8 @@ boundary conditions, loads, and results.
 - Before writing a script, call `describe_api` with a `query` (for example
   `"fixed support"` or `"element size"`) to find the real API names instead of
   guessing them.
+- `get_model_info` lists are capped previews. Filter `find_objects`, follow
+  `next_offset` until null, and restart if `result_fingerprint` changes.
 - To change a single property, call `preview_property_change`, show the preview
   to the user, and call `apply_property_change` with the returned token only
   after they agree. A preview is not a sandbox, and there is no automatic undo.
