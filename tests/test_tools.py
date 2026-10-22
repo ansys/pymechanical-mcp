@@ -550,7 +550,7 @@ class TestDisconnectFromMechanical:
         assert "left running" in result
         mechanical_ref.exit.assert_not_called()
         assert mock_context.request_context.lifespan_context.mechanical is None
-        mock_context.disable_components.assert_awaited_once()
+        mock_context.send_notification.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_connect_then_disconnect_never_shuts_down(self, mock_context_no_mechanical):
@@ -2244,54 +2244,72 @@ class TestGetResultsSummary:
 class TestRequiresMechanicalVisibility:
     """Tests for Mechanical-connection-aware tool visibility."""
 
+    @staticmethod
+    def _notified(context):
+        from mcp.types import ToolListChangedNotification
+
+        context.send_notification.assert_awaited_once()
+        notification = context.send_notification.await_args.args[0]
+        assert isinstance(notification, ToolListChangedNotification)
+
     @pytest.mark.asyncio
     async def test_connect_enables_requires_mechanical_tools(self, mock_context_no_mechanical):
-        """Successful connect_to_mechanical should call ctx.enable_components for the tag."""
+        """Successful connect enables the server rule and notifies the client."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
         mock_mechanical._ip = "127.0.0.1"
         mock_mechanical._port = 10000
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
-            return_value=mock_mechanical,
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                return_value=mock_mechanical,
+            ),
+            patch("ansys.mechanical.mcp.tools.app") as app,
         ):
             await connect_to_mechanical(mock_context_no_mechanical)
-            mock_context_no_mechanical.enable_components.assert_called_once_with(
-                tags={"requires_mechanical"}
-            )
+        app.enable.assert_called_with(tags={"requires_mechanical"})
+        self._notified(mock_context_no_mechanical)
 
     @pytest.mark.asyncio
     async def test_connect_does_not_enable_on_failure(self, mock_context_no_mechanical):
-        """Failed connect_to_mechanical should not call ctx.enable_components."""
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
-            side_effect=Exception("Connection refused"),
+        """Failed connect_to_mechanical leaves visibility unchanged."""
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                side_effect=Exception("Connection refused"),
+            ),
+            patch("ansys.mechanical.mcp.tools.app") as app,
         ):
             await connect_to_mechanical(mock_context_no_mechanical)
-            mock_context_no_mechanical.enable_components.assert_not_called()
+        app.enable.assert_not_called()
+        mock_context_no_mechanical.send_notification.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_launch_enables_requires_mechanical_tools(self, mock_context_no_mechanical):
-        """Successful launch_mechanical should call ctx.enable_components for the tag."""
+        """Successful launch enables the server rule and notifies the client."""
         mock_mechanical = MagicMock()
         mock_mechanical.version = "2024 R2"
         mock_mechanical.project_directory = "/tmp/proj"
 
-        with patch(
-            "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
-            return_value=mock_mechanical,
+        with (
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical",
+                return_value=mock_mechanical,
+            ),
+            patch("ansys.mechanical.mcp.tools.app") as app,
         ):
             await launch_mechanical(mock_context_no_mechanical)
-            mock_context_no_mechanical.enable_components.assert_called_once_with(
-                tags={"requires_mechanical"}
-            )
+        app.enable.assert_called_with(tags={"requires_mechanical"})
+        self._notified(mock_context_no_mechanical)
 
     @pytest.mark.asyncio
     async def test_disconnect_disables_requires_mechanical_tools(self, mock_context):
-        """Successful disconnect_from_mechanical should call ctx.disable_components."""
-        await disconnect_from_mechanical(mock_context)
-        mock_context.disable_components.assert_called_once_with(tags={"requires_mechanical"})
+        """Disconnect disables the server rule and notifies the client."""
+        with patch("ansys.mechanical.mcp.tools.app") as app:
+            await disconnect_from_mechanical(mock_context)
+        app.disable.assert_called_once_with(tags={"requires_mechanical"})
+        self._notified(mock_context)
 
     def test_no_tool_surface_drift(self):
         """Every tool must be in the always-available allowlist or carry

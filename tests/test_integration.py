@@ -175,8 +175,7 @@ class TestLaunchMechanicalIntegration:
         from ansys.mechanical.mcp.server import PyMechanicalAppContext
 
         context = MagicMock()
-        context.enable_components = AsyncMock(return_value=None)
-        context.disable_components = AsyncMock(return_value=None)
+        context.send_notification = AsyncMock(return_value=None)
         context.request_context = MagicMock()
         context.request_context.lifespan_context = PyMechanicalAppContext(mechanical=None)
 

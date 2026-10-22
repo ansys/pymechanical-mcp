@@ -87,8 +87,7 @@ def mock_context(mock_server_session, app_context):
     context = MagicMock()
     context.request_context = MagicMock()
     context.request_context.lifespan_context = app_context
-    context.enable_components = AsyncMock()
-    context.disable_components = AsyncMock()
+    context.send_notification = AsyncMock()
     return context
 
 
@@ -98,8 +97,7 @@ def mock_context_no_mechanical(mock_server_session, app_context_no_mechanical):
     context = MagicMock()
     context.request_context = MagicMock()
     context.request_context.lifespan_context = app_context_no_mechanical
-    context.enable_components = AsyncMock()
-    context.disable_components = AsyncMock()
+    context.send_notification = AsyncMock()
     return context
 
 

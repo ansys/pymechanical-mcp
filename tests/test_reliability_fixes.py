@@ -67,8 +67,7 @@ def make_context(mechanical=None, owns=False):
     context.request_context.lifespan_context = PyMechanicalAppContext(
         mechanical=mechanical, owns_mechanical=owns
     )
-    context.enable_components = AsyncMock()
-    context.disable_components = AsyncMock()
+    context.send_notification = AsyncMock()
     context.elicit = AsyncMock(side_effect=RuntimeError("elicitation unavailable"))
     return context
 

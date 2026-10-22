@@ -57,6 +57,7 @@ from ansys.mechanical.mcp.helpers import (
     stop_processes,
 )
 from ansys.mechanical.mcp.server import session
+from mcp import types as mcp_types
 from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 logger = get_logger(__name__)
@@ -526,17 +527,16 @@ async def _reject_if_connected(context: Any) -> str | None:
 async def _set_mechanical_tools_visible(ctx: Context, visible: bool) -> None:
     """Show or hide the tools that need a Mechanical connection.
 
-    The connection is shared by every client session, so the server-level rule is
-    authoritative: session-scoped rules alone do not persist across requests with
-    FastMCP 4. The session call is kept because it notifies the client that the
-    tool list changed.
+    The connection is shared by every client session, so only the server-level rule
+    is used. Session rules persist in FastMCP 4.1.3+ and would override it later.
     """
     if visible:
         app.enable(tags={REQUIRES_MECHANICAL_TAG})
-        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
     elif not ctx.request_context.lifespan_context.static_tools:
         app.disable(tags={REQUIRES_MECHANICAL_TAG})
-        await ctx.disable_components(tags={REQUIRES_MECHANICAL_TAG})
+    else:
+        return
+    await ctx.send_notification(mcp_types.ToolListChangedNotification())
 
 
 # Access type-safe lifespan context in tools
