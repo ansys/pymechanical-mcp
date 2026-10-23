@@ -34,7 +34,8 @@ def test_build_system_prompt_defaults_to_original_prompt():
     assert prompt == DYNAMIC_SYSTEM_PROMPT
     assert "## Tool availability" not in prompt
     assert "Reference guidance when needed" in prompt
-    assert "Do not reload it before every script" in prompt
+    assert "content is bundled with the server" in prompt
+    assert "Do not reload" not in prompt
 
 
 @pytest.mark.unit

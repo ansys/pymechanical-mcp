@@ -136,8 +136,9 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "Use get_model_info to retrieve a structured summary of the "
             "active model: geometry and mesh counts, the active mesh metric, "
             "named selections, materials, unit system, analyses, and "
-            "boundary conditions. Scope boundary conditions and results to "
-            "the named selections it reports. Use screenshot to capture the "
+            "boundary conditions. Lists are bounded previews; collection_info "
+            "reports totals, truncation and read errors. max_items=0 returns counts; "
+            "max_items=null returns full lists. Use screenshot to capture the "
             "current 3D view as a PNG for the user. Use get_mechanical_logs "
             "to read application messages or solver output for diagnostics."
         ),
@@ -155,10 +156,11 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
         ),
         "skill": (
             "Use find_objects to search the Outline tree by name, category, or "
-            "parent and get stable object IDs. Use describe_api with an object "
+            "parent and get stable object IDs. For paging, set offset to next_offset "
+            "and restart if result_fingerprint changes. Use describe_api with an object "
             "ID to read that object's properties, or with a query such as "
             "'element size' to search API types, properties, methods, and enum "
-            "members of the connected release, instead of guessing API names."
+            "members of the connected release, including installed XML help when available."
         ),
         "tools": [
             "find_objects",
@@ -207,10 +209,9 @@ _TOOLSET_CATALOGUE: dict[str, dict[str, Any]] = {
             "postprocessing, named selections, general rules)."
         ),
         "skill": (
-            "Call get_guidelines_for once per topic before generating "
-            "PyMechanical / ExtAPI code. It returns the authoritative "
-            "scripting patterns and best practices for the requested "
-            "workflow step."
+            "get_guidelines_for returns bundled scripting patterns, execution "
+            "constraints and official reference links for the selected topic. "
+            "describe_api supplies release-specific API information."
         ),
         "tools": [
             "get_guidelines_for",

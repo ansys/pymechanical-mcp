@@ -63,8 +63,7 @@ File transfer hygiene
 AI workflow guidance
 --------------------
 
-Call ``get_guidelines_for`` once per unfamiliar topic and reuse its guidance for
-the same release and scripting engine. It returns bundled, concise API patterns
+``get_guidelines_for`` returns bundled, concise API patterns
 with official documentation links and MCP execution notes, not solver presets or
 an automatically fetched skill. The linked examples may use embedding mode;
 pass script bodies rather than client wrappers to the remote script tool.

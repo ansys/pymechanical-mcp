@@ -42,10 +42,9 @@ def _reference(text: str, example: str | None = None) -> str:
     source = _EXAMPLES + example + ".html" if example else _SCRIPTING
     return text.strip() + (
         "\n\nOfficial reference: " + source + "\n"
-        "These concise API patterns are adapted for MCP remote scripts, not a solver recipe. "
-        "Linked examples may use embedding mode or a different release; do not copy their "
-        "App/client setup into run_python_script. Use describe_api for the connected release's "
-        "API and installed documentation. This tool reads bundled text and never fetches links."
+        "Patterns use remote Mechanical script bodies. Linked examples may use embedding "
+        "or another release; describe_api provides connected-release API help. "
+        "References are links; this tool never fetches links."
     )
 
 
@@ -54,7 +53,7 @@ def get_guidelines_for_workflow_overview() -> str:
     return _reference("""# Mechanical Simulation Workflow Overview
 Typical order: Preprocessing (geometry, materials, mesh, analysis settings), scoped
 supports and loads, solve, then Postprocessing (evaluate, review, export results).
-Inspect an existing model first; change units, materials or analysis type only on request.
+Existing units, materials and analyses provide context for subsequent changes.
 Scripts passed to run_python_script run INSIDE Mechanical with ExtAPI (all APIs),
 DataModel (objects, CAD and mesh entities), Model, Tree (Outline) and Graphics.
 run_python_code is separate external CPython without these objects.
@@ -62,8 +61,8 @@ Use check_mechanical_status and get_model_info for context. Summary lists may be
 truncated: filter find_objects by category/name/parent and follow next_offset until
 null. Restart enumeration if result_fingerprint changes. Object IDs last only for
 the life of the object. get_model_info reports unit_system. Quantity("5 [mm]") carries
-its own unit; set ExtAPI.Application.ActiveUnitSystem (for example
-MechanicalUnitSystem.StandardNMM) only when asked to change the active units.
+its own unit. ExtAPI.Application.ActiveUnitSystem (for example
+MechanicalUnitSystem.StandardNMM) controls the active units.
 Save before destructive changes; there is no automatic undo.
 Transaction() defers background updates for bulk edits; it is not validation or rollback.
 """)
@@ -152,8 +151,7 @@ def get_guidelines_for_analysis_setup() -> str:
     """Return analysis and settings discovery guidance."""
     return _reference(
         """# Analysis Setup in Mechanical
-Use get_model_info for existing analyses and zero-based indices. Add an analysis
-only when requested; do not silently add another. Creators include
+get_model_info reports existing analyses and zero-based indices. Creators include
 Model.AddStaticStructuralAnalysis, AddModalAnalysis, AddSteadyStateThermalAnalysis,
 AddTransientThermalAnalysis, AddTransientStructuralAnalysis and
 AddHarmonicResponseAnalysis.
@@ -326,7 +324,7 @@ _CONTENT_MAP = {
 def get_guidelines_for(content: GuidelinesContent) -> str:
     """Get concise, documentation-backed patterns and MCP execution notes.
 
-    Call once per topic when needed; reuse for the same release/engine. Topics:
+    Topics:
     workflow, geometry, materials, meshing, analysis_setup, boundary_conditions,
     solution, postprocessing, named_selections, general. Bundled text with official
     reference links; no network requests. Use describe_api for version-matched help.

@@ -55,9 +55,8 @@ _PROMPT_BODY = """\
 ## Reference guidance when needed
 
 You have a `get_guidelines_for` tool that returns ExtAPI scripting patterns and
-code examples for a requested topic. Call a topic once when unfamiliar, then reuse
-it for the same release and engine. Do not reload it before every script.
-Use describe_api for the connected release's API and installed documentation.
+code examples for a requested topic. The content is bundled with the server.
+`describe_api` provides API metadata and installed documentation from the connected release.
 
 | Task area | Guideline tool |
 |---|---|
