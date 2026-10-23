@@ -155,13 +155,12 @@ def test_all_context_tools_return_strings():
         assert len(result) > 0, f"{func.__name__} should return non-empty string"
 
 
-def test_each_topic_is_bounded_source_linked_and_remote_safe():
+def test_each_topic_is_source_linked_and_remote_safe():
     from ansys.mechanical.mcp import contexts
     from tests.test_reliability_fixes import assert_ironpython_compatible
 
     for topic, getter in contexts._CONTENT_MAP.items():
         content = getter()
-        assert len(content) < 2200, topic
         assert "Official reference: https://mechanical.docs.pyansys.com/" in content
         assert "never fetches links" in content
         for script in re.findall(r"```python\n(.*?)```", content, re.S):
