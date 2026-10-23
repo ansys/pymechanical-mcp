@@ -536,7 +536,10 @@ async def _set_mechanical_tools_visible(ctx: Context, visible: bool) -> None:
         app.disable(tags={REQUIRES_MECHANICAL_TAG})
     else:
         return
-    await ctx.send_notification(mcp_types.ToolListChangedNotification())
+    try:
+        await ctx.send_notification(mcp_types.ToolListChangedNotification())
+    except Exception as exc:
+        logger.warning("Tool visibility updated, but the client could not be notified: %s", exc)
 
 
 # Access type-safe lifespan context in tools
@@ -1547,74 +1550,79 @@ try:
 except:
     model_info['mesh']['metric'] = None
 
-# Named selections are the recommended scoping target, so expose their names.
-try:
-    model_info['named_selections'] = [
-        child.Name for child in Model.NamedSelections.Children
-    ]
-except:
-    model_info['named_selections'] = []
+model_info['collection_info'] = {}
 
-try:
-    model_info['materials'] = [child.Name for child in Model.Materials.Children]
-except:
-    model_info['materials'] = []
+def _collection_info(key, total, error=None):
+    returned = len(model_info[key])
+    info = {'total_count': total, 'returned_count': returned,
+            'truncated': total is None or returned < total}
+    if error is not None:
+        info['error'] = error
+    model_info['collection_info'][key] = info
+
+def _preview_collection(key, read_collection, read_item):
+    model_info[key] = []
+    total = None
+    error = None
+    try:
+        collection = read_collection()
+        total = collection.Count
+        count = total if max_items is None else min(total, max_items)
+        for index in range(count):
+            try:
+                model_info[key].append(read_item(index, collection[index]))
+            except Exception as exc:
+                error = u'Could not read item {0}: {1}'.format(index, exc)[:300]
+    except Exception as exc:
+        error = u'Could not read collection: {0}'.format(exc)[:300]
+    _collection_info(key, total, error)
+
+_preview_collection('named_selections', lambda: Model.NamedSelections.Children,
+                    lambda index, child: child.Name)
+_preview_collection('materials', lambda: Model.Materials.Children,
+                    lambda index, child: child.Name)
 
 try:
     model_info['unit_system'] = str(ExtAPI.Application.ActiveUnitSystem)
 except:
     model_info['unit_system'] = None
 
-# Per-analysis detail, including everything scoped under each analysis that is
-# not an analysis-settings or solution folder (loads, supports, conditions).
-analyses = []
-boundary_conditions = []
+def _analysis_entry(index, analysis):
+    try:
+        status = str(analysis.Solution.Status)
+    except:
+        status = 'Unknown'
+    return {'index': index, 'name': analysis.Name,
+            'type': str(analysis.AnalysisType), 'solution_status': status}
+
+_preview_collection('analyses', lambda: Model.Analyses, _analysis_entry)
+model_info['boundary_conditions'] = []
+boundary_total = 0
+boundary_error = None
 try:
     for analysis_idx in range(Model.Analyses.Count):
-        analysis = Model.Analyses[analysis_idx]
-        try:
-            solution_status = str(analysis.Solution.Status)
-        except:
-            solution_status = 'Unknown'
-        analyses.append({
-            'index': analysis_idx,
-            'name': analysis.Name,
-            'type': str(analysis.AnalysisType),
-            'solution_status': solution_status,
-        })
-        for child_idx in range(analysis.Children.Count):
-            child = analysis.Children[child_idx]
+        children = Model.Analyses[analysis_idx].Children
+        for child_idx in range(children.Count):
+            child = children[child_idx]
             category = _category(child)
-            # Analysis settings report a solver-specific category, such as
-            # ANSYSAnalysisSettings, so match the suffix.
             if category == 'Solution' or category.endswith('AnalysisSettings'):
                 continue
-            boundary_conditions.append({
-                'analysis_index': analysis_idx,
-                'name': child.Name,
-                'type': category,
-            })
-except:
-    pass
-
-model_info['analyses'] = analyses
-model_info['boundary_conditions'] = boundary_conditions
-
-model_info['collection_info'] = {}
-for key in ('named_selections', 'materials', 'analyses', 'boundary_conditions'):
-    entries = model_info[key]
-    total = len(entries)
-    if max_items is not None:
-        model_info[key] = entries[:max_items]
-    returned = len(model_info[key])
-    model_info['collection_info'][key] = {
-        'total_count': total, 'returned_count': returned, 'truncated': returned < total,
-    }
+            boundary_total += 1
+            if max_items is None or len(model_info['boundary_conditions']) < max_items:
+                try:
+                    model_info['boundary_conditions'].append({
+                        'analysis_index': analysis_idx, 'name': child.Name, 'type': category})
+                except Exception as exc:
+                    boundary_error = u'Could not read condition: {0}'.format(exc)[:300]
+except Exception as exc:
+    boundary_total = None
+    boundary_error = u'Could not count conditions: {0}'.format(exc)[:300]
+_collection_info('boundary_conditions', boundary_total, boundary_error)
 if any(item['truncated'] for item in model_info['collection_info'].values()):
     model_info['retrieval_note'] = (
         'Lists are previews, not the full model. Use find_objects with category, '
-        'name_contains, parent_id, limit and next_offset to retrieve more. '
-        'Use max_items=null only when the full name lists are required.'
+        'name_contains, parent_id and limit. For the next page, set offset to '
+        'the returned next_offset. max_items=null returns the full lists.'
     )
     model_info['collection_info']['named_selections']['find_objects'] = {
         'category': 'NamedSelection'}

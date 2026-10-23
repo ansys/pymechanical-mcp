@@ -234,6 +234,7 @@ def _mcp_find_objects(args):
     max_depth = args.get('max_depth')
     limit = args['limit']
     offset = args.get('offset', 0)
+    fingerprint = hashlib.sha256()
     identities = []
     matches = []
     total = 0
@@ -255,6 +256,9 @@ def _mcp_find_objects(args):
         ):
             total += 1
             identities.append([entry['object_id'], name, entry['category'], path])
+            if len(identities) == 128:
+                fingerprint.update(json.dumps(identities, ensure_ascii=False).encode('utf-8'))
+                identities = []
             if total > offset and len(matches) < limit:
                 entry['path'] = path
                 entry['depth'] = depth
@@ -263,7 +267,8 @@ def _mcp_find_objects(args):
         if max_depth is None or depth < max_depth:
             for child in reversed(children):
                 stack.append((child, depth + 1, path))
-    fingerprint = hashlib.sha256(json.dumps(identities, ensure_ascii=False).encode('utf-8'))
+    if identities:
+        fingerprint.update(json.dumps(identities, ensure_ascii=False).encode('utf-8'))
     result = {
         'success': True,
         'root': _mcp_summary(root),
@@ -664,9 +669,30 @@ def _mcp_check_script(args):
 _API_DOCUMENTATION = r"""
 import re
 
+def _mcp_doc_content(node):
+    parts = []
+    for child in node.ChildNodes:
+        if int(child.NodeType) in (3, 4, 13, 14):
+            parts.append(_mcp_str(child.Value))
+        elif child.Name in ('see', 'seealso'):
+            text = _mcp_doc_content(child)
+            reference = child.GetAttribute('cref')
+            if len(reference) > 1 and reference[1] == ':':
+                reference = reference[2:]
+            parts.append(text or reference or child.GetAttribute('langword')
+                         or child.GetAttribute('href'))
+        elif child.Name in ('paramref', 'typeparamref'):
+            parts.append(child.GetAttribute('name'))
+        else:
+            text = _mcp_doc_content(child)
+            if child.Name in ('para', 'code', 'br', 'item'):
+                text = '\n' + text + '\n'
+            parts.append(text)
+    return ''.join(parts)
+
 def _mcp_doc_text(node, tag, budget):
     child = node.SelectSingleNode(tag)
-    text = _mcp_str(child.InnerText).strip() if child is not None else ''
+    text = _mcp_doc_content(child).strip() if child is not None else ''
     if tag != 'example':
         text = ' '.join(text.split())
     return text[:budget], len(text) > budget
@@ -777,7 +803,7 @@ def _mcp_documentation(clr_type, member=None, kind=None, info=None, full=False):
                         cut.append(tag)
                 parameters = []
                 for param in node.SelectNodes('param'):
-                    text = ' '.join(_mcp_str(param.InnerText).split())
+                    text = ' '.join(_mcp_doc_content(param).split())
                     parameters.append({
                         'name': param.GetAttribute('name'), 'description': text[:1000]})
                     if len(text) > 1000:

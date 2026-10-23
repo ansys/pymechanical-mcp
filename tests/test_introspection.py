@@ -142,6 +142,25 @@ class XmlNode:
         self.element = element
 
     @property
+    def ChildNodes(self):  # noqa: N802
+        children = []
+        if self.element.text:
+            children.append(SimpleNamespace(NodeType=3, Value=self.element.text))
+        for element in self.element:
+            children.append(XmlNode(element))
+            if element.tail:
+                children.append(SimpleNamespace(NodeType=3, Value=element.tail))
+        return children
+
+    @property
+    def NodeType(self):  # noqa: N802
+        return 1
+
+    @property
+    def Name(self):  # noqa: N802
+        return self.element.tag
+
+    @property
     def InnerText(self):  # noqa: N802
         return "".join(self.element.itertext())
 
@@ -153,7 +172,7 @@ class XmlNode:
         return [XmlNode(child) for child in self.element.findall(tag)]
 
     def GetAttribute(self, name):  # noqa: N802
-        return self.element.get(name)
+        return self.element.get(name, "")
 
 
 @pytest.mark.unit
@@ -214,6 +233,24 @@ class TestInstalledApiDocumentation:
     def test_missing_docs_and_reader_errors_degrade_without_failure(self):
         assert self.read(missing=True)["status"] == "missing"
         assert self.read(failure=True)["status"] == "unavailable"
+
+    def test_inline_references_and_example_structure_are_preserved(self):
+        namespace = {"_mcp_str": str}
+        exec(introspection._API_DOCUMENTATION, namespace)
+        node = XmlNode(
+            ET.fromstring(
+                '<member><summary>Use <see cref="T:Ansys.Table"/> with '
+                '<paramref name="source"/> or <see langword="null"/>.</summary>'
+                "<example><code>analysis.Solve(True)\nprint(analysis.Name)</code>"
+                '<para>Inspect <see cref="P:Ansys.Analysis.Status"/>.</para></example></member>'
+            )
+        )
+        text, truncated = namespace["_mcp_doc_text"](node, "summary", 2000)
+        assert text == "Use Ansys.Table with source or null."
+        assert truncated is False
+        text, _ = namespace["_mcp_doc_text"](node, "example", 4000)
+        assert "analysis.Solve(True)\nprint(analysis.Name)" in text
+        assert "\nInspect Ansys.Analysis.Status." in text
 
 
 @pytest.mark.unit
@@ -407,6 +444,25 @@ class TestToolErrors:
 
 @pytest.mark.unit
 class TestFindAndDescribe:
+    def test_fingerprint_serialization_is_batched(self, monkeypatch):
+        lengths = []
+        original = json.dumps
+
+        def record(value, **kwargs):
+            if isinstance(value, list):
+                lengths.append(len(value))
+            return original(value, **kwargs)
+
+        monkeypatch.setattr(json, "dumps", record)
+        objects = [
+            SimpleNamespace(ObjectId=index, Name="NS%04d" % index, Children=[])
+            for index in range(513)
+        ]
+        page = self.page(objects, name_contains="NS", limit=1)
+        assert page["match_count"] == 513
+        assert sum(lengths) == 513
+        assert max(lengths) <= 128
+
     def page(self, objects, **kwargs):
         root = SimpleNamespace(ObjectId=0, Name="Project", Children=objects)
         namespace = {

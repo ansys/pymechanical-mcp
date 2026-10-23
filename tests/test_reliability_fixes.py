@@ -906,6 +906,69 @@ def test_model_info_rejects_invalid_limit(value):
     mechanical.run_python_script.assert_not_called()
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("max_items,expected_reads", [(0, 0), (2, 2), (None, 3)])
+def test_model_preview_reads_only_requested_names(max_items, expected_reads):
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=max_items)
+    selections = Items([MagicMock(), MagicMock(), MagicMock()])
+    reads = []
+
+    class Selection:
+        @property
+        def Name(self):  # noqa: N802
+            reads.append(True)
+            if len(reads) == 1:
+                raise RuntimeError("Name unavailable")
+            return "Selection"
+
+    selections[:] = [Selection() for _ in selections]
+    model = SimpleNamespace(
+        Name="Model",
+        Analyses=Items(),
+        Materials=SimpleNamespace(Children=Items()),
+        NamedSelections=SimpleNamespace(Children=selections),
+    )
+    namespace = {
+        "Model": model,
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+    }
+    result = json.loads(
+        run_mechanical_script(mechanical.run_python_script.call_args.args[0], namespace)
+    )
+    info = result["collection_info"]["named_selections"]
+    assert len(reads) == expected_reads
+    assert info["total_count"] == 3
+    assert info["returned_count"] == max(0, expected_reads - 1)
+    assert info["truncated"] is True
+    assert ("error" in info) is (expected_reads > 0)
+
+
+@pytest.mark.unit
+def test_model_preview_unavailable_collection_is_not_reported_empty():
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=0)
+    namespace = {
+        "Model": SimpleNamespace(Name="Model", Analyses=Items()),
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+    }
+    result = json.loads(
+        run_mechanical_script(mechanical.run_python_script.call_args.args[0], namespace)
+    )
+    info = result["collection_info"]["named_selections"]
+    assert info["total_count"] is None
+    assert info["truncated"] is True
+    assert "error" in info
+
+
 class _ExportResult:
     def __init__(self, name):
         self.Name = name

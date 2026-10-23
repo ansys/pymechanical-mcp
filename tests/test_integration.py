@@ -350,7 +350,7 @@ class TestObjectDiscoveryIntegration:
         search = json.loads(describe_api(context, query="large deflection"))
         assert search["matches"][0]["name"] == "ANSYSAnalysisSettings.LargeDeflection"
 
-    def test_installed_api_documentation(self, context):
+    def test_installed_api_documentation(self, real_mechanical, context):
         import json
 
         from ansys.mechanical.mcp.tools import describe_api
@@ -360,17 +360,81 @@ class TestObjectDiscoveryIntegration:
         match = next(item for item in result["matches"] if item["name"] == "Analysis.Solve")
         documentation = match["documentation"]
         assert documentation["source_kind"] == "installed_xml"
-        assert documentation["status"] in {
-            "available",
-            "missing",
-            "unavailable",
-            "no_descriptive_text",
-        }
-        if documentation["status"] == "available":
+        exists = (
+            real_mechanical.run_python_script(
+                "System.IO.File.Exists(System.IO.Path.ChangeExtension("
+                "clr.GetClrType(Ansys.ACT.Automation.Mechanical.Analysis).Assembly.Location, '.xml'))"
+            )
+            == "True"
+        )
+        if exists:
+            assert documentation["status"] == "available"
             assert documentation["source"].endswith(".xml")
             assert documentation["entries"]
             assert all(entry["member_id"].startswith("M:") for entry in documentation["entries"])
+            assert any(entry.get("parameters") for entry in documentation["entries"])
+        else:
+            assert documentation["status"] == "missing"
         assert "Solve(" in match["signature"]
+
+    def test_xml_reader_cache_and_failure_paths(self, real_mechanical, context):
+        import json
+
+        from ansys.mechanical.mcp import introspection
+
+        script = (
+            introspection._HELPERS
+            + introspection._API_DOCUMENTATION
+            + r"""
+import os
+import uuid
+class _DocAssembly:
+    pass
+assembly = _DocAssembly()
+assembly.Location = os.path.join(ExtAPI.DataModel.Project.ProjectDirectory,
+                                 'mcp_doc_' + uuid.uuid4().hex + '.dll')
+path = System.IO.Path.ChangeExtension(assembly.Location, '.xml')
+member_id = 'T:Ansys.Table'
+fixture = ('<doc><members><member name="T:Ansys.Table"><summary>Use '
+           '<see cref="T:Ansys.Table"/> with <paramref name="source"/>.'
+           '</summary></member></members></doc>')
+payload = {}
+try:
+    System.IO.File.WriteAllText(path, fixture)
+    first = _mcp_xml_index(assembly)
+    payload['status'] = first['status']
+    payload['cached'] = _mcp_xml_index(assembly) is first
+    payload['text'] = _mcp_doc_text(first['members'][member_id], 'summary', 2000)[0]
+    System.IO.File.WriteAllText(path, fixture.replace('Use ', 'Read '))
+    System.IO.File.SetLastWriteTimeUtc(path, System.DateTime.UtcNow.AddSeconds(2))
+    changed = _mcp_xml_index(assembly)
+    payload['updated'] = _mcp_doc_text(changed['members'][member_id], 'summary', 2000)[0]
+    System.IO.File.WriteAllText(path, '<doc>')
+    System.IO.File.SetLastWriteTimeUtc(path, System.DateTime.UtcNow.AddSeconds(4))
+    payload['malformed'] = _mcp_xml_index(assembly)['status']
+    System.IO.File.WriteAllText(path,
+        '<!DOCTYPE doc [<!ENTITY external SYSTEM "file:///nonexistent">]>'
+        '<doc><members><member name="T:Ansys.Table"><summary>&external;'
+        '</summary></member></members></doc>')
+    System.IO.File.SetLastWriteTimeUtc(path, System.DateTime.UtcNow.AddSeconds(6))
+    payload['dtd'] = _mcp_xml_index(assembly)['status']
+finally:
+    if System.IO.File.Exists(path):
+        System.IO.File.Delete(path)
+payload['missing'] = _mcp_xml_index(assembly)['status']
+json.dumps(payload, ensure_ascii=False)
+"""
+        )
+        result = json.loads(real_mechanical.run_python_script(script))
+        assert result == {
+            "status": "available",
+            "cached": True,
+            "text": "Use Ansys.Table with source.",
+            "updated": "Read Ansys.Table with source.",
+            "malformed": "unavailable",
+            "dtd": "unavailable",
+            "missing": "missing",
+        }
 
     def test_large_model_summary_and_paging(self, real_mechanical, context):
         import json

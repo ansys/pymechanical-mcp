@@ -198,12 +198,16 @@ Large-model summaries
 ``get_model_info`` defaults to ``max_items=50`` entries per named-selection,
 material, analysis and boundary-condition list. Existing list formats remain;
 ``collection_info`` reports total counts, returned counts and truncation.
+An unreadable collection has a null total and an error; unreadable preview items
+are reported as errors rather than making the collection appear empty and complete.
 ``max_items=0`` returns counts without those lists; ``max_items=None`` explicitly
 returns all entries and can produce a very large response. Use filtered
 ``find_objects`` pages for large models instead of repeatedly loading all names.
 Geometry remains counts-only, including ``body_counts_by_type`` and
 ``suppression_counts``. Line bodies are reported as Line, not assumed to be beams.
 Object counts and fingerprints are discovery aids, not engineering validation.
+Paging scans the current tree on each call; it bounds response size, not traversal
+time. Fingerprint serialization uses bounded batches of matching identities.
 
 Example workflows
 -----------------

@@ -1621,7 +1621,7 @@ class TestGetModelInfo:
             "boundary_conditions",
             "analyses",
         ):
-            assert f"model_info['{key}']" in script
+            assert f"'{key}'" in script
 
     def test_get_model_info_does_not_mutate_mesh_metric(self, mock_context):
         """Reading model info must never assign MeshMetric, which would edit the model."""
@@ -2243,6 +2243,41 @@ class TestGetResultsSummary:
 @pytest.mark.unit
 class TestRequiresMechanicalVisibility:
     """Tests for Mechanical-connection-aware tool visibility."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("operation", ["connect", "launch", "disconnect"])
+    async def test_notification_failure_does_not_change_lifecycle_outcome(
+        self, operation, mock_context_no_mechanical
+    ):
+        context = mock_context_no_mechanical
+        context.send_notification.side_effect = RuntimeError("Client stream closed")
+        mechanical = MagicMock()
+        mechanical.version = "261"
+        mechanical.project_directory = "project"
+        lifespan = context.request_context.lifespan_context
+        with (
+            patch("ansys.mechanical.mcp.tools.app"),
+            patch("ansys.mechanical.mcp.tools._is_docker", return_value=False),
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.connect_to_mechanical",
+                return_value=mechanical,
+            ),
+            patch(
+                "ansys.mechanical.mcp.tools.pymechanical.launch_mechanical", return_value=mechanical
+            ),
+        ):
+            if operation == "connect":
+                result = await connect_to_mechanical(context, transport_mode="insecure")
+            elif operation == "launch":
+                result = await launch_mechanical(context, batch=True, transport_mode="insecure")
+            else:
+                lifespan.mechanical = mechanical
+                lifespan.owns_mechanical = False
+                result = await disconnect_from_mechanical(context)
+        assert result.startswith("Successfully")
+        assert lifespan.mechanical is (None if operation == "disconnect" else mechanical)
+        if operation == "disconnect":
+            mechanical.exit.assert_not_called()
 
     @staticmethod
     def _notified(context):
