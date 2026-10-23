@@ -66,6 +66,8 @@ AI workflow guidance
 Call ``get_guidelines_for`` at workflow boundaries (geometry, meshing,
 analysis setup, and postprocessing). This reduces avoidable script mistakes and
 keeps generated commands aligned with Mechanical best practices.
+Use ``describe_api`` to confirm API names and property details for the connected
+Mechanical release and read installed API documentation where available.
 
 Next steps
 ----------
