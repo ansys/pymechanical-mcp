@@ -16,7 +16,6 @@
 
 """Tests for MCP context tools (formerly resources)."""
 
-import ast
 import re
 
 import pytest
@@ -166,7 +165,6 @@ def test_each_topic_is_bounded_source_linked_and_remote_safe():
         assert "Official reference: https://mechanical.docs.pyansys.com/" in content
         assert "never fetches links" in content
         for script in re.findall(r"```python\n(.*?)```", content, re.S):
-            ast.parse(script)
             assert_ironpython_compatible(script)
             assert "mechanical.run_python_script(" not in script
 

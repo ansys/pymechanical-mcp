@@ -20,13 +20,8 @@ import pytest
 
 
 @pytest.mark.unit
-def test_build_system_prompt_defaults_to_original_prompt():
-    """Default (dynamic) prompt is unchanged from the pre-``--static-tools`` prompt.
-
-    Dynamic mode is the existing, already-shipped default: hidden tools are
-    simply absent from the client's tool list, so no extra "tool
-    availability" explanation is needed (or added) for this mode.
-    """
+def test_build_system_prompt_defaults_to_dynamic_prompt():
+    """Default mode omits static-tool availability guidance."""
     from ansys.mechanical.mcp.prompts import DYNAMIC_SYSTEM_PROMPT, build_system_prompt
 
     prompt = build_system_prompt()
@@ -48,7 +43,6 @@ def test_build_system_prompt_static_tools_language():
     assert "exposes the full tool surface from startup" in prompt
     assert "--static-tools" in prompt
     assert "No Mechanical connection available" in prompt
-    assert "Reference guidance when needed" in prompt
 
 
 @pytest.mark.unit

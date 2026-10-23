@@ -97,7 +97,8 @@ Available after connection
    * - ``get_model_info``
      - Return a structured model summary: geometry and mesh counts, active mesh
        metric, named selections, materials, unit system, analyses, and boundary
-       conditions.
+       conditions. Lists are limited previews with total counts and truncation
+       information.
    * - ``get_results_summary``
      - Return solved result minima, maxima, and averages with units, without
        exporting files.
@@ -157,23 +158,20 @@ Mechanical release, including releases newer than the bundled API reference.
 
 - ``find_objects`` returns stable object IDs. Use IDs rather than names, which
   can repeat, or positions, which change when objects are added.
-  Results are in Outline order. ``offset`` skips filtered matches, not arbitrary
-  tree nodes. Follow ``next_offset`` until null with unchanged filters to retrieve
-  more than 1000 objects. Restart if ``result_fingerprint`` changes: pagination is
-  not a transactional snapshot of an editable model.
+  To retrieve more matches, set ``offset`` to the returned ``next_offset`` until
+  it is null. Keep filters unchanged and restart if ``result_fingerprint`` changes.
+  Each page scans the current Outline tree; paging is not a saved model snapshot.
 - ``describe_api`` with ``object_id`` lists properties shown in the Details
   view by default. Set ``details_only=False`` for every public API property.
 - ``describe_api`` with ``query`` searches API types, properties, methods, and
   enumeration members by keyword, such as ``"element size"``. A query that names
   a type, such as ``"FixedSupport"``, also lists all its members. Use it to find
   real API names before writing a script.
-  Search results include concise summaries from XML documentation beside the
-  reflected assemblies, where available. Exact ``Type.Member`` queries such as
-  ``"Analysis.Solve"`` return parameters, remarks and examples with source and
-  truncation metadata. Documentation is read on the Mechanical host, requires no
-  internet access and matches that installation. Missing or boilerplate XML does
-  not prevent reflection; the response reports its availability. A connection is
-  still required. No newest-installed stubs or online ``latest`` docs are substituted.
+  Results include installed API documentation where available. An exact query,
+  such as ``"Analysis.Solve"``, includes available parameter descriptions, remarks,
+  and examples, with source and truncation information. Help comes from the
+  connected Mechanical installation without internet access. If documentation is
+  unavailable, API names and signatures are still returned.
 - ``preview_property_change`` checks values strictly against the property type.
   Booleans must be ``true`` or ``false``, integers must fit the property range,
   enumeration values must be exact member names, and quantities must be strings such
@@ -196,18 +194,19 @@ Large-model summaries
 ---------------------
 
 ``get_model_info`` defaults to ``max_items=50`` entries per named-selection,
-material, analysis and boundary-condition list. Existing list formats remain;
-``collection_info`` reports total counts, returned counts and truncation.
-An unreadable collection has a null total and an error; unreadable preview items
-are reported as errors rather than making the collection appear empty and complete.
-``max_items=0`` returns counts without those lists; ``max_items=None`` explicitly
-returns all entries and can produce a very large response. Use filtered
-``find_objects`` pages for large models instead of repeatedly loading all names.
-Geometry remains counts-only, including ``body_counts_by_type`` and
-``suppression_counts``. Line bodies are reported as Line, not assumed to be beams.
-Object counts and fingerprints are discovery aids, not engineering validation.
-Paging scans the current tree on each call; it bounds response size, not traversal
-time. Fingerprint serialization uses bounded batches of matching identities.
+material, analysis and boundary-condition list. Check ``collection_info`` for
+total counts, returned counts, truncation, and read errors. A null total means
+the collection could not be counted.
+
+- Set ``max_items=0`` for counts without list entries.
+- Increase ``max_items`` for a larger preview, up to 1000 entries per list.
+- Set ``max_items=None`` (``null`` in MCP arguments) for full lists; responses
+  can be large.
+- Use filtered ``find_objects`` pages to locate objects in large models.
+
+Geometry is reported as counts by body type (``body_counts_by_type``) and
+suppression state (``suppression_counts``), without listing body names.
+These counts describe the model; they do not validate its engineering setup.
 
 Example workflows
 -----------------
@@ -227,10 +226,11 @@ Modal analysis
 ~~~~~~~~~~~~~~
 
 #. Connect to Mechanical.
-#. Import the model and define fixed supports.
-#. Create modal analysis settings with script tools.
+#. Import the model and set materials and supports for the intended analysis.
+#. Create a modal analysis and configure mode extraction with script tools.
 #. Run ``solve_analysis``.
-#. Use ``create_custom_plot`` for mode-shape reporting.
+#. Add and evaluate modal results with ``run_python_script``.
+#. Use ``screenshot`` or ``export_results`` to report mode shapes.
 
 Change a setting with a preview
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -246,7 +246,8 @@ Checks after solving
 
 #. ``get_model_info`` for verifying solved state
 #. ``get_mechanical_logs`` for warnings and errors
-#. ``run_python_code`` for custom data extraction
+#. ``get_results_summary`` for result values and units
+#. ``run_python_code`` for processing exported data
 #. ``export_results`` for report artifacts
 
 Feature reference

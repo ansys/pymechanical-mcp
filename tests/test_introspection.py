@@ -160,10 +160,6 @@ class XmlNode:
     def Name(self):  # noqa: N802
         return self.element.tag
 
-    @property
-    def InnerText(self):  # noqa: N802
-        return "".join(self.element.itertext())
-
     def SelectSingleNode(self, tag):  # noqa: N802
         child = self.element.find(tag)
         return XmlNode(child) if child is not None else None

@@ -63,13 +63,11 @@ File transfer hygiene
 AI workflow guidance
 --------------------
 
-``get_guidelines_for`` returns bundled, concise API patterns
-with official documentation links and MCP execution notes, not solver presets or
-an automatically fetched skill. The linked examples may use embedding mode;
-pass script bodies rather than client wrappers to the remote script tool.
-Use ``describe_api`` for version-matched API metadata and installed documentation.
-Read ``collection_info`` before treating a model-summary list as complete, and
-prefer filtered ``find_objects`` pages to unlimited large-assembly responses.
+Call ``get_guidelines_for`` at workflow boundaries (geometry, meshing,
+analysis setup, and postprocessing). This reduces avoidable script mistakes and
+keeps generated commands aligned with Mechanical best practices.
+Use ``describe_api`` to confirm API names and property details for the connected
+Mechanical release and read installed API documentation where available.
 
 Next steps
 ----------
