@@ -16,6 +16,8 @@
 
 """Tests for MCP context tools (formerly resources)."""
 
+import re
+
 import pytest
 
 
@@ -151,3 +153,34 @@ def test_all_context_tools_return_strings():
         result = func()
         assert isinstance(result, str), f"{func.__name__} should return a string"
         assert len(result) > 0, f"{func.__name__} should return non-empty string"
+
+
+def test_each_topic_is_source_linked_and_remote_safe():
+    from ansys.mechanical.mcp import contexts
+    from tests.test_reliability_fixes import assert_ironpython_compatible
+
+    for topic, getter in contexts._CONTENT_MAP.items():
+        content = getter()
+        assert "Official reference: https://mechanical.docs.pyansys.com/" in content
+        assert "never fetches links" in content
+        for script in re.findall(r"```python\n(.*?)```", content, re.S):
+            assert_ironpython_compatible(script)
+            assert "mechanical.run_python_script(" not in script
+
+
+def test_essential_safeguards_survive_guideline_review():
+    from ansys.mechanical.mcp import contexts
+
+    assert "ensure_ascii=False" in contexts.get_guidelines_for_general_rules()
+    assert "not undo" in contexts.get_guidelines_for_general_rules()
+    assert "integer counts" in contexts.get_guidelines_for_meshing()
+    assert "EvaluateAllResults" in contexts.get_guidelines_for_postprocessing()
+    assert "activate the intended result" in contexts.get_guidelines_for_postprocessing()
+    assert "duplicate" in contexts.get_guidelines_for_named_selections()
+    assert "matching lengths" in contexts.get_guidelines_for_boundary_conditions()
+    assert "rigid-body motion" in contexts.get_guidelines_for_boundary_conditions()
+    assert "AddFixedSupport" in contexts.get_guidelines_for_boundary_conditions()
+    assert "ProjectDirectory" in contexts.get_guidelines_for_geometry_import()
+    assert "MaximumModesToFind" in contexts.get_guidelines_for_analysis_setup()
+    assert "ReportedFrequency" in contexts.get_guidelines_for_postprocessing()
+    assert "SolutionStatusType.Done" in contexts.get_guidelines_for_solution()

@@ -67,8 +67,7 @@ def make_context(mechanical=None, owns=False):
     context.request_context.lifespan_context = PyMechanicalAppContext(
         mechanical=mechanical, owns_mechanical=owns
     )
-    context.enable_components = AsyncMock()
-    context.disable_components = AsyncMock()
+    context.send_notification = AsyncMock()
     context.elicit = AsyncMock(side_effect=RuntimeError("elicitation unavailable"))
     return context
 
@@ -850,9 +849,124 @@ def test_model_info_counts_bodies_recursively():
     mechanical.run_python_script.return_value = "{}"
     tools.get_model_info(make_context(mechanical))
     script = mechanical.run_python_script.call_args.args[0]
-    assert "geom.GetChildren(DataModelObjectCategory.Body, True).Count" in script
+    assert "geom.GetChildren(DataModelObjectCategory.Body, True)" in script
     assert "geom.Children.Count" not in script
     assert_ironpython_compatible(script)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("max_items,expected", [(0, 0), (50, 50), (None, 2105)])
+def test_model_info_bounds_lists_on_mechanical_host(max_items, expected):
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=max_items)
+    script = mechanical.run_python_script.call_args.args[0]
+    bodies = Items(
+        [
+            SimpleNamespace(GeometryType="Solid", Suppressed=False),
+            SimpleNamespace(GeometryType="Surface", Suppressed=True),
+            SimpleNamespace(),
+        ]
+    )
+    model = SimpleNamespace(
+        Name="Model",
+        Geometry=SimpleNamespace(GetChildren=lambda *args: bodies),
+        Analyses=Items(),
+        Materials=SimpleNamespace(Children=Items()),
+        NamedSelections=SimpleNamespace(
+            Children=Items(
+                [SimpleNamespace(Name="Selection %04d" % index) for index in range(2105)]
+            )
+        ),
+    )
+    namespace = {
+        "Model": model,
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+        "DataModelObjectCategory": SimpleNamespace(Body="Body"),
+    }
+    result = json.loads(run_mechanical_script(script, namespace))
+    assert len(result["named_selections"]) == expected
+    meta = result["collection_info"]["named_selections"]
+    assert meta["total_count"] == 2105
+    assert meta["truncated"] is (expected < 2105)
+    assert result["geometry"]["body_counts_by_type"] == {"Solid": 1, "Surface": 1, "Unknown": 1}
+    assert result["geometry"]["suppression_counts"] == {"suppressed": 1, "active": 1, "unknown": 1}
+    assert_ironpython_compatible(script)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("value", [-1, 1001, True, "50"])
+def test_model_info_rejects_invalid_limit(value):
+    mechanical = MagicMock()
+    result = json.loads(tools.get_model_info(make_context(mechanical), max_items=value))
+    assert result["error_code"] == "invalid_arguments"
+    mechanical.run_python_script.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("max_items,expected_reads", [(0, 0), (2, 2), (None, 3)])
+def test_model_preview_reads_only_requested_names(max_items, expected_reads):
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=max_items)
+    selections = Items([MagicMock(), MagicMock(), MagicMock()])
+    reads = []
+
+    class Selection:
+        @property
+        def Name(self):  # noqa: N802
+            reads.append(True)
+            if len(reads) == 1:
+                raise RuntimeError("Name unavailable")
+            return "Selection"
+
+    selections[:] = [Selection() for _ in selections]
+    model = SimpleNamespace(
+        Name="Model",
+        Analyses=Items(),
+        Materials=SimpleNamespace(Children=Items()),
+        NamedSelections=SimpleNamespace(Children=selections),
+    )
+    namespace = {
+        "Model": model,
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+    }
+    result = json.loads(
+        run_mechanical_script(mechanical.run_python_script.call_args.args[0], namespace)
+    )
+    info = result["collection_info"]["named_selections"]
+    assert len(reads) == expected_reads
+    assert info["total_count"] == 3
+    assert info["returned_count"] == max(0, expected_reads - 1)
+    assert info["truncated"] is True
+    assert ("error" in info) is (expected_reads > 0)
+
+
+@pytest.mark.unit
+def test_model_preview_unavailable_collection_is_not_reported_empty():
+    mechanical = MagicMock()
+    tools.get_model_info(make_context(mechanical), max_items=0)
+    namespace = {
+        "Model": SimpleNamespace(Name="Model", Analyses=Items()),
+        "ExtAPI": SimpleNamespace(
+            DataModel=SimpleNamespace(
+                Project=SimpleNamespace(ProductVersion="2026 R1", Name="Project")
+            )
+        ),
+    }
+    result = json.loads(
+        run_mechanical_script(mechanical.run_python_script.call_args.args[0], namespace)
+    )
+    info = result["collection_info"]["named_selections"]
+    assert info["total_count"] is None
+    assert info["truncated"] is True
+    assert "error" in info
 
 
 class _ExportResult:
