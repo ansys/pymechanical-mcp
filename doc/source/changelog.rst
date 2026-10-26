@@ -9,6 +9,48 @@ This section contains the release notes for PyMechanical-MCP.
 
 .. towncrier release notes start
 
+`0.3.1 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.3.1>`_ - October 26, 2026
+===========================================================================================
+
+.. tab-set::
+
+
+  .. tab-item:: Added
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Bounded model summaries, paged discovery and installed API docs
+          - `#137 <https://github.com/ansys/pymechanical-mcp/pull/137>`_
+
+
+  .. tab-item:: Dependencies
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Bump the pre-commit group across 1 directory with 2 updates
+          - `#134 <https://github.com/ansys/pymechanical-mcp/pull/134>`_
+
+        * - Bump the pip-deps group across 1 directory with 4 updates
+          - `#135 <https://github.com/ansys/pymechanical-mcp/pull/135>`_
+
+
+  .. tab-item:: Maintenance
+
+    .. list-table::
+        :header-rows: 0
+        :widths: auto
+
+        * - Update CHANGELOG for v0.3.0
+          - `#133 <https://github.com/ansys/pymechanical-mcp/pull/133>`_
+
+        * - Bump ansys/actions to v11.1.3
+          - `#138 <https://github.com/ansys/pymechanical-mcp/pull/138>`_
+
+
 `0.3.0 <https://github.com/ansys/pymechanical-mcp/releases/tag/v0.3.0>`_ - October 14, 2026
 ===========================================================================================
 
