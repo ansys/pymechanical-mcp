@@ -23,6 +23,7 @@ from pathlib import Path
 import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+import xml.etree.ElementTree as ET
 
 import pytest
 
@@ -136,6 +137,118 @@ class TestGeneratedScripts:
 # ---------------------------------------------------------------------------
 # API name extraction
 # ---------------------------------------------------------------------------
+class XmlNode:
+    def __init__(self, element):
+        self.element = element
+
+    @property
+    def ChildNodes(self):  # noqa: N802
+        children = []
+        if self.element.text:
+            children.append(SimpleNamespace(NodeType=3, Value=self.element.text))
+        for element in self.element:
+            children.append(XmlNode(element))
+            if element.tail:
+                children.append(SimpleNamespace(NodeType=3, Value=element.tail))
+        return children
+
+    @property
+    def NodeType(self):  # noqa: N802
+        return 1
+
+    @property
+    def Name(self):  # noqa: N802
+        return self.element.tag
+
+    def SelectSingleNode(self, tag):  # noqa: N802
+        child = self.element.find(tag)
+        return XmlNode(child) if child is not None else None
+
+    def SelectNodes(self, tag):  # noqa: N802
+        return [XmlNode(child) for child in self.element.findall(tag)]
+
+    def GetAttribute(self, name):  # noqa: N802
+        return self.element.get(name, "")
+
+
+@pytest.mark.unit
+class TestInstalledApiDocumentation:
+    def read(self, summary="Solve the current analysis.", missing=False, failure=False):
+        owner = SimpleNamespace(FullName="Ansys.Analysis", Assembly=object())
+        boolean = SimpleNamespace(
+            IsByRef=False,
+            IsArray=False,
+            IsGenericParameter=False,
+            IsGenericType=False,
+            FullName="System.Boolean",
+        )
+        method = SimpleNamespace(
+            Name="Solve",
+            DeclaringType=owner,
+            GetParameters=lambda: [SimpleNamespace(ParameterType=boolean)],
+        )
+        reflected = SimpleNamespace(GetMethods=lambda: [method])
+        xml = ET.fromstring(
+            '<member><summary>%s</summary><param name="wait">Wait for completion.</param>'
+            "<remarks>%s</remarks><example>analysis.Solve(True)\nprint(analysis.Name)</example></member>"
+            % (summary, "x" * 4000)
+        )
+        namespace = {"_mcp_str": str}
+        exec(introspection._API_DOCUMENTATION, namespace)
+
+        def index(assembly):
+            if failure:
+                raise OSError("not available")
+            return {
+                "status": "missing" if missing else "available",
+                "source": "Ansys.xml",
+                "members": {}
+                if missing
+                else {"M:Ansys.Analysis.Solve(System.Boolean)": XmlNode(xml)},
+            }
+
+        namespace["_mcp_xml_index"] = index
+        return namespace["_mcp_documentation"](reflected, "Solve", "method", full=True)
+
+    def test_exact_overload_has_params_remarks_source_and_bounded_text(self):
+        result = self.read()
+        assert result["status"] == "available"
+        entry = result["entries"][0]
+        assert entry["member_id"] == "M:Ansys.Analysis.Solve(System.Boolean)"
+        assert entry["parameters"] == [{"name": "wait", "description": "Wait for completion."}]
+        assert len(entry["remarks"]) == 3000
+        assert entry["truncated_fields"] == ["remarks"]
+        assert entry["example"] == "analysis.Solve(True)\nprint(analysis.Name)"
+        assert result["source"] == "Ansys.xml"
+
+    def test_boilerplate_is_not_repeated_but_useful_parameters_remain(self):
+        result = self.read(summary="Gets or sets the Solve.")
+        assert "summary" not in result["entries"][0]
+        assert result["entries"][0]["parameters"]
+
+    def test_missing_docs_and_reader_errors_degrade_without_failure(self):
+        assert self.read(missing=True)["status"] == "missing"
+        assert self.read(failure=True)["status"] == "unavailable"
+
+    def test_inline_references_and_example_structure_are_preserved(self):
+        namespace = {"_mcp_str": str}
+        exec(introspection._API_DOCUMENTATION, namespace)
+        node = XmlNode(
+            ET.fromstring(
+                '<member><summary>Use <see cref="T:Ansys.Table"/> with '
+                '<paramref name="source"/> or <see langword="null"/>.</summary>'
+                "<example><code>analysis.Solve(True)\nprint(analysis.Name)</code>"
+                '<para>Inspect <see cref="P:Ansys.Analysis.Status"/>.</para></example></member>'
+            )
+        )
+        text, truncated = namespace["_mcp_doc_text"](node, "summary", 2000)
+        assert text == "Use Ansys.Table with source or null."
+        assert truncated is False
+        text, _ = namespace["_mcp_doc_text"](node, "example", 4000)
+        assert "analysis.Solve(True)\nprint(analysis.Name)" in text
+        assert "\nInspect Ansys.Analysis.Status." in text
+
+
 @pytest.mark.unit
 class TestExtractApiChains:
     def parts(self, script):
@@ -314,7 +427,8 @@ class TestToolErrors:
         assert result["error_code"] == "upstream_error"
 
     @pytest.mark.parametrize(
-        ("kwargs", "message"), [({"limit": 0}, "limit"), ({"max_depth": -1}, "max_depth")]
+        ("kwargs", "message"),
+        [({"limit": 0}, "limit"), ({"max_depth": -1}, "max_depth"), ({"offset": -1}, "offset")],
     )
     def test_find_objects_validates_arguments(self, kwargs, message):
         ctx, mechanical = connected("{}")
@@ -326,6 +440,71 @@ class TestToolErrors:
 
 @pytest.mark.unit
 class TestFindAndDescribe:
+    def test_fingerprint_serialization_is_batched(self, monkeypatch):
+        lengths = []
+        original = json.dumps
+
+        def record(value, **kwargs):
+            if isinstance(value, list):
+                lengths.append(len(value))
+            return original(value, **kwargs)
+
+        monkeypatch.setattr(json, "dumps", record)
+        objects = [
+            SimpleNamespace(ObjectId=index, Name="NS%04d" % index, Children=[])
+            for index in range(513)
+        ]
+        page = self.page(objects, name_contains="NS", limit=1)
+        assert page["match_count"] == 513
+        assert sum(lengths) == 513
+        assert max(lengths) <= 128
+
+    def page(self, objects, **kwargs):
+        root = SimpleNamespace(ObjectId=0, Name="Project", Children=objects)
+        namespace = {
+            "ExtAPI": SimpleNamespace(DataModel=SimpleNamespace(Project=root)),
+            "_mcp_summary": lambda obj: {
+                "object_id": obj.ObjectId,
+                "name": obj.Name,
+                "category": "NamedSelection",
+            },
+            "_mcp_context": lambda: {},
+            "json": json,
+            "args": {"limit": 1000, **kwargs},
+        }
+        return run_mechanical_script(
+            introspection._FIND_OBJECTS + "\n_mcp_find_objects(args)", namespace
+        )
+
+    def test_pages_cover_more_than_1000_filtered_objects_without_duplicates(self):
+        objects = [
+            SimpleNamespace(ObjectId=index, Name="NS%04d" % index, Children=[])
+            for index in range(1, 2106)
+        ]
+        first = self.page(objects, name_contains="NS")
+        second = self.page(objects, name_contains="NS", offset=first["next_offset"])
+        last = self.page(objects, name_contains="NS", offset=second["next_offset"])
+        ids = [obj["object_id"] for page in (first, second, last) for obj in page["objects"]]
+        assert ids == list(range(1, 2106))
+        assert last["next_offset"] is None
+        assert not last["truncated"]
+        assert first["match_count"] == 2105
+        assert (
+            first["result_fingerprint"]
+            == second["result_fingerprint"]
+            == last["result_fingerprint"]
+        )
+        beyond = self.page(objects, offset=9999)
+        assert beyond["objects"] == [] and beyond["next_offset"] is None
+
+    def test_same_count_object_changes_invalidate_fingerprint(self):
+        objects = [SimpleNamespace(ObjectId=1, Name="Old", Children=[])]
+        before = self.page(objects)
+        objects[0] = SimpleNamespace(ObjectId=2, Name="New", Children=[])
+        after = self.page(objects)
+        assert before["match_count"] == after["match_count"]
+        assert before["result_fingerprint"] != after["result_fingerprint"]
+
     def test_find_objects_sends_arguments(self):
         ctx, mechanical = connected({"success": True, "objects": []})
         tools.find_objects(ctx, name_contains="Kraft \u00fc", category="Force", limit=5)
@@ -335,6 +514,7 @@ class TestFindAndDescribe:
             "parent_id": None,
             "max_depth": None,
             "limit": 5,
+            "offset": 0,
         }
 
     def test_unknown_category_returns_suggestions_only(self):

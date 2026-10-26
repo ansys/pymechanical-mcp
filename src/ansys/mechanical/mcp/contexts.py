@@ -14,15 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Context tools for PyMechanical-MCP.
-
-This module defines MCP tools that provide context and guidance for
-PyMechanical and Ansys Mechanical workflows. These tools return context
-information that can be accessed by the LLM to get help with various
-aspects of Mechanical simulations.
-"""
-
-# flake8: noqa: E501
+"""Mechanical workflow guidance, scripting examples, and MCP execution notes."""
 
 from typing import Literal
 
@@ -41,952 +33,445 @@ GuidelinesContent = Literal[
     "general",
 ]
 
+_DOCS = "https://mechanical.docs.pyansys.com/version/stable"
+_EXAMPLES = _DOCS + "/examples/gallery_examples/01_basic/"
+_SCRIPTING = _DOCS + "/user_guide/scripting/overview.html"
+
+
+def _reference(text: str, example: str | None = None) -> str:
+    source = _EXAMPLES + example + ".html" if example else _SCRIPTING
+    return text.strip() + (
+        "\n\nOfficial reference: " + source + "\n"
+        "Patterns use remote Mechanical script bodies. Linked examples may use embedding "
+        "or another release; describe_api provides connected-release API help. "
+        "References are links; this tool never fetches links."
+    )
+
 
 def get_guidelines_for_workflow_overview() -> str:
-    """Get general simulation workflow guidelines for Mechanical.
-
-    Use this tool when explaining or generating PyMechanical or Ansys Mechanical workflows.
-
-    Returns
-    -------
-    str
-        Overview of the general simulation process for all Mechanical analysis types.
-    """
-    return """# Mechanical Simulation Workflow Overview
-
-When explaining or generating PyMechanical or Ansys Mechanical workflows, ALWAYS FOLLOW this general simulation process.
-
-## PyMechanical Architecture
-
-PyMechanical has two interfaces:
-1. **Remote Session**: Connect to a running Mechanical gRPC server
-2. **Embedded Instance**: Run Mechanical embedded in the Python process
-
-For MCP server, we primarily use the Remote Session interface.
-
-## API Entry Points
-
-When running scripts inside Mechanical, you have access to these entry points:
-- `ExtAPI`: Entry point for all APIs
-- `DataModel`: Entry point to access CAD, mesh entities, and Outline objects
-- `Model`: The Model object from the Outline
-- `Tree`: The Outline (tree structure)
-- `Graphics`: The 3D graphics engine
+    """Return the simulation workflow and Mechanical execution model."""
+    return _reference("""# Mechanical Simulation Workflow Overview
 
 ## Workflow Steps
+1. Preprocessing: inspect or import geometry, assign materials, generate the mesh.
+2. Analysis Setup: select the analysis, configure settings, apply scoped loads/supports.
+3. Solution: solve and review status, application messages, and solver output.
+4. Postprocessing: add or reuse results, evaluate, inspect values, and export.
 
-1. **Preprocessing**
-   - Import geometry (CAD files)
-   - Define materials and assign to bodies
-   - Set up mesh controls and generate mesh
-   - Define analysis settings
+Existing units, materials, analyses and results provide context for the next step.
+check_mechanical_status and get_model_info describe the current session/model.
 
-2. **Analysis Setup**
-   - Create analysis system (Static Structural, Modal, Thermal, etc.)
-   - Apply boundary conditions (supports, constraints)
-   - Apply loads (forces, pressures, temperatures)
+## PyMechanical Architecture and API Entry Points
+PyMechanical supports remote sessions and embedding. This MCP sends script bodies
+to the connected Mechanical process through run_python_script. Inside that process:
+- ExtAPI: the main API entry point.
+- DataModel: Outline objects, CAD and mesh entities.
+- Model: the Model object from the Outline.
+- Tree: the Outline; Graphics: the 3D graphics engine.
 
-3. **Solution**
-   - Configure solver settings
-   - Run the solution
+run_python_code runs in separate external CPython, without these Mechanical objects.
+Embedding examples using App/globals need adaptation; the underlying model APIs are shared.
 
-4. **Postprocessing**
-   - Add result objects (stress, strain, deformation)
-   - Evaluate results
-   - Export images and data
+## Units and Model Inspection
+get_model_info reports unit_system. Quantity("5 [mm]") carries an explicit unit;
+ExtAPI.Application.ActiveUnitSystem controls the active display/input unit system.
+Confirm the intended units rather than resetting an existing project automatically.
 
-## Unit System
+Model-summary lists are previews. find_objects returns object IDs for specific scopes;
+set offset to next_offset for more pages and restart if result_fingerprint changes.
+Object IDs are valid only while the objects exist.
 
-Always set the unit system explicitly before defining geometry, loads, or results:
-
-```python
-script = '''
-ExtAPI.Application.ActiveUnitSystem = MechanicalUnitSystem.StandardMKS
-ExtAPI.Application.ActiveAngleUnit = AngleUnitType.Radian
-'''
-mechanical.run_python_script(script)
-```
-
-Common unit systems: `StandardMKS`, `StandardCGS`, `StandardNMM`,
-`StandardBIN`, `StandardBFT`.
-
-## Code Execution Pattern
-
-Use `mechanical.run_python_script()` to execute scripts inside Mechanical:
-
-```python
-script = '''
-# Your Mechanical scripting code here
-result = ExtAPI.DataModel.Project.ProductVersion
-result
-'''
-version = mechanical.run_python_script(script)
-```
-
-## Transaction Pattern for Performance
-
-When modifying multiple objects, wrap operations in a Transaction:
-
-```python
-script = '''
-with Transaction():
-    for obj in Tree.AllObjects:
-        obj.Name = obj.Name + " modified"
-'''
-mechanical.run_python_script(script)
-```
-"""
+## Transactions and Checkpoints
+Transaction() defers background updates during bulk edits; it is not validation or rollback.
+Save checkpoints with save_project before destructive changes or expensive setup steps.
+""")
 
 
 def get_guidelines_for_geometry_import() -> str:
-    """Get geometry import guidelines for Mechanical.
-
-    Use this tool when explaining or generating geometry import operations.
-
-    Returns
-    -------
-    str
-        Guidelines for importing a geometry in Mechanical.
-    """
-    return """# Geometry Import in Mechanical
+    """Return geometry import and remote-file execution notes."""
+    return _reference(
+        """# Geometry Import in Mechanical
 
 ## Supported Geometry Formats
+STEP (.stp/.step), IGES, Parasolid, DesignModeler and native CAD files need an
+available reader and the appropriate license.
 
-Mechanical supports various CAD formats:
-- ANSYS DesignModeler files (.agdb)
-- STEP files (.stp, .step)
-- IGES files (.igs, .iges)
-- Parasolid files (.x_t, .x_b)
-- CATIA files (.CATProduct, .CATPart)
-- SolidWorks files (.sldprt, .sldasm)
-- NX files (.prt)
-- And many more...
-
-## Importing Geometry via Script
-
+## Uploading and Importing Geometry
+The path must exist on the Mechanical host. upload_file places a local file in the
+project directory and reports its file name. Set file_name to that base name, or
+to an existing absolute host path, before sending this body to run_python_script:
 ```python
-script = '''
-# Get the geometry import group
-geometry_import = Model.GeometryImportGroup.AddGeometryImport()
-
-# Set the geometry file path
-geometry_file = r"C:\\path\\to\\your\\geometry.stp"
-
-# Set import format and preferences
-geometry_import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
-geometry_import_prefs = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
-geometry_import_prefs.ProcessNamedSelections = True
-geometry_import_prefs.ProcessCoordinateSystems = True
-
-# Import the geometry
-geometry_import.Import(geometry_file, geometry_import_format, geometry_import_prefs)
-'''
-mechanical.run_python_script(script)
-```
-
-## Uploading and Importing Geometry (Remote Session)
-
-When using a remote Mechanical session, upload the file first:
-
-```python
-# Upload file from local to Mechanical working directory
-mechanical.upload("local_geometry.stp")
-
-# Then import using the file in the project directory
-script = '''
 import os
+remote_path = os.path.join(ExtAPI.DataModel.Project.ProjectDirectory, file_name)
 geometry_import = Model.GeometryImportGroup.AddGeometryImport()
-project_dir = ExtAPI.DataModel.Project.ProjectDirectory
-geometry_file = os.path.join(project_dir, "local_geometry.stp")
-
-geometry_import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
-geometry_import_prefs = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
-geometry_import_prefs.ProcessNamedSelections = True
-geometry_import.Import(geometry_file, geometry_import_format, geometry_import_prefs)
-'''
-mechanical.run_python_script(script)
+preferences = Ansys.ACT.Mechanical.Utilities.GeometryImportPreferences()
+preferences.ProcessNamedSelections = True
+preferences.ProcessCoordinateSystems = True
+import_format = Ansys.Mechanical.DataModel.Enums.GeometryImportPreference.Format.Automatic
+geometry_import.Import(remote_path, import_format, preferences)
 ```
 
-## Accessing Geometry Objects
+## Inspecting Imported Geometry
+get_model_info reports recursive body counts/types; find_objects(category="Body")
+returns body IDs. Bodies can be nested under Parts, so Geometry.Children is not a body list.
+An ID from find_objects is an Outline object ID, not a GeoData face/edge ID.
+Named selections or explicitly constructed selection information provide geometry scopes.
 
-```python
-script = '''
-# Access the Geometry object
-geometry = Model.Geometry
-
-# Get all bodies
-bodies = geometry.GetChildren(DataModelObjectCategory.Body, True)
-
-# Iterate through bodies
-for body in bodies:
-    print("Body: {0}, Material: {1}".format(body.Name, body.Material))
-'''
-mechanical.run_python_script(script)
-```
-
-## Key Considerations
-
-- Ensure geometry files are accessible from the Mechanical server
-- Use `mechanical.upload()` to transfer files to the server if needed
-- Large assemblies may require longer import times
-- Check for geometry errors after import
-"""
+Check import messages with get_mechanical_logs and verify bodies, dimensions, named
+selections and coordinate systems. Imports can replace geometry and invalidate scopes;
+inspect an existing model before reimporting. Large assemblies take longer to import.
+""",
+        "bolt_pretension",
+    )
 
 
 def get_guidelines_for_materials() -> str:
-    """Get material definition guidelines for Mechanical.
+    """Return material availability, assignment, and property checks."""
+    return _reference(
+        """# Material Definition in Mechanical
 
-    Use this tool when explaining or generating material definitions.
-
-    Returns
-    -------
-    str
-        Guidelines for defining and assigning materials in Mechanical.
-    """
-    return """# Material Definition in Mechanical
-
-## Accessing Engineering Data
-
-Materials in Mechanical come from Engineering Data. The default material library
-includes common materials like Structural Steel, Aluminum Alloy, etc.
+## Engineering Data and Custom Materials
+Materials come from Engineering Data or imported material files. get_model_info and
+find_objects(category="Material") list what exists. "Structural Steel" and "Aluminum
+Alloy" are common names, not a guarantee that a material is loaded in this project.
+Custom materials must be defined in Engineering Data or imported from a compatible
+material file on the Mechanical host. body.Material assigns a material; it does not
+create a material or define its properties.
 
 ## Assigning Materials to Bodies
-
+Set body_id from find_objects(category="Body") and material_name to an available name:
 ```python
-script = '''
-# Get geometry
-geometry = Model.Geometry
-
-# Get all bodies
-bodies = geometry.GetChildren(DataModelObjectCategory.Body, True)
-
-# Assign material to each body
-for body in bodies:
-    body.Material = "Structural Steel"
-'''
-mechanical.run_python_script(script)
+body = DataModel.GetObjectById(body_id)
+if body is None:
+    raise ValueError("Body no longer exists")
+body.Material = material_name
+body.Material
 ```
-
-## Available Default Materials
-
-Common materials available by default:
-- "Structural Steel"
-- "Aluminum Alloy"
-- "Copper Alloy"
-- "Gray Cast Iron"
-- "Titanium Alloy"
-- "Stainless Steel"
-
-## Creating Custom Materials
-
-For custom materials, you typically need to define them in Engineering Data
-before importing into Mechanical. However, you can also use scripts:
-
-```python
-script = '''
-# Access Engineering Data through ExtAPI
-eng_data = ExtAPI.DataModel.Project.Model.Materials
-
-# Get material assignment for a body
-body = Model.Geometry.GetChildren(DataModelObjectCategory.Body, True)[0]
-body.Material = "Aluminum Alloy"
-'''
-mechanical.run_python_script(script)
-```
+For several bodies, resolve the intended IDs and use a Transaction for the assignments.
+Assigning every body the same material is appropriate only for an intended uniform model.
 
 ## Material Properties
+- Linear isotropic elasticity: Young's modulus and Poisson's ratio.
+- Inertia, modal or gravity loading: density as well as stiffness properties.
+- Thermal conduction: conductivity; transient heat storage also needs density and specific heat.
+- Thermal stress: thermal expansion and the appropriate reference temperature.
+- Plasticity, anisotropy and other models require their own constitutive data.
 
-Key material properties for structural analysis:
-- Young's Modulus (EX)
-- Poisson's Ratio (PRXY)
-- Density (DENS)
-- Yield Strength
-- Ultimate Tensile Strength
-
-For thermal analysis:
-- Thermal Conductivity
-- Specific Heat
-- Coefficient of Thermal Expansion
-"""
+Verify assignments and required properties before solving. Yield/ultimate strengths
+can support a strength assessment; they do not by themselves define a plastic material law.
+""",
+        "bolt_pretension",
+    )
 
 
 def get_guidelines_for_meshing() -> str:
-    """Get mesh generation guidelines for Mechanical.
+    """Return mesh generation, control, and quality-check patterns."""
+    return _reference(
+        """# Mesh Generation in Mechanical
 
-    Use this tool when explaining or generating mesh operations.
-
-    Returns
-    -------
-    str
-        Guidelines for generating meshes in Mechanical.
-    """
-    return """# Mesh Generation in Mechanical
-
-## Accessing the Mesh Object
-
+## Generating the Mesh and Reading Statistics
+Inspect existing controls first. The sizes below illustrate syntax, not a sizing rule.
 ```python
-script = '''
-# Get the mesh object
 mesh = Model.Mesh
-
-# Generate mesh with default settings
+mesh.ElementSize = Quantity("5 [mm]")
 mesh.GenerateMesh()
-
-# Get mesh statistics. Mesh.Nodes and Mesh.Elements are integer counts,
-# so do not call .Count on them.
-print("Nodes: {0}".format(mesh.Nodes))
-print("Elements: {0}".format(mesh.Elements))
-'''
-mechanical.run_python_script(script)
+print("Nodes: {0}, Elements: {1}".format(mesh.Nodes, mesh.Elements))
 ```
+Mesh.Nodes and Mesh.Elements are integer counts, not collections requiring .Count.
 
-## Mesh Controls
-
-### Global Mesh Size
-
+## Local Sizing
+Set selection_id to a confirmed named selection appropriate for the sizing scope:
 ```python
-script = '''
-mesh = Model.Mesh
-
-# Set global element size (use square brackets for units)
-mesh.ElementSize = Quantity("10 [mm]")
-'''
-mechanical.run_python_script(script)
-```
-
-### Adding Mesh Controls
-
-```python
-script = '''
-mesh = Model.Mesh
-
-# Add sizing control scoped to a Named Selection
-sizing = mesh.AddSizing()
-ns = ExtAPI.DataModel.GetObjectsByName("CriticalRegion")[0]
-sizing.Location = ns
+selection = DataModel.GetObjectById(selection_id)
+if selection is None:
+    raise ValueError("Selection no longer exists")
+sizing = Model.Mesh.AddSizing()
+sizing.Location = selection
 sizing.ElementSize = Quantity("2 [mm]")
-
-# Generate mesh
-mesh.GenerateMesh()
-'''
-mechanical.run_python_script(script)
 ```
+Generate the mesh after changing controls. Method controls start from AddAutomaticMethod;
+Automatic, Tetrahedrons, Hex Dominant, Sweep and MultiZone suit different geometries.
+Check Method enums and scope requirements with describe_api rather than forcing one method.
 
-## Mesh Methods
+## Mesh Quality and Convergence
+get_model_info reports counts and the active mesh metric without changing it.
+mesh.MeshMetric selects the metric; Minimum, Maximum, Average and StandardDeviation
+refer to that metric. No selected metric means those statistics may be unavailable.
 
-- **Automatic**: Default method, lets Mechanical choose
-- **Tetrahedrons**: For complex 3D geometry
-- **Hex Dominant**: Preferred for structural analysis when possible
-- **Sweep**: For extruded geometry
-- **MultiZone**: Combines structured and unstructured meshing
-
-## Mesh Quality
-
-```python
-script = '''
-import json
-mesh = Model.Mesh
-mesh.GenerateMesh()
-
-# Mesh size and the active quality metric (choose one with mesh.MeshMetric).
-stats = {
-    'nodes': mesh.Nodes,
-    'elements': mesh.Elements,
-    'metric': str(mesh.MeshMetric),
-    'minimum': str(mesh.Minimum),
-    'maximum': str(mesh.Maximum),
-    'average': str(mesh.Average),
-}
-json.dumps(stats)
-'''
-mechanical.run_python_script(script)
-```
-
-## Best Practices
-
-- Start with coarser mesh for initial analysis
-- Refine mesh in areas of high stress gradients
-- Use mesh refinement studies for convergence
-- Check element quality: skewness < 0.95, aspect ratio < 20 for good quality
-- Aim for skewness < 0.5 and aspect ratio < 5 in critical regions
-- Use at least 2-3 elements through thickness for bending-dominated problems
-- For contact regions, ensure matching mesh density on both surfaces
-"""
+Start with a manageable mesh and refine around relevant gradients, contacts and thin
+features. Solid bending regions need adequate through-thickness resolution; shells
+may be more appropriate for thin structures. Review mesh warnings and demonstrate
+convergence of the quantities of interest. Universal skewness/aspect-ratio cutoffs
+or a particular element count do not establish suitability for every analysis.
+""",
+        "bolt_pretension",
+    )
 
 
 def get_guidelines_for_analysis_setup() -> str:
-    """Get analysis setup guidelines for Mechanical.
+    """Return analysis creation, settings, modal, and contact guidance."""
+    return _reference(
+        """# Analysis Setup in Mechanical
 
-    Use this tool when setting up structural, modal, or thermal analyses.
+## Analysis Types and Existing Analyses
+get_model_info reports existing analyses and zero-based indices.
+Model.AddStaticStructuralAnalysis creates a static structural analysis;
+AddModalAnalysis, AddHarmonicResponseAnalysis and AddTransientStructuralAnalysis
+cover common dynamic workflows. AddSteadyStateThermalAnalysis and
+AddTransientThermalAnalysis create thermal analyses.
 
-    Returns
-    -------
-    str
-        Guidelines for setting up analyses in Mechanical.
-    """
-    return """# Analysis Setup in Mechanical
-
-## Analysis Types
-
-Mechanical supports various analysis types:
-- **Static Structural**: Linear and nonlinear static analysis
-- **Modal**: Natural frequency and mode shape extraction
-- **Harmonic Response**: Frequency response analysis
-- **Transient Structural**: Time-dependent structural analysis
-- **Steady-State Thermal**: Heat transfer at equilibrium
-- **Transient Thermal**: Time-dependent heat transfer
-- **Coupled Field**: Thermal-structural coupling
-
-## Adding an Analysis
-
+Example creation (use an existing Model.Analyses[analysis_index] when appropriate):
 ```python
-script = '''
-# Add a Static Structural analysis
 analysis = Model.AddStaticStructuralAnalysis()
-
-# Or add other analysis types:
-# modal_analysis = Model.AddModalAnalysis()
-# thermal_analysis = Model.AddSteadyStateThermalAnalysis()
-'''
-mechanical.run_python_script(script)
-```
-
-## Analysis Settings
-
-```python
-script = '''
-# Get analysis settings
-analysis = Model.Analyses[0]
 settings = analysis.AnalysisSettings
-
-# For Static Structural - configure step controls
 settings.NumberOfSteps = 1
-
-# For large deformation (nonlinear)
-settings.LargeDeflection = True
-'''
-mechanical.run_python_script(script)
 ```
 
-## Modal Analysis Settings
-
+## Solver and Nonlinear Controls
+Inspect analysis settings with describe_api before changing them. For a static
+analysis, set analysis_index, use_large_deflection (bool) and the substep counts first;
+choose positive counts with minimum_substeps <= initial_substeps <= maximum_substeps:
 ```python
-script = '''
-analysis = Model.AddModalAnalysis()
-settings = analysis.AnalysisSettings
-
-# Set number of modes to extract
-settings.MaximumModesToFind = 10
-
-# Set frequency range if needed
-# settings.RangeMinimum = Quantity("0 [Hz]")
-# settings.RangeMaximum = Quantity("1000 [Hz]")
-'''
-mechanical.run_python_script(script)
-```
-
-## Solver Controls
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-settings = analysis.AnalysisSettings
-
-# Solver type: Direct is more robust, Iterative is faster for large models
-settings.SolverType = SolverType.Direct  # or SolverType.Iterative (PCG)
-
-# For nonlinear analysis - substepping
+settings = Model.Analyses[analysis_index].AnalysisSettings
+settings.LargeDeflection = use_large_deflection
 settings.AutomaticTimeStepping = AutomaticTimeStepping.On
 settings.DefineBy = TimeStepDefineByType.Substeps
-settings.InitialSubsteps = 10
-settings.MinimumSubsteps = 5
-settings.MaximumSubsteps = 100
-'''
-mechanical.run_python_script(script)
+settings.InitialSubsteps = initial_substeps
+settings.MinimumSubsteps = minimum_substeps
+settings.MaximumSubsteps = maximum_substeps
 ```
+LargeDeflection addresses geometry-dependent stiffness, not a universal strain cutoff.
+SolverType.Direct is often robust; iterative solvers can save memory for supported,
+well-conditioned problems. Model size alone does not determine the best solver.
 
-## Contact Setup
-
+## Modal Settings
+Set mode_count to the required number of modes, with material stiffness/density and
+supports chosen for the intended constrained or free-free model:
 ```python
-script = '''
-# Access existing contact regions (auto-detected)
-connections = Model.Connections
-if connections.Children.Count > 0:
-    contact_region = connections.Children[0].Children[0]  # First contact region
-    contact_region.ContactType = ContactType.Bonded  # or Frictional, Frictionless, NoSeparation
-    contact_region.ContactFormulation = ContactFormulation.AugmentedLagrange
-'''
-mechanical.run_python_script(script)
+modal = Model.AddModalAnalysis()
+modal.AnalysisSettings.MaximumModesToFind = mode_count
 ```
+Check extraction settings and the actually extracted modes before creating modal results.
 
-## Nonlinear Analysis Best Practices
-
-- Enable `LargeDeflection = True` for any analysis with expected strains > 5%
-- Use Direct solver for nonlinear problems (more robust convergence)
-- Start with at least 10 initial substeps for nonlinear contact or material
-- Enable Newton-Raphson line search for difficult convergence
-- For contact problems, use Augmented Lagrange formulation (default)
-"""
+## Contacts
+Resolve contact regions under Model.Connections by ID rather than tree position.
+ContactType (Bonded, Frictional, Frictionless, NoSeparation), friction, formulation,
+initial gaps/penetration and sliding assumptions depend on the physical interface.
+Review the contact scopes/status before solving; changing a contact type solely to
+obtain convergence can change the physical problem.
+""",
+        "bolt_pretension",
+    )
 
 
 def get_guidelines_for_boundary_conditions() -> str:
-    """Get boundary condition and load guidelines for Mechanical.
+    """Return scoped structural and thermal load examples."""
+    return _reference(
+        """# Boundary Conditions and Loads in Mechanical
 
-    Use this tool when applying supports, constraints, and loads.
-
-    Returns
-    -------
-    str
-        Guidelines for applying boundary conditions and loads in Mechanical.
-    """
-    return """# Boundary Conditions and Loads in Mechanical
-
-## Supports (Constraints)
-
-### Fixed Support
-
+## Scoping
+Use get_model_info and find_objects for analysis indices and intended scopes.
+Named selections make scope reusable, but names can duplicate and IDs can become stale.
+Set analysis_index, support_id and load_id to verified structural-analysis/scope IDs:
 ```python
-script = '''
-analysis = Model.Analyses[0]
+analysis = Model.Analyses[analysis_index]
+support_scope = DataModel.GetObjectById(support_id)
+load_scope = DataModel.GetObjectById(load_id)
+if support_scope is None or load_scope is None:
+    raise ValueError("A selection no longer exists")
+```
+The following are separate examples, not a prescription to apply every condition.
+Confirm the selected entities are nonempty and appropriate for each condition.
 
-# Add Fixed Support scoped to Named Selection (recommended)
-fixed_support = analysis.AddFixedSupport()
-ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedFace"][0]
-fixed_support.Location = ns
-'''
-mechanical.run_python_script(script)
+## Fixed Support and Pressure
+```python
+support = analysis.AddFixedSupport()
+support.Location = support_scope
+pressure = analysis.AddPressure()
+pressure.Location = load_scope
+pressure.Magnitude.Output.DiscreteValues = [Quantity("1 [MPa]")]
 ```
 
-### Displacement Constraint
-
+## Force Components
+Components are fields, not assignable numeric properties. Set Output.DiscreteValues:
 ```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Displacement
-displacement = analysis.AddDisplacement()
-
-# Set displacement values (use square brackets for units)
-displacement.XComponent.Output.SetDiscreteValue(0, Quantity("0 [mm]"))
-displacement.YComponent.Output.SetDiscreteValue(0, Quantity("0 [mm]"))
-# Leave Z free (don't set it) for a partial constraint
-'''
-mechanical.run_python_script(script)
-```
-
-### Frictionless Support
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-frictionless = analysis.AddFrictionlessSupport()
-'''
-mechanical.run_python_script(script)
-```
-
-## Loads
-
-### Force
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Force scoped to Named Selection
 force = analysis.AddForce()
-ns = [n for n in Model.NamedSelections.Children if n.Name == "LoadFace"][0]
-force.Location = ns
-
-# Define force by components (use .Output.DiscreteValues list)
+force.Location = load_scope
 force.DefineBy = LoadDefineBy.Components
 force.XComponent.Output.DiscreteValues = [Quantity("0 [N]")]
 force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]
 force.ZComponent.Output.DiscreteValues = [Quantity("0 [N]")]
-'''
-mechanical.run_python_script(script)
 ```
+These values illustrate syntax; coordinate system, direction and magnitude come from the load case.
 
-### Pressure
-
+## Partial Displacement and Other Supports
 ```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Pressure
-pressure = analysis.AddPressure()
-ns = [n for n in Model.NamedSelections.Children if n.Name == "PressureFace"][0]
-pressure.Location = ns
-
-# Set pressure value
-pressure.Magnitude.Output.SetDiscreteValue(0, Quantity("1 [MPa]"))
-'''
-mechanical.run_python_script(script)
+displacement = analysis.AddDisplacement()
+displacement.Location = support_scope
+displacement.XComponent.Output.DiscreteValues = [Quantity("0 [mm]")]
+displacement.YComponent.Output.DiscreteValues = [Quantity("0 [mm]")]
 ```
-
-### Remote Force
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Remote Force with remote point
-remote_force = analysis.AddRemoteForce()
-remote_force.Location = Model.RemotePoints.Children[0]  # scope to remote point
-remote_force.DefineBy = LoadDefineBy.Components
-remote_force.XComponent.Output.DiscreteValues = [Quantity("100 [N]")]
-'''
-mechanical.run_python_script(script)
-```
+Check which components are free versus prescribed in the Details view.
+AddFrictionlessSupport and AddRemoteForce provide other condition types; their
+scope and coupling options differ, so inspect their properties with describe_api.
 
 ## Thermal Loads
-
-### Temperature
-
+For a thermal analysis, set thermal_index and thermal_scope_id to an intended face scope:
 ```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Temperature
-temp = analysis.AddTemperature()
-temp.Magnitude.Output.SetDiscreteValue(0, Quantity("100 [C]"))
-'''
-mechanical.run_python_script(script)
+thermal = Model.Analyses[thermal_index]
+thermal_scope = DataModel.GetObjectById(thermal_scope_id)
+if thermal_scope is None:
+    raise ValueError("Thermal selection no longer exists")
+convection = thermal.AddConvection()
+convection.Location = thermal_scope
+convection.FilmCoefficient.Output.DiscreteValues = [Quantity("10 [W m^-2 C^-1]")]
+convection.AmbientTemperature.Output.DiscreteValues = [Quantity("22 [C]")]
 ```
-
-### Convection
-
+A prescribed temperature is a separate option, using an appropriate thermal scope:
 ```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add Convection
-convection = analysis.AddConvection()
-convection.FilmCoefficient.Output.SetDiscreteValue(0, Quantity("10 [W m^-1 m^-1 C^-1]"))
-convection.AmbientTemperature.Output.SetDiscreteValue(0, Quantity("22 [C]"))
-'''
-mechanical.run_python_script(script)
+temperature = thermal.AddTemperature()
+temperature.Location = thermal_scope
+temperature.Magnitude.Output.DiscreteValues = [Quantity("100 [C]")]
 ```
-
-## Using Named Selections
-
-Named Selections are the preferred way to scope loads and supports:
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Get Named Selection by name (preferred pattern)
-ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedFace"][0]
-
-# Apply to boundary condition
-fixed_support = analysis.AddFixedSupport()
-fixed_support.Location = ns
-'''
-mechanical.run_python_script(script)
-```
-
-## Important Notes
-
-1. **Component values are read-only properties**: set values via:
-   `force.YComponent.Output.DiscreteValues = [Quantity("-1000 [N]")]`
-2. **Always scope BCs to Named Selections** for reliability and reproducibility
-3. **Ensure BCs prevent rigid-body motion**: at least 6 DOF must be constrained
-4. **Use square brackets in Quantity units**: `Quantity("5 [mm]")` not `Quantity("5 mm")`
-"""
+Time-dependent input/output tables need matching lengths and compatible time/field units.
+Static structural models normally need supports/contacts that remove rigid-body motion;
+free-free modal analysis is a valid exception. Overconstraint can be as harmful as missing supports.
+""",
+        "valve",
+    )
 
 
 def get_guidelines_for_solution() -> str:
-    """Get solution phase guidelines for Mechanical.
-
-    Use this tool when running solutions in Mechanical.
-
-    Returns
-    -------
-    str
-        Guidelines for solving analyses in Mechanical.
-    """
-    return """# Solution Phase in Mechanical
+    """Return solve, status, output-control, and convergence guidance."""
+    return _reference(
+        """# Solution Phase in Mechanical
 
 ## Running the Solution
-
+solve_analysis(analysis_index=..., wait=True) waits for the selected analysis.
+wait=False starts asynchronously; a successful start is not a completed solve.
+The direct scripting pattern, after confirming analysis_index, is:
 ```python
-script = '''
-# Get the analysis
-analysis = Model.Analyses[0]
-
-# Solve
-analysis.Solve()
-
-# Check solution status
-solution = analysis.Solution
-print("Status: {0}".format(solution.Status))
-'''
-mechanical.run_python_script(script)
+analysis = Model.Analyses[analysis_index]
+analysis.Solve(True)
+str(analysis.Solution.Status)
 ```
+Solve(False) returns before completion. Read Solution.Status in later calls rather
+than polling in a loop inside Mechanical. SolutionStatusType.Done indicates completion;
+it does not establish engineering validity or absence of warnings.
 
-## Solution Object
+## Output Controls and Logs
+AnalysisSettings.StoreResultsAt controls saved result time points, not solve convergence.
+Review get_mechanical_logs(source="messages") for application messages and
+source="solve_log" with analysis_index for solve.out. tail_lines and max_chars limit output.
+Errors from run_python_script include the Mechanical exception message.
 
-```python
-script = '''
-solution = Model.Analyses[0].Solution
+## Diagnosing Convergence
+- Confirm mesh generation, material properties, load units and analysis settings.
+- Check supports/contacts for rigid-body motion or overconstraint.
+- Inspect mesh quality and contact gaps, penetration, sliding and status.
+- Consider load ramping and substeps when increments are too large.
+- Consider LargeDeflection when deformation changes the stiffness/geometry.
+- Review solver messages before changing solver type or the physical model.
 
-# Get solution information
-print("Solver Type: {0}".format(solution.SolverType))
-print("Status: {0}".format(solution.Status))
-'''
-mechanical.run_python_script(script)
-```
-
-## Handling Long Solutions
-
-For long-running solutions, consider:
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Solve(True) blocks until the solve finishes; Solve(False) returns immediately.
-analysis.Solve(False)
-'''
-mechanical.run_python_script(script)
-
-# Poll from the client between calls instead of looping inside Mechanical.
-status = mechanical.run_python_script("str(Model.Analyses[0].Solution.Status)")
-```
-
-## Solution Output Controls
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-settings = analysis.AnalysisSettings
-
-# Control result output frequency
-settings.StoreResultsAt = TimePointsOptions.AllTimePoints
-'''
-mechanical.run_python_script(script)
-```
-
-## Convergence Issues
-
-If the solution doesn't converge:
-1. **Check mesh quality**: skewness > 0.95 or aspect ratio > 50 causes issues
-2. **Verify boundary conditions**: model must be fully constrained (no rigid body motion)
-3. **Review load magnitudes**: start with smaller loads and ramp up
-4. **Enable Large Deflection**: `settings.LargeDeflection = True` for strains > 5%
-5. **Increase substeps**: `settings.InitialSubsteps = 20` for nonlinear problems
-6. **Use Direct solver**: `settings.SolverType = SolverType.Direct` for difficult convergence
-7. **Check contact**: ensure initial penetration is zero, use Augmented Lagrange
-8. **Review solve.out**: download and inspect for warnings/errors
-
-## Solver Selection Guide
-
-| Problem Type | Recommended Solver | Notes |
-|---|---|---|
-| Small model (< 100k nodes) | Direct | More robust, higher memory |
-| Large model (> 500k nodes) | Iterative (PCG) | Faster, less memory |
-| Nonlinear / Contact | Direct | Better convergence |
-| Modal Analysis | Direct (default) | Block Lanczos |
-| Ill-conditioned | Direct | PCG may not converge |
-
-## Error Handling
-
-```python
-script = '''
-try:
-    analysis = Model.Analyses[0]
-    analysis.Solve()
-
-    if analysis.Solution.Status == SolutionStatusType.Done:
-        print("Solution completed successfully")
-    else:
-        print("Solution status: {0}".format(analysis.Solution.Status))
-except Exception as e:
-    print("Solution error: {0}".format(e))
-'''
-mechanical.run_python_script(script)
-```
-"""
+Change one suspected cause at a time and compare results and diagnostics. A completed
+solve still needs checks against expected behavior, equilibrium and mesh convergence.
+""",
+        "valve",
+    )
 
 
 def get_guidelines_for_postprocessing() -> str:
-    """Get postprocessing guidelines for Mechanical.
+    """Return result creation, evaluation, scoping, modal, and export patterns."""
+    return _reference(
+        """# Postprocessing in Mechanical
 
-    Use this tool when extracting and visualizing results.
-
-    Returns
-    -------
-    str
-        Guidelines for postprocessing in Mechanical.
-    """
-    return """# Postprocessing in Mechanical
-
-## Adding Result Objects
-
-### Deformation Results
-
+## Adding and Evaluating Results
+get_results_summary reports solved extrema with units and omits stale values.
+Inspect existing results before adding duplicates. For missing structural results,
+confirm analysis_index and use these creators as appropriate:
 ```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Total Deformation
-total_deform = solution.AddTotalDeformation()
-
-# Directional Deformation
-dir_deform = solution.AddDirectionalDeformation()
-dir_deform.NormalOrientation = NormalOrientationType.YAxis
-
-# Evaluate results
-total_deform.EvaluateAllResults()
-'''
-mechanical.run_python_script(script)
-```
-
-### Stress Results
-
-```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Equivalent (von-Mises) Stress
-equiv_stress = solution.AddEquivalentStress()
-
-# Normal Stress
-normal_stress = solution.AddNormalStress()
-normal_stress.NormalOrientation = NormalOrientationType.XAxis
-
-# Maximum Principal Stress
-max_principal = solution.AddMaximumPrincipalStress()
-
-# Evaluate
-equiv_stress.EvaluateAllResults()
-'''
-mechanical.run_python_script(script)
-```
-
-### Strain Results
-
-```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Equivalent Strain
-equiv_strain = solution.AddEquivalentElasticStrain()
-
-# Evaluate
-equiv_strain.EvaluateAllResults()
-'''
-mechanical.run_python_script(script)
-```
-
-## Reading Result Values
-
-```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Get stress result
+solution = Model.Analyses[analysis_index].Solution
+deformation = solution.AddTotalDeformation()
 stress = solution.AddEquivalentStress()
-stress.EvaluateAllResults()
-
-# Get min and max values
-print("Maximum Stress: {0}".format(stress.Maximum))
-print("Minimum Stress: {0}".format(stress.Minimum))
-print("Average Stress: {0}".format(stress.Average))
-'''
-mechanical.run_python_script(script)
+strain = solution.AddEquivalentElasticStrain()
+solution.EvaluateAllResults()
+print("Stress min/max/average: {0}, {1}, {2}".format(
+    stress.Minimum, stress.Maximum, stress.Average))
 ```
+The analysis must have solution data. Unsolved, obsolete or failed results are not
+valid values; check state and evaluation messages. Other creators include
+AddNormalStress, AddMaximumPrincipalStress and AddDirectionalDeformation;
+NormalOrientation selects the direction for directional results.
 
-## Modal Analysis Results
-
+## Scoped Results
+With solution from the selected analysis and selection_id for a confirmed named selection:
 ```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Add Total Deformation for each mode
-for i in range(1, 11):  # First 10 modes
-    deform = solution.AddTotalDeformation()
-    deform.Mode = i
-    deform.EvaluateAllResults()
-    print("Mode {0} Frequency: {1}".format(i, deform.ReportedFrequency))
-'''
-mechanical.run_python_script(script)
+selection = DataModel.GetObjectById(selection_id)
+if selection is None:
+    raise ValueError("Selection no longer exists")
+scoped_stress = solution.AddEquivalentStress()
+scoped_stress.Location = selection
+scoped_stress.EvaluateAllResults()
 ```
 
-## Exporting Results
-
-### Export to Image
-
+## Modal Results
+Set modal_index to a solved modal analysis and mode_number to an actually extracted mode:
 ```python
-script = '''
-# Get result object
-stress = Model.Analyses[0].Solution.Children[0]
-
-# Export image
-Graphics.ExportImage(r"C:\\temp\\stress_result.png", GraphicsImageExportFormat.PNG)
-'''
-mechanical.run_python_script(script)
+modal_solution = Model.Analyses[modal_index].Solution
+mode_shape = modal_solution.AddTotalDeformation()
+mode_shape.Mode = mode_number
+mode_shape.EvaluateAllResults()
+mode_shape.ReportedFrequency
 ```
+ReportedFrequency is the mode frequency. Modal amplitudes are normalized shapes,
+not displacements under a particular service load. Do not assume ten modes were extracted.
 
-### Export Data to File
-
+## Images and Data Export
+screenshot captures the selected view; export_results exports PNG/TXT/both for an
+analysis. download_file retrieves files from the Mechanical host.
+For direct API export, resolve result_id to an intended evaluated result and set
+image_path/text_path to host paths in an existing output directory:
 ```python
-script = '''
-result = Model.Analyses[0].Solution.Children[0]
-
-# Export to text file
-result.ExportToTextFile(r"C:\\temp\\results.txt")
-'''
-mechanical.run_python_script(script)
+result = DataModel.GetObjectById(result_id)
+if result is None:
+    raise ValueError("Result no longer exists")
+result.Activate()
+Graphics.ExportImage(image_path, GraphicsImageExportFormat.PNG)
+result.ExportToTextFile(text_path)
 ```
-
-## Result Scoping
-
-```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Add result scoped to specific geometry
-stress = solution.AddEquivalentStress()
-
-# Scope to Named Selection
-ns = ExtAPI.DataModel.GetObjectsByName("CriticalRegion")[0]
-stress.Location = ns
-
-stress.EvaluateAllResults()
-'''
-mechanical.run_python_script(script)
-```
-"""
+Always activate the intended result before image export. Solution.Children[0] may
+be Solution Information or another non-result object. Assess results against the
+physical problem; stress singularities and mesh dependence can distort extrema.
+""",
+        "valve",
+    )
 
 
 def get_guidelines_for_named_selections() -> str:
-    """Get named selection guidelines for Mechanical.
+    """Return named-selection discovery and worksheet syntax."""
+    return _reference(
+        """# Named Selections in Mechanical
 
-    Use this tool when working with named selections.
+## Discovering Existing Selections
+Find existing scopes with find_objects(category="NamedSelection", name_contains=...).
+Set offset to the returned next_offset until null for more matches; previews are
+not complete lists. Resolve IDs with DataModel.GetObjectById.
 
-    Returns
-    -------
-    str
-        Guidelines for creating and using named selections in Mechanical.
-    """
-    return """# Named Selections in Mechanical
-
-Named selections are the preferred way to define geometry scopes for loads,
-supports, and results in Mechanical scripting.
-
-## Creating named selections
-
-### Worksheet-based (recommended for scripting)
-
+When a name is the only available identifier, verify it is unique:
 ```python
-script = '''
-# Create a named selection using worksheet criteria (location-based)
-ns = Model.AddNamedSelection()
-ns.ScopingMethod = GeometryDefineByType.Worksheet
-worksheet = ns.GenerationCriteria
+matches = list(DataModel.GetObjectsByName(selection_name))
+if len(matches) != 1:
+    raise ValueError("Expected one object named {0}".format(selection_name))
+selection = matches[0]
+```
+Confirm the object is the intended named selection and its entities are nonempty.
+Names can duplicate; GetObjectsByName()[0] alone does not establish the intended scope.
 
-# Define criterion (e.g., faces at X = 0)
+## Worksheet-Based Creation
+This example finds faces at X = 0; adjust the entity, coordinate and tolerance to the geometry:
+```python
+selection = Model.AddNamedSelection()
+selection.ScopingMethod = GeometryDefineByType.Worksheet
 criterion = Ansys.ACT.Automation.Mechanical.NamedSelectionCriterion()
 criterion.Active = True
 criterion.Action = SelectionActionType.Add
@@ -994,230 +479,77 @@ criterion.EntityType = SelectionType.GeoFace
 criterion.Criterion = SelectionCriterionType.LocationX
 criterion.Operator = SelectionOperatorType.Equal
 criterion.Value = Quantity("0 [mm]")
-worksheet.Add(criterion)
-
-ns.Generate()
-ns.Name = "FixedEnd"
-'''
-mechanical.run_python_script(script)
+selection.GenerationCriteria.Add(criterion)
+selection.Generate()
+selection.Name = "FixedEnd"
 ```
 
-### Available Criterion Types
+## Criteria and Reuse
+SelectionType.GeoFace/GeoEdge/GeoVertex/GeoBody select entity types;
+SelectionCriterionType.LocationX/Y/Z, Size, Type and Name provide common filters.
+Check supported criterion/entity/operator combinations and units with describe_api.
+Generated scopes can be assigned to loads, supports, sizing controls and results
+through Location when the receiving object supports that scope.
 
-- `SelectionCriterionType.LocationX/Y/Z`: filter by coordinate
-- `SelectionCriterionType.Size`: filter by area/volume
-- `SelectionCriterionType.Type`: filter by entity type
-- `SelectionCriterionType.Name`: filter by CAD body name
-
-### Available entity types
-
-- `SelectionType.GeoFace`: faces
-- `SelectionType.GeoEdge`: edges
-- `SelectionType.GeoVertex`: vertices
-- `SelectionType.GeoBody`: bodies
-
-### Accessing existing named selections
-
-```python
-script = '''
-# Get all named selections
-named_selections = Model.NamedSelections.GetChildren(
-    DataModelObjectCategory.NamedSelection, True
-)
-
-for ns in named_selections:
-    print("Named selection: {0}".format(ns.Name))
-'''
-mechanical.run_python_script(script)
-```
-
-### Get named selection by name
-
-```python
-script = '''
-# Preferred pattern: iterate Children (reliable)
-ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedEnd"][0]
-
-# Alternative: ExtAPI lookup
-ns = ExtAPI.DataModel.GetObjectsByName("FixedEnd")[0]
-'''
-mechanical.run_python_script(script)
-```
-
-## Use named selections
-
-### With boundary conditions
-
-```python
-script = '''
-analysis = Model.Analyses[0]
-
-# Add fixed support scoped to named selection
-fixed = analysis.AddFixedSupport()
-ns = [n for n in Model.NamedSelections.Children if n.Name == "FixedEnd"][0]
-fixed.Location = ns
-'''
-mechanical.run_python_script(script)
-```
-
-### With results
-
-```python
-script = '''
-solution = Model.Analyses[0].Solution
-
-# Add stress result scoped to named selection
-stress = solution.AddEquivalentStress()
-ns = [n for n in Model.NamedSelections.Children if n.Name == "CriticalArea"][0]
-stress.Location = ns
-
-stress.EvaluateAllResults()
-'''
-mechanical.run_python_script(script)
-```
-
-## Best Practices
-
-1. Create named selections for frequently used geometry scopes.
-2. Use descriptive names (such as "FixedSupport_Bottom" and "Load_TopFace").
-3. Named selections persist across geometry updates (when possible).
-4. Use named selections for parameterization and automation.
-"""
+Use descriptive names and regenerate/check scopes after geometry changes. Worksheet
+criteria can survive updates, but a persistent name does not guarantee the same
+entities remain selected. Duplicate names and empty selections require resolution.
+""",
+        "topology_optimization_cantilever_beam",
+    )
 
 
 def get_guidelines_for_general_rules() -> str:
-    """Get general rules and best practices for Mechanical workflows.
+    """Return scripting compatibility, units, transactions, and validation guidance."""
+    return _reference("""# General Rules for MCP Scripts
 
-    Use this tool when working with Mechanical simulations.
-
-    Returns
-    -------
-    str
-        General rules and best practices for Mechanical simulations.
-    """
-    return """# General Rules and Best Practices for PyMechanical
-
-## Script execution pattern
-
-The examples show `mechanical.run_python_script(script)`. Through this MCP
-server, pass the same `script` text to the `run_python_script` tool, and call
-`check_script` first for new scripts:
-
+## Script Execution and Return Values
+Pass the script body to run_python_script, not a mechanical.run_python_script wrapper.
+The last expression is returned as text; an assignment returns empty text.
+Script globals persist between calls. For structured output:
 ```python
-script = '''
-# Your Mechanical scripting code
-result = ExtAPI.DataModel.Project.ProductVersion
-result
-'''
-output = mechanical.run_python_script(script)
+import json
+payload = {'version': ExtAPI.DataModel.Project.ProductVersion,
+           'mesh_nodes': Model.Mesh.Nodes, 'mesh_elements': Model.Mesh.Elements}
+json.dumps(payload, ensure_ascii=False)
 ```
+ensure_ascii=False preserves non-ASCII names in IronPython. Keep output bounded and
+avoid IronPython str() on non-ASCII names.
 
-## Return values
+## Engine Compatibility and Units
+Remote 2026/2027 R1 sessions use IronPython 2.7: use .format(), not f-strings,
+annotations or walrus expressions; use os.path instead of pathlib. check_script
+checks syntax in the connected engine and some API names without executing the script;
+it does not validate all arguments or runtime state. describe_api provides installed API help.
 
-The script returns the string value of the last executed statement:
+Use compatible, explicit Quantity units, such as "5 [mm]", "100 [N]", "1 [MPa]" or
+"22 [C]". Confirm the unit system rather than changing an existing model implicitly.
+Use raw strings or forward slashes for Windows paths.
 
+## Transactions for Bulk Edits
+For intended body_ids from find_objects(category="Body") and an available material_name:
 ```python
-# Returns '5'
-mechanical.run_python_script("2 + 3")
-
-# Returns product version string
-mechanical.run_python_script("ExtAPI.DataModel.Project.ProductVersion")
-
-# Returns empty string for assignments
-mechanical.run_python_script("x = 10")
-```
-
-## Using quantities
-
-Mechanical uses the Quantity class for values with units.
-**Always use square brackets** around the unit string:
-
-```python
-script = '''
-# Force in Newtons
-force = Quantity("1000 [N]")
-
-# Length in millimeters
-length = Quantity("100 [mm]")
-
-# Pressure in MPa
-pressure = Quantity("1 [MPa]")
-
-# Temperature in Celsius
-temp = Quantity("100 [C]")
-
-# Angular velocity
-omega = Quantity("10 [rad/s]")
-'''
-mechanical.run_python_script(script)
-```
-
-## IronPython compatibility
-
-Remote Mechanical sessions run scripts in **IronPython 2.7**, including
-2026 R1 and 2027 R1. Call `check_script` to see the engine of the connected
-session and to catch unsupported syntax before running a script. Do NOT use:
-- f-strings (`f"value: {x}"`): use `.format()` instead
-- walrus operator (`:=`)
-- Type hints in scripts
-- `pathlib.Path`: use `os.path` instead
-
-```python
-# WRONG (f-string):
-# script = 'f"Result: {value}"'
-
-# CORRECT (.format()):
-script = '"Result: {0}".format(value)'
-```
-
-## Transaction for performance
-
-Wrap multiple modifications in a transaction:
-
-```python
-script = '''
+bodies = [DataModel.GetObjectById(body_id) for body_id in body_ids]
+if any(body is None for body in bodies):
+    raise ValueError("A body no longer exists")
 with Transaction():
-    # Multiple operations here
-    for obj in Tree.AllObjects:
-        if hasattr(obj, 'Name'):
-            obj.Name = obj.Name + "_modified"
-'''
-mechanical.run_python_script(script)
+    for body in bodies:
+        body.Material = material_name
 ```
+Transaction() batches updates, not undo or rollback. Preview/apply supports individual
+property changes with validation and readback; save_project provides a restore point.
 
-## Error handling
+## Files, Errors and Verification
+upload_file sends local files to Mechanical; download_file retrieves files/patterns;
+download_project retrieves project files; list_files shows available files.
+Script paths are on the Mechanical host. run_python_code/create_custom_plot use
+external CPython without ExtAPI and need data transferred/exported from Mechanical.
 
-A failing script returns its Mechanical error message from `run_python_script`.
-Use `get_mechanical_logs` to read application messages and solver output.
-
-## File transfers
-
-- `upload_file`: send a local file (geometry, script) to the working directory.
-- `download_file`: fetch one file, or several with a pattern such as `*.png`.
-- `download_project`: fetch the project files, optionally filtered by extension.
-- `list_files`: list the files in the working directory.
-
-## Common pitfalls
-
-- **Not checking connection status** before running scripts
-- **Missing mesh generation** before solving
-- **No boundary conditions** causing rigid body motion
-- **Forgetting to evaluate results** after adding result objects
-- **Path issues**: Use raw strings (r"path") or double backslashes
-- **Using f-strings**: Remote Mechanical sessions run IronPython 2.7
-    (no f-strings)
-- **Wrong Quantity format**: Use `Quantity("5 [mm]")` with square brackets
-- **Setting component values directly**: Use `.Output.DiscreteValues = [...]`
-
-## Verification steps
-
-1. Check model setup: geometry, materials, and mesh.
-2. Verify boundary conditions prevent rigid body motion.
-3. Review solver messages for warnings.
-4. Validate results against expected behavior.
-5. Check mesh convergence for critical results.
-6. Compare stress results against material yield strength.
-"""
+Errors include Mechanical's message; get_mechanical_logs reads application and solver output.
+Check connection, scopes, mesh generation, materials and loads before solving. Evaluate
+results before reading them, review warnings, and verify expected behavior, equilibrium
+and mesh convergence. A successful API call is not engineering validation.
+""")
 
 
 _CONTENT_MAP = {
@@ -1236,34 +568,21 @@ _CONTENT_MAP = {
 
 @app.tool()
 def get_guidelines_for(content: GuidelinesContent) -> str:
-    """Get Mechanical simulation guidelines for a specific topic.
+    """Get Mechanical workflow guidance, scripting examples, and execution notes.
 
-    Use this tool before writing PyMechanical or Ansys Mechanical scripting
-    code to retrieve the relevant guidelines for the workflow step you are
-    about to implement. Call it once per topic needed. You should call it
-    before every code-generation task.
+    Topics:
+    workflow, geometry, materials, meshing, analysis_setup, boundary_conditions,
+    solution, postprocessing, named_selections, general. Bundled text with official
+    reference links; no network requests. Use describe_api for version-matched help.
 
     Parameters
     ----------
     content : str
-        The guideline topic to retrieve. options are:
-
-        - ``"workflow"``: Mechanical simulation workflow overview.
-        - ``"geometry"``: Geometry import (CAD files, units, and scoping).
-        - ``"materials"``: Material assignment and engineering data.
-        - ``"meshing"``: Mesh controls, sizing, and quality.
-        - ``"analysis_setup"``: Analysis system creation
-          (such as static structural, modal, or thermal).
-        - ``"boundary_conditions"``: Supports, constraints, loads
-          (forces, pressures, and temperatures).
-        - ``"solution"``: Solver configuration and execution.
-        - ``"postprocessing"``: Result objects, evaluation, and exports.
-        - ``"named_selections"``: Creating and using named selections.
-        - ``"general"``: General Mechanical rules and best practices.
+        Topic from the list above.
 
     Returns
     -------
     str
-        Guideline text for the requested topic.
+        Practical examples, prerequisites, technical checks, and reference links.
     """
     return _CONTENT_MAP[content]()

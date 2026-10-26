@@ -97,7 +97,8 @@ Available after connection
    * - ``get_model_info``
      - Return a structured model summary: geometry and mesh counts, active mesh
        metric, named selections, materials, unit system, analyses, and boundary
-       conditions.
+       conditions. Lists are limited previews with total counts and truncation
+       information.
    * - ``get_results_summary``
      - Return solved result minima, maxima, and averages with units, without
        exporting files.
@@ -157,12 +158,20 @@ Mechanical release, including releases newer than the bundled API reference.
 
 - ``find_objects`` returns stable object IDs. Use IDs rather than names, which
   can repeat, or positions, which change when objects are added.
+  To retrieve more matches, set ``offset`` to the returned ``next_offset`` until
+  it is null. Keep filters unchanged and restart if ``result_fingerprint`` changes.
+  Each page scans the current Outline tree; paging is not a saved model snapshot.
 - ``describe_api`` with ``object_id`` lists properties shown in the Details
   view by default. Set ``details_only=False`` for every public API property.
 - ``describe_api`` with ``query`` searches API types, properties, methods, and
   enumeration members by keyword, such as ``"element size"``. A query that names
   a type, such as ``"FixedSupport"``, also lists all its members. Use it to find
   real API names before writing a script.
+  Results include installed API documentation where available. An exact query,
+  such as ``"Analysis.Solve"``, includes available parameter descriptions, remarks,
+  and examples, with source and truncation information. Help comes from the
+  connected Mechanical installation without internet access. If documentation is
+  unavailable, API names and signatures are still returned.
 - ``preview_property_change`` checks values strictly against the property type.
   Booleans must be ``true`` or ``false``, integers must fit the property range,
   enumeration values must be exact member names, and quantities must be strings such
@@ -180,6 +189,24 @@ IronPython 2.7, so syntax such as f-strings is reported. It then looks up names
 such as ``Model.Mesh.ElementSize`` in the live session to find misspelled or
 nonexistent members. The check reads properties but never calls methods. A passing
 check does not validate argument types, values, or the model state at run time.
+
+Large-model summaries
+---------------------
+
+``get_model_info`` defaults to ``max_items=50`` entries per named-selection,
+material, analysis and boundary-condition list. Check ``collection_info`` for
+total counts, returned counts, truncation, and read errors. A null total means
+the collection could not be counted.
+
+- Set ``max_items=0`` for counts without list entries.
+- Increase ``max_items`` for a larger preview, up to 1000 entries per list.
+- Set ``max_items=None`` (``null`` in MCP arguments) for full lists; responses
+  can be large.
+- Use filtered ``find_objects`` pages to locate objects in large models.
+
+Geometry is reported as counts by body type (``body_counts_by_type``) and
+suppression state (``suppression_counts``), without listing body names.
+These counts describe the model; they do not validate its engineering setup.
 
 Example workflows
 -----------------
@@ -199,10 +226,11 @@ Modal analysis
 ~~~~~~~~~~~~~~
 
 #. Connect to Mechanical.
-#. Import the model and define fixed supports.
-#. Create modal analysis settings with script tools.
+#. Import the model and set materials and supports for the intended analysis.
+#. Create a modal analysis and configure mode extraction with script tools.
 #. Run ``solve_analysis``.
-#. Use ``create_custom_plot`` for mode-shape reporting.
+#. Add and evaluate modal results with ``run_python_script``.
+#. Use ``screenshot`` or ``export_results`` to report mode shapes.
 
 Change a setting with a preview
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -218,7 +246,8 @@ Checks after solving
 
 #. ``get_model_info`` for verifying solved state
 #. ``get_mechanical_logs`` for warnings and errors
-#. ``run_python_code`` for custom data extraction
+#. ``get_results_summary`` for result values and units
+#. ``run_python_code`` for processing exported data
 #. ``export_results`` for report artifacts
 
 Feature reference
