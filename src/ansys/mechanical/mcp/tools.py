@@ -57,6 +57,7 @@ from ansys.mechanical.mcp.helpers import (
     stop_processes,
 )
 from ansys.mechanical.mcp.server import session
+from mcp import types as mcp_types
 from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 logger = get_logger(__name__)
@@ -526,17 +527,19 @@ async def _reject_if_connected(context: Any) -> str | None:
 async def _set_mechanical_tools_visible(ctx: Context, visible: bool) -> None:
     """Show or hide the tools that need a Mechanical connection.
 
-    The connection is shared by every client session, so the server-level rule is
-    authoritative: session-scoped rules alone do not persist across requests with
-    FastMCP 4. The session call is kept because it notifies the client that the
-    tool list changed.
+    The connection is shared by every client session, so only the server-level rule
+    is used. Session rules persist in FastMCP 4.1.3+ and would override it later.
     """
     if visible:
         app.enable(tags={REQUIRES_MECHANICAL_TAG})
-        await ctx.enable_components(tags={REQUIRES_MECHANICAL_TAG})
     elif not ctx.request_context.lifespan_context.static_tools:
         app.disable(tags={REQUIRES_MECHANICAL_TAG})
-        await ctx.disable_components(tags={REQUIRES_MECHANICAL_TAG})
+    else:
+        return
+    try:
+        await ctx.send_notification(mcp_types.ToolListChangedNotification())
+    except Exception as exc:
+        logger.warning("Tool visibility updated, but the client could not be notified: %s", exc)
 
 
 # Access type-safe lifespan context in tools
@@ -1414,7 +1417,7 @@ def mechanical_working_directory() -> str:
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
-def get_model_info(ctx: Context) -> str:
+def get_model_info(ctx: Context, max_items: int | None = 50) -> str:
     """Get information about the current model in Mechanical.
 
     This tool retrieves information about the current model including
@@ -1425,6 +1428,10 @@ def get_model_info(ctx: Context) -> str:
     ----------
     ctx : Context
         MCP context containing the server session and application context.
+    max_items : int or None, default: 50
+        Maximum entries per name or analysis list (0 to 1000). Zero returns
+        counts only; None explicitly returns every entry. For large models,
+        prefer filtered, paged ``find_objects`` calls over an unlimited response.
 
     Returns
     -------
@@ -1432,7 +1439,9 @@ def get_model_info(ctx: Context) -> str:
         JSON string containing model information. Includes ``project``,
         ``model``, ``geometry``, ``mesh`` (counts plus the active mesh metric),
         ``analyses_count``, ``named_selections``, ``materials``, ``unit_system``,
-        ``analyses``, and ``boundary_conditions``.
+        ``analyses``, and ``boundary_conditions``. ``collection_info`` reports
+        total and returned counts and truncation per list. Geometry includes
+        body counts by ``GeometryType`` and suppression counts, not body names.
     """
     mechanical = ctx.request_context.lifespan_context.mechanical
 
@@ -1442,10 +1451,16 @@ def get_model_info(ctx: Context) -> str:
             "Use connect_to_mechanical tool to establish a connection."
         )
 
+    if max_items is not None and (
+        isinstance(max_items, bool) or not isinstance(max_items, int) or not 0 <= max_items <= 1000
+    ):
+        return _structured_error(InvalidArgumentsError("max_items must be 0 to 1000, or null."))
+
     try:
         # Script to gather model information
         script = (
             _SCRIPT_HELPERS
+            + f"\nmax_items = {max_items!r}\n"
             + """
 model_info = {}
 
@@ -1466,14 +1481,33 @@ model_info['model'] = {
 if hasattr(model, 'Geometry') and model.Geometry is not None:
     geom = model.Geometry
     try:
-        body_count = geom.GetChildren(DataModelObjectCategory.Body, True).Count
+        bodies = list(geom.GetChildren(DataModelObjectCategory.Body, True))
+        body_count = len(bodies)
     except:
+        bodies = []
         body_count = 0
+    by_type = {}
+    suppression = {'suppressed': 0, 'active': 0, 'unknown': 0}
+    for body in bodies:
+        try:
+            kind = str(body.GeometryType)
+        except:
+            kind = 'Unknown'
+        by_type[kind] = by_type.get(kind, 0) + 1
+        try:
+            suppression['suppressed' if body.Suppressed else 'active'] += 1
+        except:
+            suppression['unknown'] += 1
     model_info['geometry'] = {
         'body_count': body_count,
+        'body_counts_by_type': by_type,
+        'suppression_counts': suppression,
     }
 else:
-    model_info['geometry'] = {'body_count': 0}
+    model_info['geometry'] = {
+        'body_count': 0, 'body_counts_by_type': {},
+        'suppression_counts': {'suppressed': 0, 'active': 0, 'unknown': 0},
+    }
 
 # Get Mesh info
 if hasattr(model, 'Mesh') and model.Mesh is not None:
@@ -1516,58 +1550,83 @@ try:
 except:
     model_info['mesh']['metric'] = None
 
-# Named selections are the recommended scoping target, so expose their names.
-try:
-    model_info['named_selections'] = [
-        child.Name for child in Model.NamedSelections.Children
-    ]
-except:
-    model_info['named_selections'] = []
+model_info['collection_info'] = {}
 
-try:
-    model_info['materials'] = [child.Name for child in Model.Materials.Children]
-except:
-    model_info['materials'] = []
+def _collection_info(key, total, error=None):
+    returned = len(model_info[key])
+    info = {'total_count': total, 'returned_count': returned,
+            'truncated': total is None or returned < total}
+    if error is not None:
+        info['error'] = error
+    model_info['collection_info'][key] = info
+
+def _preview_collection(key, read_collection, read_item):
+    model_info[key] = []
+    total = None
+    error = None
+    try:
+        collection = read_collection()
+        total = collection.Count
+        count = total if max_items is None else min(total, max_items)
+        for index in range(count):
+            try:
+                model_info[key].append(read_item(index, collection[index]))
+            except Exception as exc:
+                error = u'Could not read item {0}: {1}'.format(index, exc)[:300]
+    except Exception as exc:
+        error = u'Could not read collection: {0}'.format(exc)[:300]
+    _collection_info(key, total, error)
+
+_preview_collection('named_selections', lambda: Model.NamedSelections.Children,
+                    lambda index, child: child.Name)
+_preview_collection('materials', lambda: Model.Materials.Children,
+                    lambda index, child: child.Name)
 
 try:
     model_info['unit_system'] = str(ExtAPI.Application.ActiveUnitSystem)
 except:
     model_info['unit_system'] = None
 
-# Per-analysis detail, including everything scoped under each analysis that is
-# not an analysis-settings or solution folder (loads, supports, conditions).
-analyses = []
-boundary_conditions = []
+def _analysis_entry(index, analysis):
+    try:
+        status = str(analysis.Solution.Status)
+    except:
+        status = 'Unknown'
+    return {'index': index, 'name': analysis.Name,
+            'type': str(analysis.AnalysisType), 'solution_status': status}
+
+_preview_collection('analyses', lambda: Model.Analyses, _analysis_entry)
+model_info['boundary_conditions'] = []
+boundary_total = 0
+boundary_error = None
 try:
     for analysis_idx in range(Model.Analyses.Count):
-        analysis = Model.Analyses[analysis_idx]
-        try:
-            solution_status = str(analysis.Solution.Status)
-        except:
-            solution_status = 'Unknown'
-        analyses.append({
-            'index': analysis_idx,
-            'name': analysis.Name,
-            'type': str(analysis.AnalysisType),
-            'solution_status': solution_status,
-        })
-        for child_idx in range(analysis.Children.Count):
-            child = analysis.Children[child_idx]
+        children = Model.Analyses[analysis_idx].Children
+        for child_idx in range(children.Count):
+            child = children[child_idx]
             category = _category(child)
-            # Analysis settings report a solver-specific category, such as
-            # ANSYSAnalysisSettings, so match the suffix.
             if category == 'Solution' or category.endswith('AnalysisSettings'):
                 continue
-            boundary_conditions.append({
-                'analysis_index': analysis_idx,
-                'name': child.Name,
-                'type': category,
-            })
-except:
-    pass
-
-model_info['analyses'] = analyses
-model_info['boundary_conditions'] = boundary_conditions
+            boundary_total += 1
+            if max_items is None or len(model_info['boundary_conditions']) < max_items:
+                try:
+                    model_info['boundary_conditions'].append({
+                        'analysis_index': analysis_idx, 'name': child.Name, 'type': category})
+                except Exception as exc:
+                    boundary_error = u'Could not read condition: {0}'.format(exc)[:300]
+except Exception as exc:
+    boundary_total = None
+    boundary_error = u'Could not count conditions: {0}'.format(exc)[:300]
+_collection_info('boundary_conditions', boundary_total, boundary_error)
+if any(item['truncated'] for item in model_info['collection_info'].values()):
+    model_info['retrieval_note'] = (
+        'Lists are previews, not the full model. Use find_objects with category, '
+        'name_contains, parent_id and limit. For the next page, set offset to '
+        'the returned next_offset. max_items=null returns the full lists.'
+    )
+    model_info['collection_info']['named_selections']['find_objects'] = {
+        'category': 'NamedSelection'}
+    model_info['collection_info']['materials']['find_objects'] = {'category': 'Material'}
 
 json.dumps(model_info, ensure_ascii=False)
 """
@@ -2569,6 +2628,7 @@ def find_objects(
     parent_id: int | None = None,
     max_depth: int | None = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> str:
     """Find objects in the Mechanical Outline tree and return their stable IDs.
 
@@ -2594,6 +2654,10 @@ def find_objects(
     limit : int, default: 100
         Maximum number of objects to return, from 1 to 1000. ``match_count``
         always reports the full number of matches.
+    offset : int, default: 0
+        Number of filtered matches to skip in Outline order. Follow ``next_offset``
+        until null to retrieve all matches, including lists larger than 1000.
+        Keep filters unchanged; restart if ``result_fingerprint`` changes.
 
     Returns
     -------
@@ -2610,6 +2674,8 @@ def find_objects(
         return _structured_error(InvalidArgumentsError("limit must be between 1 and 1000."))
     if max_depth is not None and max_depth < 0:
         return _structured_error(InvalidArgumentsError("max_depth must be zero or greater."))
+    if offset < 0:
+        return _structured_error(InvalidArgumentsError("offset must be zero or greater."))
 
     args = {
         "name_contains": name_contains,
@@ -2617,6 +2683,7 @@ def find_objects(
         "parent_id": parent_id,
         "max_depth": max_depth,
         "limit": limit,
+        "offset": offset,
     }
     try:
         payload = _run_introspection(
@@ -2652,6 +2719,11 @@ def describe_api(
       ``"contact formulation"``. A query that names a type, such as
       ``"FixedSupport"``, also returns all members of that type. Use this
       before writing a script instead of guessing API names.
+
+        Query results include concise installed-documentation summaries where available.
+        An exact ``Type.Member`` query also returns parameters, remarks and examples
+        from the connected installation's XML, with source and truncation metadata.
+        Documentation can be missing or boilerplate; reflection still works offline.
 
     Parameters
     ----------

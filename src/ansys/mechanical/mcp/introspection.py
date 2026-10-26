@@ -209,6 +209,7 @@ def _mcp_writable(info):
 """
 
 _FIND_OBJECTS = r"""
+import hashlib
 
 def _mcp_find_objects(args):
     parent_id = args.get('parent_id')
@@ -232,6 +233,9 @@ def _mcp_find_objects(args):
     needle = (args.get('name_contains') or '').lower()
     max_depth = args.get('max_depth')
     limit = args['limit']
+    offset = args.get('offset', 0)
+    fingerprint = hashlib.sha256()
+    identities = []
     matches = []
     total = 0
     counts = {}
@@ -251,7 +255,11 @@ def _mcp_find_objects(args):
             not needle or needle in name.lower()
         ):
             total += 1
-            if len(matches) < limit:
+            identities.append([entry['object_id'], name, entry['category'], path])
+            if len(identities) == 128:
+                fingerprint.update(json.dumps(identities, ensure_ascii=False).encode('utf-8'))
+                identities = []
+            if total > offset and len(matches) < limit:
                 entry['path'] = path
                 entry['depth'] = depth
                 entry['child_count'] = len(children)
@@ -259,12 +267,18 @@ def _mcp_find_objects(args):
         if max_depth is None or depth < max_depth:
             for child in reversed(children):
                 stack.append((child, depth + 1, path))
+    if identities:
+        fingerprint.update(json.dumps(identities, ensure_ascii=False).encode('utf-8'))
     result = {
         'success': True,
         'root': _mcp_summary(root),
         'match_count': total,
         'returned_count': len(matches),
-        'truncated': total > len(matches),
+        'truncated': total > offset + len(matches),
+        'offset': offset,
+        'next_offset': offset + len(matches) if offset + len(matches) < total else None,
+        'result_fingerprint': fingerprint.hexdigest(),
+        'paging_note': 'Keep filters unchanged and restart if result_fingerprint changes.',
         'objects': matches,
         'category_counts': counts,
     }
@@ -652,6 +666,170 @@ def _mcp_check_script(args):
     return result
 """
 
+_API_DOCUMENTATION = r"""
+import re
+
+def _mcp_doc_content(node):
+    parts = []
+    for child in node.ChildNodes:
+        if int(child.NodeType) in (3, 4, 13, 14):
+            parts.append(_mcp_str(child.Value))
+        elif child.Name in ('see', 'seealso'):
+            text = _mcp_doc_content(child)
+            reference = child.GetAttribute('cref')
+            if len(reference) > 1 and reference[1] == ':':
+                reference = reference[2:]
+            parts.append(text or reference or child.GetAttribute('langword')
+                         or child.GetAttribute('href'))
+        elif child.Name in ('paramref', 'typeparamref'):
+            parts.append(child.GetAttribute('name'))
+        else:
+            text = _mcp_doc_content(child)
+            if child.Name in ('para', 'code', 'br', 'item'):
+                text = '\n' + text + '\n'
+            parts.append(text)
+    return ''.join(parts)
+
+def _mcp_doc_text(node, tag, budget):
+    child = node.SelectSingleNode(tag)
+    text = _mcp_doc_content(child).strip() if child is not None else ''
+    if tag != 'example':
+        text = ' '.join(text.split())
+    return text[:budget], len(text) > budget
+
+
+def _mcp_useful_summary(text):
+    return bool(text and not re.match(r'^(Gets or sets|Gets|Sets) the [\w.]+\.?$', text))
+
+
+def _mcp_xml_parameter(clr_type):
+    if clr_type.IsByRef:
+        return _mcp_xml_parameter(clr_type.GetElementType()) + '@'
+    if clr_type.IsArray:
+        rank = clr_type.GetArrayRank()
+        suffix = '[]' if rank == 1 else '[' + ','.join(['0:'] * rank) + ']'
+        return _mcp_xml_parameter(clr_type.GetElementType()) + suffix
+    if clr_type.IsGenericParameter:
+        prefix = '``' if clr_type.DeclaringMethod is not None else '`'
+        return prefix + str(clr_type.GenericParameterPosition)
+    if clr_type.IsGenericType:
+        base = clr_type.GetGenericTypeDefinition().FullName.split('`')[0]
+        return base.replace('+', '.') + '{' + ','.join([
+            _mcp_xml_parameter(arg) for arg in clr_type.GetGenericArguments()]) + '}'
+    return (clr_type.FullName or clr_type.Name).replace('+', '.')
+
+
+def _mcp_xml_index(assembly):
+    path = System.IO.Path.ChangeExtension(assembly.Location, '.xml')
+    stamp = System.IO.File.GetLastWriteTimeUtc(path).Ticks
+    cache = globals().setdefault('_mcp_doc_cache', {})
+    key = (path, stamp)
+    if key in cache:
+        return cache[key]
+    result = {'source': path, 'status': 'missing', 'members': {}}
+    try:
+        if System.IO.File.Exists(path):
+            clr.AddReference('System.Xml')
+            from System.Xml import XmlDocument, XmlReader, XmlReaderSettings, DtdProcessing
+            settings = XmlReaderSettings()
+            settings.DtdProcessing = DtdProcessing.Prohibit
+            settings.XmlResolver = None
+            reader = XmlReader.Create(path, settings)
+            try:
+                doc = XmlDocument()
+                doc.XmlResolver = None
+                doc.Load(reader)
+            finally:
+                reader.Dispose()
+            result['members'] = dict((node.GetAttribute('name'), node)
+                                     for node in doc.SelectNodes('/doc/members/member'))
+            result['status'] = 'available'
+    except Exception:
+        result['status'] = 'unavailable'
+    if len(cache) >= 16:
+        cache.clear()
+    cache[key] = result
+    return result
+
+
+def _mcp_documentation(clr_type, member=None, kind=None, info=None, full=False):
+    try:
+        owners = []
+        if member is None:
+            owners.append((clr_type, 'T:' + clr_type.FullName.replace('+', '.')))
+        elif kind == 'method':
+            for method in clr_type.GetMethods():
+                if method.Name != member:
+                    continue
+                owner = method.DeclaringType
+                name = 'M:' + owner.FullName.replace('+', '.') + '.' + method.Name
+                parameters = list(method.GetParameters())
+                if parameters:
+                    name += '(' + ','.join([_mcp_xml_parameter(p.ParameterType)
+                                             for p in parameters]) + ')'
+                owners.append((owner, name))
+        else:
+            reflected = info if info is not None else clr_type.GetField(member)
+            owner = reflected.DeclaringType if reflected is not None else clr_type
+            prefix = 'P:' if kind == 'property' else 'F:'
+            owners.append((owner, prefix + owner.FullName.replace('+', '.') + '.' + member))
+        entries = []
+        source = None
+        status = 'missing'
+        seen = set()
+        for owner, name in owners:
+            if name in seen:
+                continue
+            seen.add(name)
+            index = _mcp_xml_index(owner.Assembly)
+            source, status = index['source'], index['status']
+            node = index['members'].get(name)
+            if node is None:
+                continue
+            complete_summary, _ = _mcp_doc_text(node, 'summary', 16000)
+            summary, summary_cut = _mcp_doc_text(node, 'summary', 2000 if full else 240)
+            if not _mcp_useful_summary(complete_summary):
+                summary = ''
+            entry = {'member_id': name}
+            if summary:
+                entry['summary'] = summary
+            if full:
+                cut = ['summary'] if summary_cut else []
+                for tag, budget in (('remarks', 3000), ('returns', 1500), ('example', 4000)):
+                    text, truncated = _mcp_doc_text(node, tag, budget)
+                    if text:
+                        entry[tag] = text
+                    if truncated:
+                        cut.append(tag)
+                parameters = []
+                for param in node.SelectNodes('param'):
+                    text = ' '.join(_mcp_doc_content(param).split())
+                    parameters.append({
+                        'name': param.GetAttribute('name'), 'description': text[:1000]})
+                    if len(text) > 1000:
+                        cut.append('parameters')
+                if parameters:
+                    entry['parameters'] = parameters[:20]
+                    if len(parameters) > 20:
+                        cut.append('parameters')
+                if cut:
+                    entry['truncated_fields'] = sorted(set(cut))
+            if len(entry) > 1:
+                entries.append(entry)
+            if len(entries) >= (3 if full else 1):
+                break
+        if entries:
+            status = 'available'
+        elif status == 'available':
+            status = 'no_descriptive_text'
+        return {
+            'status': status,
+            'source': source, 'source_kind': 'installed_xml', 'entries': entries,
+        }
+    except Exception:
+        return {'status': 'unavailable', 'source_kind': 'installed_xml', 'entries': []}
+"""
+
 _SEARCH_API = r"""
 
 _MCP_API_NAMESPACES = ('Ansys.ACT.Automation.Mechanical', 'Ansys.Mechanical.DataModel.Enums')
@@ -761,11 +939,23 @@ def _mcp_search_api(args):
                 'script_name': aliases.get(clr_type.FullName),
                 'kind': 'enum' if clr_type.IsEnum else 'class',
                 'members': members,
+                'documentation': _mcp_documentation(clr_type, full=True),
             })
 
     ranked = []
-    for key, clr_type, member, kind, info in index['entries']:
-        if not all(w in key for w in words):
+    # Built once per session; a short key is contained in the qualified name except for aliases.
+    haystacks = index.get('haystacks')
+    if haystacks is None:
+        names = dict((t, (t.FullName or '').lower()) for t in index['types'])
+        haystacks = []
+        for key, clr_type, member, _, _ in index['entries']:
+            qualified = names[clr_type] + '.' + member.lower()
+            haystacks.append((qualified, None if key in qualified else key))
+        index['haystacks'] = haystacks
+    for (key, clr_type, member, kind, info), (qualified, alias_key) in zip(
+            index['entries'], haystacks):
+        if not all(w in qualified for w in words) and not (
+                alias_key and all(w in alias_key for w in words)):
             continue
         name = member.lower()
         if name == joined or key.replace('.', '') == joined:
@@ -778,12 +968,22 @@ def _mcp_search_api(args):
     ranked.sort(key=lambda r: r[:4])
     matches = []
     for _, _, _, _, clr_type, member, kind, info in ranked[:limit]:
-        matches.append({
+        exact = joined in (
+            (aliases.get(clr_type.FullName, clr_type.Name) + '.' + member).lower().replace('.', ''),
+            ((clr_type.FullName or '') + '.' + member).lower().replace('.', ''),
+        )
+        documentation = _mcp_documentation(clr_type, member, kind, info, full=exact)
+        match = {
             'name': '{0}.{1}'.format(aliases.get(clr_type.FullName, clr_type.Name), member),
             'type': str(clr_type.FullName),
             'kind': kind,
             'signature': _mcp_signature(clr_type, member, kind, info),
-        })
+        }
+        if exact:
+            match['documentation'] = documentation
+        elif documentation['entries']:
+            match['summary'] = documentation['entries'][0].get('summary', '')
+        matches.append(match)
     result = {
         'success': True,
         'query': args['query'],
@@ -791,6 +991,7 @@ def _mcp_search_api(args):
         'truncated': len(ranked) > len(matches),
         'types': described[:3],
         'matches': matches,
+        'documentation_source': 'Installed XML beside reflected assemblies; no network requests.',
     }
     result.update(_mcp_context())
     return result
@@ -819,7 +1020,7 @@ def describe_object_script(args: dict[str, Any]) -> str:
 
 def search_api_script(args: dict[str, Any]) -> str:
     """Return the Mechanical script that searches the API of the connected release."""
-    return _build(_SEARCH_API, "_mcp_search_api", args)
+    return _build(_API_DOCUMENTATION + _SEARCH_API, "_mcp_search_api", args)
 
 
 def preview_change_script(args: dict[str, Any]) -> str:
