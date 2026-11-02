@@ -1,0 +1,81 @@
+
+
+
+
+
+
+:class:`UpstreamError`
+======================
+
+
+.. py:exception:: ansys.mechanical.mcp.errors.UpstreamError(message: str, *, details: dict[str, Any] | None = None)
+
+   Bases: :py:obj:`MechanicalMCPError`
+
+
+   
+   Raised when Mechanical or a dependent service cannot complete an operation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: UpstreamError
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+
+
+   .. tab-item:: Attributes
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~error_code`
+            - 
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.errors import UpstreamError
+
+
+Attribute detail
+----------------
+
+.. py:attribute:: error_code
+   :value: 'upstream_error'
+
+
+
+
+
+

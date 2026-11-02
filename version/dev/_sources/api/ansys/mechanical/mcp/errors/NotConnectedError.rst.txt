@@ -1,0 +1,81 @@
+
+
+
+
+
+
+:class:`NotConnectedError`
+==========================
+
+
+.. py:exception:: ansys.mechanical.mcp.errors.NotConnectedError(message: str, *, details: dict[str, Any] | None = None)
+
+   Bases: :py:obj:`MechanicalMCPError`
+
+
+   
+   Raised when an operation requires an active Mechanical connection.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: NotConnectedError
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+
+
+   .. tab-item:: Attributes
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~error_code`
+            - 
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.errors import NotConnectedError
+
+
+Attribute detail
+----------------
+
+.. py:attribute:: error_code
+   :value: 'not_connected'
+
+
+
+
+
+

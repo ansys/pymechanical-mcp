@@ -1,0 +1,222 @@
+
+
+
+
+
+
+:class:`PyMechanicalAppContext`
+===============================
+
+
+.. py:class:: ansys.mechanical.mcp.server.PyMechanicalAppContext
+
+   Bases: :py:obj:`ansys.common.mcp.context.PyAnsysBaseAppContext`
+
+
+   
+   Application context with typed dependencies and CLI options.
+
+
+
+   :Attributes:
+
+       **mechanical** : :obj:`Optional`\[:obj:`Any`]
+           Mechanical instance connection.
+
+       **transport_type** : :class:`python:str`
+           Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
+
+       **mechanical_ip** : :obj:`Optional`\[:class:`python:str`]
+           IP address or hostname for Mechanical connection.
+
+       **mechanical_port** : :obj:`Optional`\[:class:`python:int`]
+           Port number for Mechanical connection.
+
+       **connect_on_startup** : :ref:`bool <python:bltin-boolean-values>`
+           Whether to attempt Mechanical connection on PyMechanical-MCP startup.
+
+       **http_host** : :class:`python:str`
+           Host address for HTTP transport.
+
+       **http_port** : :class:`python:int`
+           Port number for HTTP transport.
+
+       **cors_origins** : :obj:`Optional`\[:class:`python:list`\[:class:`python:str`]]
+           List of allowed CORS origins for HTTP transport.
+
+       **grpc_transport_mode** : :obj:`Optional`\[:class:`python:str`]
+           gRPC transport mode for Mechanical connections. Options are ``'auto'``, ``'insecure'``,
+           ``'mtls'``, and ``'wnua'``. When set to ``'auto'`` (default), the mode is
+           determined automatically based on the platform and certificate
+           availability.
+
+       **certs_dir** : :obj:`Optional`\[:class:`python:str`]
+           Path to directory containing mTLS certificate files (``ca.crt``,
+           ``client.crt``, and ``client.key``). Used when ``grpc_transport_mode`` is ``'mtls'``.
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+.. py:currentmodule:: PyMechanicalAppContext
+
+Overview
+--------
+
+.. tab-set::
+
+
+
+
+   .. tab-item:: Properties
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~product_instance`
+            - Returns the Mechanical instance for backward compatibility.
+
+
+   .. tab-item:: Attributes
+
+      .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+          * - :py:attr:`~mechanical`
+            - 
+          * - :py:attr:`~transport_type`
+            - 
+          * - :py:attr:`~mechanical_ip`
+            - 
+          * - :py:attr:`~mechanical_port`
+            - 
+          * - :py:attr:`~connect_on_startup`
+            - 
+          * - :py:attr:`~http_host`
+            - 
+          * - :py:attr:`~http_port`
+            - 
+          * - :py:attr:`~cors_origins`
+            - 
+          * - :py:attr:`~grpc_transport_mode`
+            - 
+          * - :py:attr:`~certs_dir`
+            - 
+
+
+
+
+
+
+Import detail
+-------------
+
+.. code-block:: python
+
+    from ansys.mechanical.mcp.server import PyMechanicalAppContext
+
+Property detail
+---------------
+
+.. py:property:: product_instance
+   :type: Optional[Any]
+
+
+   
+   Returns the Mechanical instance for backward compatibility.
+
+
+
+
+
+   :Returns:
+
+       :obj:`Optional`\[:obj:`Any`]
+           Mechanical instance or ``None`` if not connected.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
+Attribute detail
+----------------
+
+.. py:attribute:: mechanical
+   :type:  Any | None
+   :value: None
+
+
+.. py:attribute:: transport_type
+   :type:  str
+   :value: 'stdio'
+
+
+.. py:attribute:: mechanical_ip
+   :type:  str | None
+   :value: None
+
+
+.. py:attribute:: mechanical_port
+   :type:  int | None
+   :value: None
+
+
+.. py:attribute:: connect_on_startup
+   :type:  bool
+   :value: False
+
+
+.. py:attribute:: http_host
+   :type:  str
+   :value: '127.0.0.1'
+
+
+.. py:attribute:: http_port
+   :type:  int
+   :value: 8080
+
+
+.. py:attribute:: cors_origins
+   :type:  list[str] | None
+   :value: None
+
+
+.. py:attribute:: grpc_transport_mode
+   :type:  str | None
+   :value: None
+
+
+.. py:attribute:: certs_dir
+   :type:  str | None
+   :value: None
+
+
+
+
+
+

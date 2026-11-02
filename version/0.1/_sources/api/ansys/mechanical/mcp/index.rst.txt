@@ -1,0 +1,200 @@
+
+
+
+
+
+
+The ``ansys.mechanical.mcp`` library
+====================================
+
+.. py:module:: ansys.mechanical.mcp
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: mcp
+.. tab-set::
+
+    .. tab-item:: Subpackages
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.mechanical_helper`
+            - Mechanical helper module for startup code and utilities.
+
+
+
+    .. tab-item:: Submodules
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.__main__`
+            - Entry point for running the PyMechanical-MCP server as a module.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.contexts`
+            - Context tools for PyMechanical-MCP.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.helpers`
+            - Helper functions for PyMechanical-MCP.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.prompts`
+            - Prompt templates for PyMechanical-MCP.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.server`
+            - Lifespan and CLI entry for PyMechanical-MCP server with startup options.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.tools`
+            - List of tools in PyMechanical-MCP.
+
+
+          * - :py:obj:`~ansys.mechanical.mcp.toolsets`
+            - Toolset definitions for conductor service discovery.
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~launcher`
+            - Launch PyMechanical-MCP.
+
+
+
+    .. tab-item:: Attributes
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~app`
+            - 
+
+
+          * - :py:obj:`~__version__`
+            - PyMechanical MCP version.
+
+
+
+
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :hidden:
+
+    <span class="nf nf-md-package"></span> mechanical_helper</api/ansys/mechanical/mcp/mechanical_helper/index>
+
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :hidden:
+
+    <span class="nf nf-fa-file"></span> __main__</api/ansys/mechanical/mcp/__main__/index>
+    <span class="nf nf-fa-file"></span> contexts</api/ansys/mechanical/mcp/contexts/index>
+    <span class="nf nf-fa-file"></span> helpers</api/ansys/mechanical/mcp/helpers/index>
+    <span class="nf nf-fa-file"></span> prompts</api/ansys/mechanical/mcp/prompts/index>
+    <span class="nf nf-fa-file"></span> server</api/ansys/mechanical/mcp/server/index>
+    <span class="nf nf-fa-file"></span> tools</api/ansys/mechanical/mcp/tools/index>
+    <span class="nf nf-fa-file"></span> toolsets</api/ansys/mechanical/mcp/toolsets/index>
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+
+PyMechanical-MCP is a Model Context Protocol (MCP) server for Ansys Mechanical.
+
+This package allows AI assistants to interact with Ansys Mechanical through PyMechanical.
+It leverages the Mechanical scripting API to perform structural analysis,
+preprocessing, solving, and postprocessing tasks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+
+
+.. py:data:: __version__
+
+   
+   PyMechanical MCP version.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+
