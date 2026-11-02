@@ -10,4 +10,5 @@
 * [Eduardo Blanco](https://github.com/eblanco-ansys)
 * [German Martinez Ayuso](https://github.com/germa89)
 * [Kathy Pippert](https://github.com/PipKat)
+* [Kerry McAdams](https://github.com/klmcadams)
 * [Roberto Pastor Muela](https://github.com/RobPasMue)
