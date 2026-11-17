@@ -209,6 +209,16 @@ jobs:
       contents: read # Needed to checkout the code
     steps:
       - name: "Run Ansys documentation building action"
+        id: docs-build
+        continue-on-error: true
+        uses: ansys/actions/doc-build@87ff2e65e8884121f9afc97728ca9f213228ecc2 # v11.1.4
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          dependencies: 'zip libgl1 libglx-mesa0 xvfb'
+          sphinxopts: '-W --keep-going'
+
+      - name: "Retry documentation build after a transient failure"
+        if: failure() || steps.docs-build.outcome == 'failure'
         uses: ansys/actions/doc-build@87ff2e65e8884121f9afc97728ca9f213228ecc2 # v11.1.4
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
