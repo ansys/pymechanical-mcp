@@ -1,0 +1,393 @@
+
+
+
+
+
+
+The ``contexts.py`` module
+==========================
+
+.. py:module:: ansys.mechanical.mcp.contexts
+
+
+Summary
+-------
+
+
+
+
+
+
+
+
+.. py:currentmodule:: contexts
+.. tab-set::
+
+
+
+
+
+
+
+    .. tab-item:: Functions
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~get_guidelines_for_workflow_overview`
+            - Return the simulation workflow and Mechanical execution model.
+
+
+          * - :py:obj:`~get_guidelines_for_geometry_import`
+            - Return geometry import and remote-file execution notes.
+
+
+          * - :py:obj:`~get_guidelines_for_materials`
+            - Return material availability, assignment, and property checks.
+
+
+          * - :py:obj:`~get_guidelines_for_meshing`
+            - Return mesh generation, control, and quality-check patterns.
+
+
+          * - :py:obj:`~get_guidelines_for_analysis_setup`
+            - Return analysis creation, settings, modal, and contact guidance.
+
+
+          * - :py:obj:`~get_guidelines_for_boundary_conditions`
+            - Return scoped structural and thermal load examples.
+
+
+          * - :py:obj:`~get_guidelines_for_solution`
+            - Return solve, status, output-control, and convergence guidance.
+
+
+          * - :py:obj:`~get_guidelines_for_postprocessing`
+            - Return result creation, evaluation, scoping, modal, and export patterns.
+
+
+          * - :py:obj:`~get_guidelines_for_named_selections`
+            - Return named-selection discovery and worksheet syntax.
+
+
+          * - :py:obj:`~get_guidelines_for_general_rules`
+            - Return scripting compatibility, units, transactions, and validation guidance.
+
+
+          * - :py:obj:`~get_guidelines_for`
+            - Get Mechanical workflow guidance, scripting examples, and execution notes.
+
+
+
+    .. tab-item:: Attributes
+
+        .. list-table::
+          :header-rows: 0
+          :widths: auto
+
+
+          * - :py:obj:`~GuidelinesContent`
+            - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Description
+-----------
+
+Mechanical workflow guidance, scripting examples, and MCP execution notes.
+
+..
+    !! processed by numpydoc !!
+
+
+
+
+
+
+Module detail
+-------------
+
+.. py:function:: get_guidelines_for_workflow_overview() -> str
+
+   
+   Return the simulation workflow and Mechanical execution model.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_geometry_import() -> str
+
+   
+   Return geometry import and remote-file execution notes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_materials() -> str
+
+   
+   Return material availability, assignment, and property checks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_meshing() -> str
+
+   
+   Return mesh generation, control, and quality-check patterns.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_analysis_setup() -> str
+
+   
+   Return analysis creation, settings, modal, and contact guidance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_boundary_conditions() -> str
+
+   
+   Return scoped structural and thermal load examples.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_solution() -> str
+
+   
+   Return solve, status, output-control, and convergence guidance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_postprocessing() -> str
+
+   
+   Return result creation, evaluation, scoping, modal, and export patterns.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_named_selections() -> str
+
+   
+   Return named-selection discovery and worksheet syntax.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for_general_rules() -> str
+
+   
+   Return scripting compatibility, units, transactions, and validation guidance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: get_guidelines_for(content: GuidelinesContent) -> str
+
+   
+   Get Mechanical workflow guidance, scripting examples, and execution notes.
+
+   Topics:
+   workflow, geometry, materials, meshing, analysis_setup, boundary_conditions,
+   solution, postprocessing, named_selections, general. Bundled text with official
+   reference links; no network requests. Use describe_api for version-matched help.
+
+   :Parameters:
+
+       **content** : :class:`python:str`
+           Topic from the list above.
+
+
+
+   :Returns:
+
+       :class:`python:str`
+           Practical examples, prerequisites, technical checks, and reference links.
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: GuidelinesContent
+
+
+
