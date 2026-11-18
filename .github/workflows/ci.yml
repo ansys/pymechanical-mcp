@@ -49,7 +49,6 @@ jobs:
         uses: ansys/actions/code-style@f5e1481b9c128197a30d1dc1dfc52b8cd6865555 # v11.1.5
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
-          use-prek: false
 
   docs-style:
     name: "Documentation style checks"
