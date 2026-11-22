@@ -62,3 +62,9 @@ class StalePreviewError(MechanicalMCPError):
     """Raised when a property change preview is unknown, used, expired, or outdated."""
 
     error_code = "stale_preview"
+
+
+class OperationInProgressError(MechanicalMCPError):
+    """Raised when another Mechanical operation is already active."""
+
+    error_code = "operation_in_progress"

@@ -30,6 +30,8 @@ from ansys.common.mcp import (
 from ansys.common.mcp.context import PyAnsysBaseAppContext
 from ansys.common.mcp.helpers import PersistentPythonSession
 
+from ansys.mechanical.mcp.activity import OperationTracker
+
 logger = get_logger(__name__)
 
 
@@ -52,6 +54,10 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     change_previews : dict
         Pending property change previews by token. Each token is single use
         and expires after a few minutes.
+    operations : OperationTracker
+        Shared registry of active and recently completed MCP operations. It is
+        used to reject conflicting submissions and to recover results after a
+        client times out or disconnects.
     transport_type : str
         Transport type for PyMechanical-MCP. Options are ``'stdio'`` and ``'http'``.
     mechanical_ip : Optional[str]
@@ -86,6 +92,7 @@ class PyMechanicalAppContext(PyAnsysBaseAppContext):
     lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     session_job: Any | None = field(default=None, repr=False)
     change_previews: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)
+    operations: OperationTracker = field(default_factory=OperationTracker, repr=False)
     transport_type: str = "stdio"
     mechanical_ip: str | None = None
     mechanical_port: int | None = None
@@ -233,6 +240,7 @@ class PyMechanicalMCP(PyAnsysBaseMCP):
         finally:
             context.mechanical = None
             context.owns_mechanical = False
+            context.operations.clear()
 
 
 # Pass lifespan to server

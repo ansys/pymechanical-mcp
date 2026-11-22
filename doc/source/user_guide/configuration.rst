@@ -54,6 +54,12 @@ Environment variables
        variable, and ``connect_to_mechanical`` remains available.
    * - ``FASTMCP_LOG_LEVEL``
      - MCP server log verbosity.
+   * - ``PYMECHANICAL_MCP_PROGRESS_PROBE``
+     - Opt in to the experimental ``DS.Script.progressBarIsInUse()`` probe used
+       by ``check_mechanical_status``. Unset by default because the API is not
+       guaranteed on every release or in headless sessions. When enabled, the
+       probe is time-bounded, and unsupported or uncertain results are reported
+       as ``unsupported`` or ``unknown`` rather than as idle.
 
 Connection-lock behavior
 ------------------------

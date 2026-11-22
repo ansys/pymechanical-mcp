@@ -18,6 +18,7 @@
 
 import asyncio
 import base64
+import functools
 import inspect
 import json
 import os
@@ -38,11 +39,12 @@ from fastmcp.server import Context
 from fastmcp.server.server import get_logger
 
 from ansys.mechanical import core as pymechanical  # pyright: ignore[reportMissingTypeStubs]
-from ansys.mechanical.mcp import app, introspection
+from ansys.mechanical.mcp import activity, app, introspection
 from ansys.mechanical.mcp.errors import (
     InvalidArgumentsError,
     MechanicalMCPError,
     NotConnectedError,
+    OperationInProgressError,
     StalePreviewError,
     UpstreamError,
 )
@@ -122,6 +124,232 @@ def _mechanical_or_error(ctx: Context) -> tuple[Any | None, str | None]:
             )
         )
     return mechanical, None
+
+
+def _client_id(ctx: Context) -> str | None:
+    """Return a short, stable identity for the requesting MCP client, if known."""
+    try:
+        session = getattr(ctx.request_context, "session", None)
+        for name in ("session_id", "id", "client_id"):
+            value = getattr(session, name, None)
+            if value is not None:
+                return str(value)[:64]
+    except Exception:  # pragma: no cover - diagnostics must never fail a tool
+        return None
+    return None
+
+
+def _classify_tool_result(result: Any) -> tuple[activity.OperationState, str | None]:
+    """Infer an operation outcome from the string or JSON a tool returned."""
+    if isinstance(result, str):
+        text = result.strip()
+        if text.startswith(("Error", "Failed")):
+            return "failed", text
+        if text.startswith("{"):
+            try:
+                payload = json.loads(text)
+            except (TypeError, ValueError):
+                return "succeeded", None
+            if isinstance(payload, dict):
+                if payload.get("error_code") or payload.get("success") is False:
+                    return "failed", str(payload.get("error") or "tool reported failure")
+        return "succeeded", None
+    return "succeeded", None
+
+
+def _busy_error(tracker: activity.OperationTracker) -> str:
+    """Return a structured error that identifies the conflicting operation."""
+    active = tracker.snapshot()["active_operation"]
+    return _structured_error(
+        OperationInProgressError(
+            "Another Mechanical operation is still active. Wait for it to finish before "
+            "submitting more work.",
+            details={
+                "active_operation": active,
+                "guidance": (
+                    "Call check_mechanical_status until activity.state is 'idle'. Do not "
+                    "submit a second mutation, and never automatically repeat a mutation "
+                    "whose outcome is unknown."
+                ),
+            },
+        )
+    )
+
+
+def track_operation(
+    kind: str,
+    description: Any = None,
+    *,
+    background: Any = False,
+    monitor: Any = None,
+) -> Any:
+    """Register a tool call as a Mechanical operation and record its outcome.
+
+    Sync tools only. Read-only tools must not use this decorator. Tools that
+    start asynchronous work set ``background=True`` and provide a ``monitor``
+    callback; the operation then stays active until the monitor finishes it.
+    """
+    if not isinstance(kind, str) or not kind:
+        raise ValueError("kind must be a non-empty string")
+
+    def decorator(func: Any) -> Any:
+        @functools.wraps(func)
+        def wrapper(ctx: Context, *args: Any, **kwargs: Any) -> Any:
+            tracker = getattr(ctx.request_context.lifespan_context, "operations", None)
+            if tracker is None:
+                return func(ctx, *args, **kwargs)
+
+            desc = description(*args, **kwargs) if callable(description) else (description or kind)
+            is_background = background(*args, **kwargs) if callable(background) else background
+            record = tracker.start(kind, desc, _client_id(ctx), is_background)
+            if record is None:
+                return _busy_error(tracker)
+
+            result: Any = None
+            state: activity.OperationState = "succeeded"
+            error: str | None = None
+            try:
+                result = func(ctx, *args, **kwargs)
+                state, error = _classify_tool_result(result)
+                return result
+            except BaseException as exc:
+                state, error = "failed", str(exc)
+                raise
+            finally:
+                if is_background and state == "succeeded" and monitor is not None:
+                    try:
+                        monitor(ctx, record, args, kwargs)
+                    except Exception as exc:  # pragma: no cover - defensive
+                        logger.warning("Could not start operation monitor: %s", exc)
+                        tracker.finish(record.operation_id, "failed", result, str(exc))
+                else:
+                    tracker.finish(record.operation_id, state, result, error)
+
+        return wrapper
+
+    return decorator
+
+
+def _solve_description(*args: Any, **kwargs: Any) -> str:
+    """Describe a solve call for the operation registry."""
+    index = kwargs.get("analysis_index", args[0] if args else 0)
+    return f"analysis {index}"
+
+
+def _solve_is_background(*args: Any, **kwargs: Any) -> bool:
+    """Return whether a solve continues after the tool call returns."""
+    wait = kwargs.get("wait", args[1] if len(args) > 1 else True)
+    return not bool(wait)
+
+
+def _monitor_solve(
+    ctx: Context, record: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> None:
+    """Watch a ``wait=False`` solve until the solver stops."""
+    context = ctx.request_context.lifespan_context
+    index = kwargs.get("analysis_index", args[0] if args else 0)
+    activity.monitor_background_solve(
+        context.mechanical,
+        context.operations,
+        record,
+        int(index),
+    )
+
+
+def _activity_summary(ctx: Context) -> dict[str, Any]:
+    """Return responsive activity diagnostics, including operation identity."""
+    context = ctx.request_context.lifespan_context
+    tracker: activity.OperationTracker | None = getattr(context, "operations", None)
+    snapshot = (
+        tracker.snapshot()
+        if tracker is not None
+        else {
+            "active_operation": None,
+            "last_operation": None,
+        }
+    )
+    active = snapshot["active_operation"]
+    pending_job = getattr(context, "session_job", None)
+    lifecycle_operation = None
+    if pending_job is not None:
+        lifecycle_operation = {
+            "kind": getattr(pending_job, "kind", "unknown"),
+            "elapsed_seconds": round(float(getattr(pending_job, "elapsed", 0.0)), 2),
+        }
+
+    mechanical = context.mechanical
+    progress = (
+        activity.probe_progress_bar(mechanical)
+        if mechanical is not None
+        else {
+            "enabled": False,
+            "state": "not_evaluated",
+            "detail": "Mechanical is not connected.",
+        }
+    )
+    client_busy = False
+    if mechanical is not None:
+        try:
+            client_busy = bool(getattr(mechanical, "busy", False))
+        except Exception:  # pragma: no cover - diagnostics must never fail
+            client_busy = False
+
+    if mechanical is None:
+        state: activity.ActivityState = "disconnected"
+        source = "none"
+    elif active is not None:
+        state, source = "busy", "mcp_operation"
+    elif lifecycle_operation is not None:
+        state, source = "busy", "session_lifecycle"
+    elif progress["state"] == "busy":
+        state, source = "busy", "mechanical_progress_bar"
+    elif progress["state"] == "unknown":
+        state, source = "unknown", "mechanical_progress_bar"
+    elif client_busy:
+        state, source = "busy", "client_busy"
+    else:
+        state, source = "idle", "none"
+
+    if state == "busy":
+        guidance = (
+            f"Mechanical is busy with operation {active['operation_id']} ({active['kind']}) "
+            f"for {active['elapsed_seconds']} s. Do not submit another mutating tool. Poll "
+            "check_mechanical_status until activity.state is 'idle', then retry once."
+            if active is not None
+            else (
+                f"A Mechanical {lifecycle_operation['kind']} is in progress. Poll "
+                "check_mechanical_status until activity.state is 'idle'."
+                if lifecycle_operation is not None
+                else "Mechanical reports activity from a source outside this MCP server. Do not "
+                "submit another mutating tool. Poll check_mechanical_status until "
+                "activity.state is 'idle'."
+            )
+        )
+    elif state == "unknown":
+        guidance = (
+            "Mechanical activity could not be determined. Treat the application as busy: "
+            "do not assume it is idle and never automatically repeat a mutation after an "
+            "uncertain outcome. Poll check_mechanical_status again and inspect "
+            "get_mechanical_logs if this persists."
+        )
+    elif state == "disconnected":
+        guidance = "No Mechanical connection. Use connect_to_mechanical or launch_mechanical."
+    else:
+        guidance = (
+            "Mechanical appears idle. Submit one mutating operation at a time and poll "
+            "check_mechanical_status instead of submitting concurrent work."
+        )
+
+    return {
+        "state": state,
+        "source": source,
+        "client_busy": client_busy,
+        "progress_api": progress,
+        "active_operation": active,
+        "lifecycle_operation": lifecycle_operation,
+        "last_operation": snapshot["last_operation"],
+        "guidance": guidance,
+    }
 
 
 def _python_session_status(python_session: Any | None) -> dict[str, Any]:
@@ -521,6 +749,7 @@ async def _reject_if_connected(context: Any) -> str | None:
     context.mechanical = None
     context.owns_mechanical = False
     context.change_previews.clear()
+    context.operations.clear()
     return None
 
 
@@ -565,15 +794,21 @@ def check_mechanical_status(ctx: Context) -> str:
 
         - connection: Basic connection information (version, project_directory, is_alive)
         - product_info: Product version and build information
+        - activity: Activity state, source, operation identity, last operation result,
+          and polling guidance. This block is returned on every path, including
+          when Mechanical is disconnected or a launch is still in progress.
 
         Returns an error message if Mechanical is not available or has exited.
     """
     diagnostics = _session_diagnostics(ctx)
-    job = _pending_job(ctx.request_context.lifespan_context)
-    if job is not None and ctx.request_context.lifespan_context.mechanical is None:
+    activity_info = _activity_summary(ctx)
+    context = ctx.request_context.lifespan_context
+    job = _pending_job(context)
+    if job is not None and context.mechanical is None:
         return json.dumps(
             {
                 **diagnostics,
+                "activity": activity_info,
                 "success": False,
                 "in_progress": job.kind,
                 "elapsed_seconds": round(job.elapsed),
@@ -586,7 +821,9 @@ def check_mechanical_status(ctx: Context) -> str:
 
     mechanical, error = _mechanical_or_error(ctx)
     if error is not None:
-        return json.dumps({**json.loads(error), **diagnostics}, default=str)
+        return json.dumps(
+            {**json.loads(error), **diagnostics, "activity": activity_info}, default=str
+        )
     mechanical = cast(Any, mechanical)
 
     try:
@@ -595,15 +832,35 @@ def check_mechanical_status(ctx: Context) -> str:
             return json.dumps(
                 {
                     **diagnostics,
+                    "activity": activity_info,
                     "success": False,
                     "error": "Mechanical instance has exited. Reconnect or launch a new instance.",
                 }
             )
 
+        # get_info() runs scripts inside Mechanical. Skip it while work is active
+        # or unobservable so that a status poll never blocks behind that work.
+        if activity_info["state"] in {"busy", "unknown"}:
+            return json.dumps(
+                {
+                    **diagnostics,
+                    "activity": activity_info,
+                    "python_session": _python_session_status(context.python_session),
+                    "success": True,
+                    "detailed_info_skipped": True,
+                    "note": (
+                        "Detailed model/product information is omitted while Mechanical is "
+                        "busy or its activity is unknown. Poll check_mechanical_status again."
+                    ),
+                },
+                indent=2,
+                default=str,
+            )
+
         info = get_info(mechanical)
         info.update(diagnostics)
-        python_session = ctx.request_context.lifespan_context.python_session
-        info["python_session"] = _python_session_status(python_session)
+        info["activity"] = activity_info
+        info["python_session"] = _python_session_status(context.python_session)
 
         # Return as formatted JSON
         return json.dumps(info, indent=2, default=str)
@@ -611,7 +868,9 @@ def check_mechanical_status(ctx: Context) -> str:
     except Exception as e:
         error_msg = f"Error checking Mechanical status: {str(e)}"
         logger.error(error_msg)
-        return json.dumps({**diagnostics, "success": False, "error": error_msg})
+        return json.dumps(
+            {**diagnostics, "activity": activity_info, "success": False, "error": error_msg}
+        )
 
 
 def _session_diagnostics(ctx: Context) -> dict[str, Any]:
@@ -722,6 +981,7 @@ def check_mechanical_installed(ctx: Context) -> str:
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation("run_python_script")
 def run_python_script(
     ctx: Context,
     script: str | None = None,
@@ -1104,6 +1364,7 @@ async def disconnect_from_mechanical(ctx: Context) -> str:
             context.mechanical = None
             context.owns_mechanical = False
             context.change_previews.clear()
+            context.operations.clear()
 
         await _set_mechanical_tools_visible(ctx, False)
         return message
@@ -1356,6 +1617,7 @@ def download_project(
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation("clear_mechanical")
 def clear_mechanical(ctx: Context) -> str:
     """Clear the Mechanical database.
 
@@ -2005,6 +2267,7 @@ def create_custom_plot(
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation("save_project")
 def save_project(ctx: Context, file_path: str | None = None) -> str:
     """Save the current Mechanical project.
 
@@ -2075,6 +2338,7 @@ def save_project(ctx: Context, file_path: str | None = None) -> str:
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation("open_project")
 def open_project(ctx: Context, file_path: str) -> str:
     """Open an existing Mechanical project file.
 
@@ -2150,6 +2414,12 @@ json.dumps(info, ensure_ascii=False)
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation(
+    "solve_analysis",
+    description=_solve_description,
+    background=_solve_is_background,
+    monitor=_monitor_solve,
+)
 def solve_analysis(
     ctx: Context,
     analysis_index: int = 0,
@@ -2264,6 +2534,7 @@ result
 
 
 @app.tool(tags={REQUIRES_MECHANICAL_TAG})
+@track_operation("export_results")
 def export_results(
     ctx: Context,
     analysis_index: int = 0,
@@ -2863,6 +3134,7 @@ def preview_property_change(
         readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False
     ),
 )
+@track_operation("apply_property_change")
 def apply_property_change(
     ctx: Context,
     object_id: int,
