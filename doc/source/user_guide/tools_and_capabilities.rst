@@ -20,6 +20,41 @@ PyMechanical-MCP uses connection-aware visibility.
   tool list when the server dynamically enables tools. See
   :doc:`configuration` for details.
 
+Activity tracking and conflicting submissions
+---------------------------------------------
+
+Mechanical can be busy with work that PyMechanical's client-side ``busy`` flag
+does not cover, such as GUI operations or a solve that continues after
+``solve_analysis(wait=False)`` has returned. To avoid conflicting work:
+
+- One mutating MCP operation is allowed at a time across all connected clients.
+  The tools ``run_python_script``, ``solve_analysis``, ``export_results``,
+  ``save_project``, ``open_project``, ``clear_mechanical``, and
+  ``apply_property_change`` return an ``operation_in_progress`` error when
+  another one is still active. The error names the active operation and tells
+  you to poll ``check_mechanical_status``.
+- ``check_mechanical_status`` returns an additional ``activity`` block with
+  ``state`` (``idle``, ``busy``, ``unknown``, or ``disconnected``), the ``source``
+  of that observation, the active operation's identity (``operation_id``,
+  ``kind``, elapsed time, and requesting client), the last completed operation
+  and its result, and actionable ``guidance``. Existing status fields are
+  unchanged.
+- When activity is ``busy`` or ``unknown``, status checks stay responsive: the
+  tool returns the activity block without running detailed model-info scripts
+  inside Mechanical.
+- ``unknown`` is deliberately distinct from ``idle``. If an activity probe
+  times out or is unavailable, the server never assumes the application is
+  idle, and it never automatically repeats a mutation after an uncertain
+  outcome. Completed operation results are retained for a bounded history so a
+  client that timed out or disconnected can recover them.
+- The optional ``DS.Script.progressBarIsInUse()`` probe is off by default.
+  Enable it with ``PYMECHANICAL_MCP_PROGRESS_PROBE=1`` only after validating it
+  on your Mechanical release and launch mode. Live checks on the tested 2026 R1
+  installation returned a usable ``False`` at idle but did **not** report a
+  manually started JScript progress bar as busy, so the probe is not relied on
+  for conflict detection. Unsupported releases and headless sessions report
+  ``unsupported`` or ``unknown`` without breaking execution.
+
 Always available (before connection)
 ------------------------------------
 
@@ -33,8 +68,9 @@ Always available (before connection)
      - Verify that Mechanical is installed and discoverable.
    * - ``check_mechanical_status``
      - Inspect connection state, ownership, transport, pending operations, and
-       persistent Python diagnostics, including when disconnected. Replaces
-       ``get_session_diagnostics`` in v0.3.0.
+       persistent Python diagnostics, including when disconnected. Also reports
+       the activity state, active and last operation identity, and polling
+       guidance. Replaces ``get_session_diagnostics`` in v0.3.0.
    * - ``list_mechanical_instances``
      - List running Mechanical processes.
    * - ``launch_mechanical``
